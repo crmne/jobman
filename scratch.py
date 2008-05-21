@@ -1,11 +1,12 @@
-import threading, time, commands, os, sys, math, random
+import threading, time, commands, os, sys, math, random, datetime
 
 import psycopg2, psycopg2.extensions
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Table, Column, MetaData, ForeignKey    
 from sqlalchemy import Integer, String, Float, DateTime
 from sqlalchemy.orm import mapper, relation, backref, eagerload
+from sqlalchemy.sql import operators
 
 
 ##########
@@ -160,12 +161,21 @@ class _KeyVal(object):
 mapper(_KeyVal, t_keyval)
 
 
+###################
+#
+# Job interface
+#
+
 class Trial(object):
     _native_cols = 'desc', 'priority', 'start', 'finish', 'host'
-    _forbidden_keynames = set(['filter', 'load', 'desc', 
+
+    #TODO: remove these forbidden keynames, and let all keynames work properly
+    _forbidden_keynames = set(['filter', 'desc', 
             'priority', 'start', 'finish', 'host',
             'create', 'max_sleep', 'max_retry', 'session', 'c',
             'abort', 'complete'])
+
+    #TODO: unittest cases to verify that having these kinds of keys is OK
 
     class ReserveError(Exception): """reserve failed"""
 
@@ -173,7 +183,14 @@ class Trial(object):
     def filter(session=None, **kwargs):
         """Construct a query for Trials.
 
-        The result is iterable, but you can also call .first() on it.
+        @param kwargs: each (kw,arg) pair in kwargs, will restrict the list of
+        Trials to those such that the 'kw' attr has been associated with the job,
+        and it has value 'arg'
+
+        @return SqlAlchemy query object
+
+        @note: will raise TypeError if any arg in kwargs has a type other than
+        float, int or string.
 
         """
         if session is None: 
@@ -195,39 +212,27 @@ class Trial(object):
         return q
 
     @staticmethod
-    def load(create=True, **kwargs):
-        #is it weird that load would create one if not found?
-        trial = Trial.filter(**kwargs).first()
-        if trial is None and create:
-            trial = Trial(**kwargs)
-        return trial
-
-    @staticmethod
-    def load_reserve(max_retry=10, max_sleep=5.0, **kwargs):
-        """Book a job.
-
-        If no jobs remain, raise StopIteration
+    def reserve_unique(query_fn, max_retry=10, max_sleep=5.0):
+        """Reserve an un-reserved job.
         
-        @todo: is the jobtype mechanism necessary or sufficient?
-        @todo: what about filtering based on the jobs (key,val) pairs? (pro: maybe more robust.  con: forces jobs to have (key,val) pairs)
+        @param query_fn: build the query for the trial to reserve (see
+        L{reserve_unique_kw} for example usage).
 
-        @jobtype: string identifier to filter potential jobs
         @param max_retry: try this many times to reserve a job before raising an exception
-        @param max_sleep: sleep up to this many seconds between retry attempts
 
-        @return job id
+        @param max_sleep: L{time.sleep} up to this many seconds between retry attempts
+
+        @return a trial which was reserved (uniquely) by this function call.  If
+        no matching jobs remain, return None.
+        
         """
-
         s = SessionSerial()
         retry = max_retry
         trial = None
-        assert 'start' not in kwargs
 
         while (trial is None) and retry:
-            #(re)build a query
-            q = s.query(Trial).\
-                    filter_by(start=None, **kwargs).\
-                    order_by(Trial.c.priority)
+
+            q = query_fn(s.query(Trial))
             q = q.options(eagerload('_attrs')) #TODO is this a good idea?
 
             trial = q.first()
@@ -235,18 +240,34 @@ class Trial(object):
                 return None # no jobs match the query
             else:
                 try:
-                    trial.reserve()
+                    trial.reserve(session=s)
                 except Trial.ReserveError, e:
                     s.rollback()
                     waittime = random.random() * max_sleep
                     if debug: print 'another process stole our trial. Waiting %f secs' % wait
                     time.sleep(waittime)
                     retry -= 1
-
         if trial: 
             s.expunge(trial)
         s.close()
         return trial
+
+    @staticmethod
+    def reserve_unique_kw(max_retry=10, max_sleep=5.0, **kwargs):
+        """Call reserve_unique with a query function that matches jobs with
+        attributes (and values) given by kwargs.  Results are sorted by
+        priority.
+
+        """
+        assert 'start' not in kwargs
+        assert 'query_fn' not in kwargs
+        def query_fn(q):
+            q = q.filter_by(start=None,
+                    **kwargs).order_by(desc(Trial.c.priority))
+            return q
+
+
+        return Trial.reserve_unique(query_fn, max_retry, max_sleep)
 
     def __init__(self, desc=None, priority=None, start=None, finish=None, host=None, **kwargs):
         self.desc = desc
@@ -261,6 +282,13 @@ class Trial(object):
                         self.start, self.finish)
 
     def _get_attrs(self):
+        #This bit of code makes it so that you can type something like:
+        #
+        # trial.attrs.score = 50
+        # 
+        # It will use the self._attrs list of _KeyVal instances as a backend,
+        # because these pseudo-attributes (here 'score') are not stored in any
+        # object's __dict__.
         class AttrCatcher(object):
             #TODO: make these methods faster with better data structures
             def __getattr__(attr_self, attr):
@@ -293,31 +321,27 @@ class Trial(object):
                             
         #we can't add attributes to self, so just do this...
         return AttrCatcher() #seriously, allocate a new one each time
-    attrs = property(_get_attrs)
-    def reserve(self,
-            session=None,
-            max_retry=10,
-            max_sleep=4.0):
-        """Reserve the job for the current process, to the exclusion of
-        all other processes.  In other words, lock it."""
-        if session is None:
-            s = SessionSerial()
-        else:
-            s = session
-        serial_self = s.query(Trial).get(self.id)
+    attrs = property(_get_attrs, doc = ("Provide attribute-like access to the"
+        " key-value pairs associated with this trial"))
+    def reserve(self, session): #session should have serialized isolation mode
+        """Reserve the job for the current process, to the exclusion of all
+        other processes.  In other words, lock it."""
+
+        serial_self = session.query(Trial).get(self.id)
         if serial_self.start is not None:
             raise Trial.ReserveError(self.host)
         serial_self.start = datetime.datetime.now()
         serial_self.host = 'asdf' #TODO: get hostname
         try:
-            s.commit()
-        except (psycopg2.OperationalError,
-                sqlalchemy.exceptions.ProgrammingError), e:
+            session.commit()
+        except Exception, e:
+            # different db backends raise different exceptions when a
+            # commit fails, so here we just treat all problems the same 
             #s.rollback() # doc says rollback or close after commit exception
-            s.close()
+            session.close()
             raise Trial.ReserveError(self.host)
 
-        Session().refresh(self)
+        #Session().refresh(self) #load changes to serial_self into self
 
     def abort(self):
         """Reset job to be available for reservation.
@@ -331,12 +355,17 @@ class Trial(object):
             raise Exception('wtf?')
         self.start = None
         self.host = None
-        Session().save(self)
+        s = Session()
+        s.save_or_update(self)
+        s.commit()
 
     def complete(self, **kwargs):
+        """Mark job self as finished and update attrs with kwargs."""
         self.attrs.update(kwargs)
         self.finish = datetime.datetime.now()
-        Session.save(self)
+        s = Session()
+        s.save_or_update(self)
+        s.commit()
 
 mapper(Trial, t_trial,
         properties = {
@@ -345,7 +374,7 @@ mapper(Trial, t_trial,
                 cascade="delete-orphan")
             })
 
-metadata.create_all(engine) 
+metadata.create_all(engine) # does nothing when tables already exist
 
 
 
@@ -371,7 +400,7 @@ if __name__ == '__main__':
                             yield locals()
 
         for kwargs in blah():
-            t = Trial.load(desc=desc, dvalid=dvalid, dtest=dtest, **kwargs)
+            t = Trial(desc=desc, dvalid=dvalid, dtest=dtest, **kwargs)
             s.save(t)
 
     def work(jobtype):
@@ -388,9 +417,21 @@ if __name__ == '__main__':
 
     print 'hah'
 
-    for t in s.query(Trial).order_by(Trial.c.priority):
-        print t
-        print list(t.attrs)
+    for t in s.query(Trial):
+        print 'saved:', t, [a.name for a in list(t.attrs)]
 
+    def yield_unique_jobs():
+        while True:
+            rval = Trial.reserve_unique_kw()
+            if rval is None:
+                break
+            else:
+                yield rval
 
+    for job in yield_unique_jobs():
+        print 'yielded job', job
+        job.complete(score=random.random())
+
+    for t in s.query(Trial):
+        print 'final:', t, [a.name for a in list(t.attrs)]
 
