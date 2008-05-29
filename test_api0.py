@@ -109,5 +109,40 @@ class T(unittest.TestCase):
                 print qitems
             self.failUnless(jitems == qitems, (jitems, qitems))
 
+    def test_query_0(self):
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        def jobs():
+            dvalid, dtest = 'dvalid', 'dtest file'
+            desc = 'debugging'
+            for lr in [0.001]:
+                for scale in [0.0001 * math.sqrt(10.0)**i for i in range(4)]:
+                    for rng_seed in [4, 5, 6]:
+                        for priority in [None, 1]:
+                            yield dict(locals())
+
+        jlist = list(jobs())
+        assert len(jlist) == 1*4*3*2
+        for i, dct in enumerate(jobs()):
+            t = db.insert(**dct)
+
+        qlist = list(db.query(rng_seed=5))
+        self.failUnless(len(qlist) == len(jlist)/3)
+
+        jlist5 = [j for j in jlist if j['rng_seed'] == 5]
+
+        for i, (j, q) in enumerate(zip(jlist5, qlist)):
+            jitems = list(j.items())
+            qitems = list(q.items())
+            jitems.sort()
+            qitems.sort()
+            if jitems != qitems:
+                print i
+                print jitems
+                print qitems
+            self.failUnless(jitems == qitems, (jitems, qitems))
+
 if __name__ == '__main__':
     unittest.main()
