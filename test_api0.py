@@ -38,8 +38,9 @@ class T(unittest.TestCase):
 
 
     def go(self):
+        """Create tables and session_maker"""
         engine = create_engine('sqlite:///:memory:', echo=False)
-        Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
+        Session = sessionmaker(autoflush=True, transactional=True)
 
         table_prefix='bergstrj_scratch_test_'
         metadata = MetaData()
@@ -64,8 +65,10 @@ class T(unittest.TestCase):
                 Column('pair_id', Integer, ForeignKey('%s.id' % t_keyval),
                     primary_key=True))
 
-        metadata.create_all(engine) # does nothing when tables already exist
+        metadata.bind = engine
+        metadata.create_all() # does nothing when tables already exist
         
+        self.engine = engine
         return Session, t_trial, t_keyval, t_trial_keyval
 
 
@@ -89,6 +92,17 @@ class T(unittest.TestCase):
         for i, dct in enumerate(jobs()):
             t = db.insert(**dct)
 
+        #make sure that they really got inserted into the db
+        orig_keycount = db._session.query(db._KeyVal).count()
+        self.failUnless(orig_keycount > 0, orig_keycount)
+
+        orig_dctcount = Session().query(db._Dict).count()
+        self.failUnless(orig_dctcount ==len(jlist), orig_dctcount)
+
+        orig_keycount = Session().query(db._KeyVal).count()
+        self.failUnless(orig_keycount > 0, orig_keycount)
+
+        #queries
         q0list = list(db.query().all())
         q1list = list(db.query())
         q2list = list(db)
@@ -143,6 +157,66 @@ class T(unittest.TestCase):
                 print jitems
                 print qitems
             self.failUnless(jitems == qitems, (jitems, qitems))
+
+    def test_delete_keywise(self):
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        def jobs():
+            dvalid, dtest = 'dvalid', 'dtest file'
+            desc = 'debugging'
+            for lr in [0.001]:
+                for scale in [0.0001 * math.sqrt(10.0)**i for i in range(4)]:
+                    for rng_seed in [4, 5, 6]:
+                        for priority in [None, 1]:
+                            yield dict(locals())
+
+        jlist = list(jobs())
+        assert len(jlist) == 1*4*3*2
+        for i, dct in enumerate(jobs()):
+            t = db.insert(**dct)
+
+        orig_keycount = Session().query(db._KeyVal).count()
+
+        del_count = Session().query(db._KeyVal).filter_by(name='rng_seed',
+                fval=5.0).count()
+        self.failUnless(del_count == 8, del_count)
+
+        #delete all the rng_seed = 5 entries
+        qlist_before = list(db.query(rng_seed=5))
+        for q in qlist_before:
+            del q['rng_seed']
+
+        #check that it's gone from our objects
+        for q in qlist_before:
+            self.failUnless('rng_seed' not in q)  #via __contains__
+            self.failUnless('rng_seed' not in q.keys()) #via keys()
+            exc=None
+            try:
+                r = q['rng_seed'] # via __getitem__
+                print 'r,', r
+            except KeyError, e:
+                pass
+
+        #check that it's gone from dictionaries in the database
+        qlist_after = list(db.query(rng_seed=5))
+        self.failUnless(qlist_after == [])
+
+        #check that exactly 8 keys were removed
+        new_keycount = Session().query(db._KeyVal).count()
+        self.failUnless(orig_keycount == new_keycount + 8, (orig_keycount,
+            new_keycount))
+
+        #check that no keys have rng_seed == 5
+        gone_count = Session().query(db._KeyVal).filter_by(name='rng_seed',
+                fval=5.0).count()
+        self.failUnless(gone_count == 0, gone_count)
+
+
+    def test_delete_dictwise(self):
+        raise NotImplementedError
+
 
 if __name__ == '__main__':
     unittest.main()

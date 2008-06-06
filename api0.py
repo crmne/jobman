@@ -128,12 +128,20 @@ class DbHandle (object):
             #
 
             def __contains__(d_self, key):
-                raise Todo
+                for a in d_self._attrs:
+                    if a.name == key:
+                        return True
+                return False
 
             def __getitem__(d_self, key):
-                raise Todo
+                for a in d_self._attrs:
+                    if a.name == key:
+                        return a.val
+                raise KeyError(key)
 
+            # helper routine by update() and __setitem__
             def _set_in_session(d_self, key, val, session):
+                """Modify an existing key or create a key to hold val"""
                 if key in d_self._forbidden_keys:
                     raise KeyError(key)
                 created = None
@@ -141,21 +149,44 @@ class DbHandle (object):
                     if a.name == key:
                         assert created == None
                         created = h_self._KeyVal(key, val)
-                        attrlist[i] = created
+                        d_self._attrs[i] = created
                 if not created:
                     created = h_self._KeyVal(key, val)
                     d_self._attrs.append(created)
                 session.save(created)
 
             def __setitem__(d_self, key, val):
+                raise Todo #this is untested
                 s = h_self._session
                 d_self._set_in_session(ke, val, s)
                 s.update(d_self)
                 s.commit()
 
+            def __delitem__(d_self, key):
+                s = h_self._session
+                #find the item to delete in d_self._attrs
+                to_del = None
+                for i,a in enumerate(d_self._attrs):
+                    if a.name == key:
+                        assert to_del is None
+                        to_del = (i,a)
+                if to_del is None:
+                    raise KeyError(key)
+                else:
+                    i, a = to_del
+                    s.delete(a)
+                    del d_self._attrs[i]
+                s.commit()
+                s.update(d_self)
 
             def items(d_self):
                 return [(kv.name, kv.val) for kv in d_self._attrs]
+            
+            def keys(d_self):
+                return [kv.name for kv in d_self._attrs]
+
+            def values(d_self):
+                return [kv.val for kv in d_self._attrs]
 
             def update(d_self, dct, **kwargs):
                 s = h_self._session
@@ -193,7 +224,7 @@ class DbHandle (object):
                 properties = {
                     '_attrs': relation(KeyVal, 
                         secondary=link_table, 
-                        cascade="delete-orphan")
+                        cascade="all, delete-orphan")
                     })
 
         class Query (object):
@@ -293,7 +324,7 @@ class DbHandle (object):
 
         """
         rval = h_self._Dict()
-        rval.update(dct)
+        if dct: rval.update(dct)
         return rval
 
     def query(h_self, **kwargs): 
