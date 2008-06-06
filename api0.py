@@ -133,27 +133,16 @@ class DbHandle (object):
                         return True
                 return False
 
+            def __eq__(self, other):
+                return dict(self) == dict(other)
+            def __neq__(self, other):
+                return dict(self) != dict(other)
+
             def __getitem__(d_self, key):
                 for a in d_self._attrs:
                     if a.name == key:
                         return a.val
                 raise KeyError(key)
-
-            # helper routine by update() and __setitem__
-            def _set_in_session(d_self, key, val, session):
-                """Modify an existing key or create a key to hold val"""
-                if key in d_self._forbidden_keys:
-                    raise KeyError(key)
-                created = None
-                for i,a in enumerate(d_self._attrs):
-                    if a.name == key:
-                        assert created == None
-                        created = h_self._KeyVal(key, val)
-                        d_self._attrs[i] = created
-                if not created:
-                    created = h_self._KeyVal(key, val)
-                    d_self._attrs.append(created)
-                session.save(created)
 
             def __setitem__(d_self, key, val):
                 raise Todo #this is untested
@@ -209,7 +198,7 @@ class DbHandle (object):
                 """
                 if session is None:
                     session = h_self._session
-                    session.refresh(self.dbrow)
+                    session.refresh(d_self)
                     session.commit()
                 else:
                     session.refresh(self.dbrow)
@@ -219,7 +208,29 @@ class DbHandle (object):
                 
                 @param session: use the given session, and do not commit.
                 """
-                raise Todo
+                if session is None:
+                    session = h_self._session
+                    session.delete(d_self)
+                    session.commit()
+                else:
+                    session.delete(d_self)
+
+            # helper routine by update() and __setitem__
+            def _set_in_session(d_self, key, val, session):
+                """Modify an existing key or create a key to hold val"""
+                if key in d_self._forbidden_keys:
+                    raise KeyError(key)
+                created = None
+                for i,a in enumerate(d_self._attrs):
+                    if a.name == key:
+                        assert created == None
+                        created = h_self._KeyVal(key, val)
+                        d_self._attrs[i] = created
+                if not created:
+                    created = h_self._KeyVal(key, val)
+                    d_self._attrs.append(created)
+                session.save(created)
+
         mapper(Dict, dict_table,
                 properties = {
                     '_attrs': relation(KeyVal, 

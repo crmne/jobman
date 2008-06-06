@@ -215,7 +215,48 @@ class T(unittest.TestCase):
 
 
     def test_delete_dictwise(self):
-        raise NotImplementedError
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        def jobs():
+            dvalid, dtest = 'dvalid', 'dtest file'
+            desc = 'debugging'
+            for lr in [0.001]:
+                for scale in [0.0001 * math.sqrt(10.0)**i for i in range(4)]:
+                    for rng_seed in [4, 5, 6]:
+                        for priority in [None, 1]:
+                            yield dict(locals())
+
+        jlist = list(jobs())
+        assert len(jlist) == 1*4*3*2
+        for i, dct in enumerate(jobs()):
+            t = db.insert(**dct)
+
+        orig_keycount = Session().query(db._KeyVal).count()
+        orig_dctcount = Session().query(db._Dict).count()
+        self.failUnless(orig_dctcount == len(jlist))
+
+        #delete all the rng_seed = 5 dictionaries
+        qlist_before = list(db.query(rng_seed=5))
+        for q in qlist_before:
+            q.delete()
+
+        #check that the right number has been removed
+        post_dctcount = Session().query(db._Dict).count()
+        self.failUnless(post_dctcount == len(jlist)-8)
+
+        #check that the remaining ones are correct
+        for a, b, in zip(
+                [j for j in jlist if j['rng_seed'] != 5],
+                Session().query(db._Dict).all()):
+            self.failUnless(a == b)
+
+        #check that the keys have all been removed
+        n_keys_per_dict = 8
+        new_keycount = Session().query(db._KeyVal).count()
+        self.failUnless(orig_keycount - 8 * n_keys_per_dict == new_keycount, (orig_keycount,
+            new_keycount))
 
 
 if __name__ == '__main__':
