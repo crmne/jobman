@@ -145,9 +145,8 @@ class DbHandle (object):
                 raise KeyError(key)
 
             def __setitem__(d_self, key, val):
-                raise Todo #this is untested
                 s = h_self._session
-                d_self._set_in_session(ke, val, s)
+                d_self._set_in_session(key, val, s)
                 s.update(d_self)
                 s.commit()
 
@@ -238,7 +237,7 @@ class DbHandle (object):
                         cascade="all, delete-orphan")
                     })
 
-        class Query (object):
+        class _Query (object):
             """
             Attributes:
             _query - SqlAlchemy.Query object
@@ -318,7 +317,7 @@ class DbHandle (object):
 
         h_self._KeyVal = KeyVal
         h_self._Dict = Dict
-        h_self._Query = Query
+        h_self._Query = _Query
 
     def __iter__(h_self):
         return h_self.query().__iter__()

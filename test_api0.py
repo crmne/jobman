@@ -259,5 +259,93 @@ class T(unittest.TestCase):
             new_keycount))
 
 
+    def test_setitem_0(self):
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        b0 = 6.0
+        b1 = 9.0
+
+        job = dict(a=0, b=b0, c='hello')
+
+        dbjob = db.insert(**job)
+
+        dbjob['b'] = b1
+
+        #check that the change is in db
+        qjob = Session().query(db._Dict).filter(db._Dict._attrs.any(name='b',
+            fval=b1)).first()
+        self.failIf(qjob is dbjob)
+        self.failUnless(qjob == dbjob)
+
+        #check that the b:b0 key is gone
+        count = Session().query(db._KeyVal).filter_by(name='b', fval=b0).count()
+        self.failUnless(count == 0, count)
+
+        #check that the b:b1 key is there
+        count = Session().query(db._KeyVal).filter_by(name='b', fval=b1).count()
+        self.failUnless(count == 1, count)
+
+    def test_setitem_1(self):
+        """replace with different sql type"""
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        b0 = 6.0
+        b1 = 'asdf' # a different dtype
+
+        job = dict(a=0, b=b0, c='hello')
+
+        dbjob = db.insert(**job)
+
+        dbjob['b'] = b1
+
+        #check that the change is in db
+        qjob = Session().query(db._Dict).filter(db._Dict._attrs.any(name='b',
+            sval=b1)).first()
+        self.failIf(qjob is dbjob)
+        self.failUnless(qjob == dbjob)
+
+        #check that the b:b0 key is gone
+        count = Session().query(db._KeyVal).filter_by(name='b', fval=b0).count()
+        self.failUnless(count == 0, count)
+
+        #check that the b:b1 key is there
+        count = Session().query(db._KeyVal).filter_by(name='b', sval=b1,
+                fval=None).count()
+        self.failUnless(count == 1, count)
+
+    def test_setitem_2(self):
+        """replace with different number type"""
+        Session, t_dict, t_pair, t_link = self.go()
+
+        db = DbHandle(*self.go())
+
+        b0 = 6.0
+        b1 = 7
+
+        job = dict(a=0, b=b0, c='hello')
+
+        dbjob = db.insert(**job)
+
+        dbjob['b'] = b1
+
+        #check that the change is in db
+        qjob = Session().query(db._Dict).filter(db._Dict._attrs.any(name='b',
+            fval=b1)).first()
+        self.failIf(qjob is dbjob)
+        self.failUnless(qjob == dbjob)
+
+        #check that the b:b0 key is gone
+        count = Session().query(db._KeyVal).filter_by(name='b', fval=b0,ntype=1).count()
+        self.failUnless(count == 0, count)
+
+        #check that the b:b1 key is there
+        count = Session().query(db._KeyVal).filter_by(name='b', fval=b1,ntype=0).count()
+        self.failUnless(count == 1, count)
+        
+
 if __name__ == '__main__':
     unittest.main()
