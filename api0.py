@@ -254,6 +254,9 @@ class DbHandle (object):
             def __iter__(q_self):
                 return q_self.all().__iter__()
 
+            def __getitem__(q_self, item):
+                return q_self._query.__getitem__(item)
+
             def filter_by(q_self, **kwargs):
                 """Return a Query object that restricts to dictionaries containing
                 the given kwargs"""
@@ -283,11 +286,18 @@ class DbHandle (object):
                 """
                 return q_self._query.all()
 
-            def any(q_self):
+            def count(q_self):
+                """Return the number of matching dictionaries.
+
+                See L{SqlAlchemy.Query}
+                """
+                return q_self._query.count()
+
+            def first(q_self):
                 """Return some matching dictionary, or None
                 See L{SqlAlchemy.Query}
                 """
-                return q_self._query.any()
+                return q_self._query.first()
 
             def all_ordered_by(q_self, key, desc=False):
                 """Return query results, sorted.
