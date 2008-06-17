@@ -1,4 +1,9 @@
+from sqlalchemy import create_engine, desc
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, Column, MetaData, ForeignKey    
+from sqlalchemy import Integer, String, Float, DateTime, Text, Binary
 from sqlalchemy.orm import mapper, relation, backref, eagerload
+from sqlalchemy.sql import operators, select
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -344,5 +349,71 @@ class DbHandle (object):
         return h_self._Query(h_self._session.query(h_self._Dict)\
                         .options(eagerload('_attrs')))\
                         .filter_by(**kwargs)
+
+
+def db_from_engine(engine, 
+        table_prefix='DbHandle_default_',
+        trial_suffix='trial',
+        keyval_suffix='keyval',
+        link_suffix='link'):
+    """Create a DbHandle instance
+
+    @type engine: sqlalchemy engine (e.g. from create_engine)
+    @param engine: connect to this database for transactions
+
+    @type table_prefix: string
+    @type trial_suffix: string
+    @type keyval_suffix: string
+    @type link_suffix: string
+
+    @rtype: DbHandle instance
+
+    @note: The returned DbHandle will use three tables to implement the
+    many-to-many pattern that it needs: 
+     - I{table_prefix + trial_suffix},
+     - I{table_prefix + keyval_suffix}
+     - I{table_prefix + link_suffix}
+
+    """
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    metadata = MetaData()
+
+    t_trial = Table(table_prefix+trial_suffix, metadata,
+            Column('id', Integer, primary_key=True),
+            Column('create', DateTime),
+            Column('write', DateTime),
+            Column('read', DateTime))
+
+    t_keyval = Table(table_prefix+keyval_suffix, metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(128), nullable=False), #name of attribute
+            Column('ntype', Integer),
+            Column('fval', Float(53)),
+            Column('sval', Text),
+            Column('bval', Binary))
+
+    t_link = Table(table_prefix+link_suffix, metadata,
+            Column('dict_id', Integer, ForeignKey('%s.id' % t_trial),
+                primary_key=True),
+            Column('pair_id', Integer, ForeignKey('%s.id' % t_keyval),
+                primary_key=True))
+
+    metadata.bind = engine
+    metadata.create_all() # no-op when tables already exist
+    #warning: tables can exist, but have incorrect schema
+    # see bug mentioned in DbHandle constructor
+
+    return DbHandle(Session, t_trial, t_keyval, t_link)
+
+def sqlite_memory_db(echo=False, **kwargs):
+    """Return a DbHandle backed by a memory-based database"""
+    engine = create_engine('sqlite:///:memory:', echo=False)
+    return db_from_engine(engine, **kwargs)
+
+def sqlite_file_db(filename, echo=False, **kwargs):
+    """Return a DbHandle backed by a file-based database"""
+    engine = create_engine('sqlite:///%s' % filename, echo=False)
+    return db_from_engine(engine, **kwargs)
 
 
