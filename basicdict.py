@@ -26,6 +26,9 @@ class BasicDict (object):
             for k, v in kwargs.items():
                 self[k] = v
 
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
     def __setitem__(self, key, value):
         BasicDict.__checkkeyval__(key, value)
         self.__dict__[key] = value

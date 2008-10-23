@@ -1,8 +1,8 @@
 
-import os
+import os, sys
 import basicdict
 
-def run_job(fn, cwd=None,
+def run_job(fn=None, cwd=None,
         configpath = 'job_config',
         resultpath = 'job_result',
         stdoutpath = 'stdout',
@@ -29,6 +29,13 @@ def run_job(fn, cwd=None,
             print >> sys.stderr, "trouble making wordking directory:"
             print >> sys.stderr, e
             print >> sys.stderr, "ignoring error and proceeding anyway"
+
+        if fn is None:
+            fn_module_name = config.job_module
+            fn_symbol = config.job_symbol
+            fn_module = __import__(fn_module_name)
+            fn = getattr(fn_module, fn_symbol)
+
         fn(config=config, result=result, workdir=wd)
 
         result.save(resultpath)
