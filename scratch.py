@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Table, Column, MetaData, ForeignKey    
 from sqlalchemy import Integer, String, Float, DateTime
 from sqlalchemy.orm import mapper, relation, backref, eagerload
-from sqlalchemy.sql import operators
+from sqlalchemy.sql import operators, select
 
 
 ##########
@@ -311,8 +311,6 @@ class Trial(object):
                 s.commit()
             def __iter__(_self):
                 def gen():
-                    #for a in self._attrs:
-                    #    yield a.name
                     return self._attrs.__iter__()
                 return gen()
             def update(attr_self, dct):
@@ -397,7 +395,7 @@ if __name__ == '__main__':
                 for scale in [0.0001 * math.sqrt(10.0)**i for i in range(4)]:
                     for rng_seed in [4, 5, 6]:
                         for priority in [None, 1, 2]:
-                            yield locals()
+                            yield dict(locals())
 
         for kwargs in blah():
             t = Trial(desc=desc, dvalid=dvalid, dtest=dtest, **kwargs)
@@ -415,10 +413,9 @@ if __name__ == '__main__':
 
     add_some_jobs()
 
-    print 'hah'
-
-    for t in s.query(Trial):
-        print 'saved:', t, [a.name for a in list(t.attrs)]
+    if 0:
+        for t in s.query(Trial):
+            print 'saved:', t, [a.name for a in list(t.attrs)]
 
     def yield_unique_jobs():
         while True:
@@ -428,10 +425,27 @@ if __name__ == '__main__':
             else:
                 yield rval
 
-    for job in yield_unique_jobs():
-        print 'yielded job', job
-        job.complete(score=random.random())
+    if 0:
+        for job in yield_unique_jobs():
+            print 'yielded job', job
+            job.complete(score=random.random())
 
-    for t in s.query(Trial):
+    if 0:
+        for t in s.query(Trial):
+            print 'final:', t, [a.name for a in list(t.attrs)]
+
+    q = s.query(Trial)
+    #q = q.order_by(Trial.attrs)
+    q = q.filter(Trial._attrs.any(name='rng_seed', ival=5))
+    #q = q.filter(Trial._attrs.all(name='lr').order_by(_KeyVal.c.fval))
+
+    print dir(q)
+
+
+    print q
+    for t in q.all():
         print 'final:', t, [a.name for a in list(t.attrs)]
+        t.homebrew = 6
+
+
 

@@ -28,7 +28,7 @@ class BasicDict (object):
 
     def __setitem__(self, key, value):
         BasicDict.__checkkeyval__(key, value)
-        self.__dict__[attr] = value
+        self.__dict__[key] = value
 
     def __setattr__(self, key, value):
         self[key] = value #__setitem__
@@ -107,22 +107,21 @@ class BasicDict (object):
     @staticmethod
     def __checkkeyval__(key, val):
         conf = BasicDict()
-        for k in args:
-            #must be string
-            if type(k) != str:
-                raise KeyError(k)
-            #mustn't be part of BasicDict class interface
-            if hasattr(conf, k):
-                raise KeyError(k)
-            #all alphanumeric
-            for c in k:
-                if c not in ('abcdefghijklmnopqrstuvwxyz'
-                        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                        '_0123456789'):
-                    raise KeyError(k)
-            #no symbols that look like reserved symbols
-            if k[:2]=='__' and k[-2:]=='__' and len(k)>4:
-                raise KeyError(k)
+        #must be string
+        if type(key) != str:
+            raise KeyError(key)
+        #mustn't be part of BasicDict class interface
+        if hasattr(conf, key):
+            raise KeyError(key)
+        #all alphanumeric
+        for c in key:
+            if c not in ('abcdefghijklmnopqrstuvwxyz'
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                    '_0123456789'):
+                raise KeyError(key)
+        #no symbols that look like reserved symbols
+        if key[:2]=='__' and key[-2:]=='__' and len(key)>4:
+            raise KeyError(key)
 
 def load(*filenames):
     """Read the local variables from a python file
