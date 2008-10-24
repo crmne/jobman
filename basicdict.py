@@ -1,5 +1,5 @@
-import sys
-#
+# used in tools
+# scratch
 #
 # Utility
 #

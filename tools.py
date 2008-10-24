@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 
 import os, sys
-import basicdict
+from dconfig import Config, load
 
 def run_job(fn=None, cwd=None,
-        configpath = 'job_config',
-        resultpath = 'job_result',
+        configpath = 'job_config.py',
+        resultpath = 'job_result.py',
         stdoutpath = 'stdout',
         stderrpath = 'stderr',
         workdir = 'workdir'
@@ -20,8 +21,8 @@ def run_job(fn=None, cwd=None,
         sys.stdout = open(stdoutpath, 'w')
         sys.stderr = open(stderrpath, 'w')
 
-        config = basicdict.load(configpath)
-        result = basicdict.BasicDict()
+        config = load(configpath)
+        result = Config()
         wd = os.path.join(cwd, workdir)
         try:
             os.mkdir(wd)
@@ -29,6 +30,12 @@ def run_job(fn=None, cwd=None,
             print >> sys.stderr, "trouble making wordking directory:"
             print >> sys.stderr, e
             print >> sys.stderr, "ignoring error and proceeding anyway"
+        try:
+            os.chdir(wd)
+        except:
+            pass
+
+        print >> sys.stderr, "cwd:", os.getcwd()
 
         if fn is None:
             fn_module_name = config.job_module
@@ -36,7 +43,7 @@ def run_job(fn=None, cwd=None,
             fn_module = __import__(fn_module_name)
             fn = getattr(fn_module, fn_symbol)
 
-        fn(config=config, result=result, workdir=wd)
+        fn(config=config, result=result)
 
         result.save(resultpath)
 
