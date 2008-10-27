@@ -76,6 +76,10 @@ class DbHandle (object):
         h_self._session = Session()
 
         class KeyVal (object):
+            """KeyVal interfaces between python types and the database.
+
+            It encapsulates heuristics for type conversion.
+            """
             def __init__(k_self, name, val):
                 k_self.name = name
                 k_self.val = val
@@ -84,7 +88,7 @@ class DbHandle (object):
             def __get_val(k_self):
                 val = None
                 if k_self.fval is not None: val = [int, float][k_self.ntype](k_self.fval)
-                if k_self.bval is not None: val = k_self.bval
+                if k_self.bval is not None: val = eval(str(k_self.bval))
                 if k_self.sval is not None: val = k_self.sval
                 return  val
             def __set_val(k_self, val):
@@ -99,7 +103,8 @@ class DbHandle (object):
                     except (TypeError, ValueError):
                         f = None
                     if f is None: #binary data
-                        k_self.bval = val
+                        k_self.bval = repr(val)
+                        assert eval(k_self.bval) == val
                         k_self.fval = None
                         k_self.ntype = None
                     else:
@@ -273,7 +278,7 @@ class DbHandle (object):
                         except (TypeError, ValueError):
                             f = None
                         if f is None:
-                            q = q.filter(T._attrs.any(name=kw, bval=arg))
+                            q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
                         else:
                             q = q.filter(T._attrs.any(name=kw, fval=f))
 
@@ -337,7 +342,21 @@ class DbHandle (object):
     def __iter__(h_self):
         return h_self.query().__iter__()
 
-    def insert(h_self, **dct):
+    def insert_kwargs(h_self, **dct):
+        """
+        @rtype:  DbHandle with reference to self
+        @return: a DbHandle initialized as a copy of dct
+        
+        @type dct: dict-like instance whose keys are strings, and values are
+        either strings, integers, floats
+
+        @param dct: dictionary to insert
+
+        """
+        rval = h_self._Dict()
+        if dct: rval.update(dct)
+        return rval
+    def insert(h_self, dct):
         """
         @rtype:  DbHandle with reference to self
         @return: a DbHandle initialized as a copy of dct

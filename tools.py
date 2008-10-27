@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os, sys, socket, datetime
 from .dconfig import Config, load
+from .api0 import sqlite_memory_db
 
 class Job(object):
     @classmethod
@@ -40,6 +41,7 @@ class Job(object):
             print attr, '=', getattr(self, attr)
 
 def run_job(fn=None, cwd=None,
+
         config_path = 'job_config.py',
         result_path = 'job_result.py',
         stdout_path = 'stdout',
@@ -48,7 +50,17 @@ def run_job(fn=None, cwd=None,
         ):
     cwd = os.getcwd() if cwd is None else cwd
 
-class EXE(object):
+def _pop_cwd():
+    try:
+        cwd = sys.argv.pop(0)
+        if not cwd.startswith('/'):
+            cwd = os.path.join(os.getcwd(), cwd)
+    except IndexError:
+        cwd = os.getcwd()
+    return cwd
+
+
+class RunJob(object):
     path_perf = 'job_perf.py'
     path_results = 'job_results.py'
     path_config = 'job_config.py'
@@ -59,17 +71,8 @@ class EXE(object):
     def __init__(self, exename):
         pass
 
-    def _pop_cwd(self):
-        try:
-            cwd = sys.argv.pop(0)
-            if not cwd.startswith('/'):
-                cwd = os.path.join(os.getcwd(), cwd)
-        except IndexError:
-            cwd = os.getcwd()
-        return cwd
-
     def _load_config(self, cwd = None):
-        cwd = self._pop_cwd() if cwd is None else cwd
+        cwd = _pop_cwd() if cwd is None else cwd
         config = load(os.path.join(cwd, self.path_config))
         return config
     
@@ -95,7 +98,7 @@ class EXE(object):
         job.print_config()
 
     def run(self):
-        cwd = self._pop_cwd()
+        cwd = _pop_cwd()
         config = self._load_config(cwd)
         job_class = self._load_job_class(config)
         job = job_class(config)
@@ -148,7 +151,7 @@ class EXE(object):
         job_class.print_defaults()
 
 def standalone_run_job():
-    exe = EXE(sys.argv.pop(0))
+    exe = RunJob(sys.argv.pop(0))
     try:
         cmd = sys.argv.pop(0)
         fn = getattr(exe, cmd)
@@ -160,7 +163,50 @@ def standalone_run_job():
     fn()
 
 
+class RunQuery(object):
+
+    def __init__(self, exename):
+        pass
+
+    def run(self):
+        cwd = _pop_cwd()
+        db = sqlite_memory_db()
+        for e in os.listdir(cwd):
+            e = os.path.join(cwd, e)
+            try:
+                e_config = open(os.path.join(e, 'job_config.py'))
+            except:
+                e_config = None
+
+            try: 
+                e_sentinel = open(os.path.join(e, '__jobdir__'))
+            except:
+                e_sentinel = None
+
+            if not (e_config or e_sentinel):
+                continue #this is not a job dir
+
+            if e_config:
+                e_config.close()
+                config = load(os.path.join(e, 'job_config.py'))
+
+                entry = db.insert(config.__dict__)
+
+            if e_sentinel:
+                print >> sys.stderr, "NOT-IMPLEMENTED: RECURSION INTO SUBDIRECTORY", e
+
+        for entry in db.query(learning_rate=0.1, img_shape=(28,28)).all():
+            print entry.items()
 
 
 def standalone_query():
-    pass
+    exe = RunQuery(sys.argv.pop(0))
+    try:
+        cmd = sys.argv.pop(0)
+        fn = getattr(exe, cmd)
+    except IndexError:
+        fn = getattr(exe, 'run')
+    except AttributeError:
+        print >> sys.stderr, "command not supported", cmd
+
+    fn()
