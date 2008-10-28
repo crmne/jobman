@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import os, sys, socket, datetime
+import os, sys, socket, datetime, copy
 from .dconfig import Config, load
 from .api0 import sqlite_memory_db
 
@@ -167,6 +167,45 @@ def standalone_run_job():
 
     fn()
 
+def build_db(cwd):
+    """WRITEME"""
+    db = sqlite_memory_db()
+    for e in os.listdir(cwd):
+        e = os.path.join(cwd, e)
+        try:
+            e_config = open(os.path.join(e, 'job_config.py'))
+        except:
+            e_config = None
+
+        try: 
+            e_sentinel = open(os.path.join(e, '__jobdir__'))
+        except:
+            e_sentinel = None
+
+        if not (e_config or e_sentinel):
+            continue #this is not a job dir
+
+        if e_config:
+            e_config.close()
+            config = load(os.path.join(e, 'job_config.py'))
+            kwargs = copy.copy(config.__dict__)
+            try:
+                results = load(os.path.join(e, 'job_results.py'))
+                kwargs.update(results.__dict__)
+            except:
+                pass
+            try:
+                perf = load(os.path.join(e, 'job_perf.py'))
+                kwargs.update(perf.__dict__)
+            except:
+                pass
+
+            entry = db.insert(kwargs)
+
+        if e_sentinel:
+            print >> sys.stderr, "NOT-IMPLEMENTED: RECURSION INTO SUBDIRECTORY", e
+    return db
+
 
 class RunQuery(object):
 
@@ -175,37 +214,8 @@ class RunQuery(object):
 
     def run(self):
         cwd = _pop_cwd()
-        db = sqlite_memory_db()
-        try:
-            q = sys.argv.pop(0)
-        except:
-            q = 'db.query().all()'
-
-        for e in os.listdir(cwd):
-            e = os.path.join(cwd, e)
-            try:
-                e_config = open(os.path.join(e, 'job_config.py'))
-            except:
-                e_config = None
-
-            try: 
-                e_sentinel = open(os.path.join(e, '__jobdir__'))
-            except:
-                e_sentinel = None
-
-            if not (e_config or e_sentinel):
-                continue #this is not a job dir
-
-            if e_config:
-                e_config.close()
-                config = load(os.path.join(e, 'job_config.py'))
-
-                entry = db.insert(config.__dict__)
-
-            if e_sentinel:
-                print >> sys.stderr, "NOT-IMPLEMENTED: RECURSION INTO SUBDIRECTORY", e
-
-        for entry in eval(q):
+        db = build_db(cwd)
+        for entry in db.query().all():
             print entry.items()
 
 
