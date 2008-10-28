@@ -195,6 +195,12 @@ class DbHandle (object):
                 s.update(d_self)
                 s.commit()
 
+            def get(d_self, key, default):
+                try:
+                    return d_self[key]
+                except KeyError:
+                    return default
+
             #
             # database stuff
             #
