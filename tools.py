@@ -4,6 +4,9 @@ import os, sys, socket, datetime
 from .dconfig import Config, load
 from .api0 import sqlite_memory_db
 
+
+# sample_create_jobs.py
+
 class Job(object):
     @classmethod
     def is_a_default_option(cls, key, val):
@@ -145,6 +148,8 @@ class RunJob(object):
             #put back stderr and stdout
             sys.stdout = stdout_orig
             sys.stderr = stderr_orig
+            perf.end_time = str(datetime.datetime.now())
+            perf.save(os.path.join(cwd, self.path_perf))
 
     def defaults(self):
         job_class = self._load_job_class()
@@ -171,6 +176,11 @@ class RunQuery(object):
     def run(self):
         cwd = _pop_cwd()
         db = sqlite_memory_db()
+        try:
+            q = sys.argv.pop(0)
+        except:
+            q = 'db.query().all()'
+
         for e in os.listdir(cwd):
             e = os.path.join(cwd, e)
             try:
@@ -195,7 +205,7 @@ class RunQuery(object):
             if e_sentinel:
                 print >> sys.stderr, "NOT-IMPLEMENTED: RECURSION INTO SUBDIRECTORY", e
 
-        for entry in db.query(learning_rate=0.1, img_shape=(28,28)).all():
+        for entry in eval(q):
             print entry.items()
 
 
