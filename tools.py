@@ -39,9 +39,14 @@ class Job(object):
         for attr in cls.options():
             print attr, '=', getattr(cls, attr)
 
-    def print_config(self):
+    def print_config(self, outfile=sys.stdout):
         for attr in self.options():
-            print attr, '=', getattr(self, attr)
+            print >> outfile, attr, '=', getattr(self, attr)
+
+    def save_config(self, outfile=sys.stdout):
+        """Like print_config, but with parsable format rather than human-readable format"""
+        kwargs = dict([(attr,getattr(self, attr)) for attr  in self.options()])
+        Config(**kwargs).save_file(outfile)
 
 def run_job(fn=None, cwd=None,
 
@@ -64,9 +69,13 @@ def _pop_cwd():
 
 
 class RunJob(object):
+    """
+    """
+
     path_perf = 'job_perf.py'
     path_results = 'job_results.py'
     path_config = 'job_config.py'
+    path_fullconfig = 'job_fullconfig.py'
     path_stdout = 'stdout'
     path_stderr = 'stderr'
     path_workdir = 'workdir'
@@ -94,7 +103,7 @@ class RunJob(object):
             raise
         return job_class
 
-    def config(self):
+    def print_config(self):
         config = self._load_config()
         job_class = self._load_job_class(config)
         job = job_class(config)
@@ -105,6 +114,8 @@ class RunJob(object):
         config = self._load_config(cwd)
         job_class = self._load_job_class(config)
         job = job_class(config)
+
+        job.save_config(open(os.path.join(cwd, self.path_fullconfig),'w'))
 
         perf = Config()
         perf.host_name = socket.gethostname()
@@ -140,8 +151,14 @@ class RunJob(object):
             # run the job...
             #
 
+            #TODO load the results file before running the job, to resume job
             results = Config()
-            job.run(results)
+
+            job_rval = job.run(results)
+
+            #TODO: use the return value to decide whether the job should be resumed or not,
+            #      False  means run is done
+            #      True   means the job has yielded, but should be continued
             results.save(os.path.join(cwd, self.path_results))
 
         finally:

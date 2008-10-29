@@ -27,6 +27,9 @@ class SampleJob(Job):
         f = open('some_file', 'w')
         print >> f, "hello from the job?"
 
+        return True #restart this job
+
+
 def some_jobs(a = 0,
         b = 2):
     job_module = 'dbdict.sample_create_jobs'
