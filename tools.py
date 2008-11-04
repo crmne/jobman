@@ -184,9 +184,9 @@ def standalone_run_job():
 
     fn()
 
-def build_db(cwd):
+def build_db(cwd, db=None):
     """WRITEME"""
-    db = sqlite_memory_db()
+    db = sqlite_memory_db() if db is None else db
     for e in os.listdir(cwd):
         e = os.path.join(cwd, e)
         try:
@@ -216,6 +216,12 @@ def build_db(cwd):
                 kwargs.update(perf.__dict__)
             except:
                 pass
+
+            #TODO: this is a backward-compatibility hack for AISTATS*09
+            if 'perf_jobdir' not in kwargs:
+                kwargs['perf_jobdir'] = e
+            if 'perf_workdir' not in kwargs:
+                kwargs['perf_workdir'] = os.path.join(e, 'workdir')
 
             entry = db.insert(kwargs)
 
