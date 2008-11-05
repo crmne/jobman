@@ -1,0 +1,118 @@
+
+
+How to run experiments using DbDict
+-----------------------------------
+
+- Inherit from tools.Job.  This is where you put the logic that takes some
+  parameters, and computes some results associated with those parameters.
+
+- Save result files, and files needed for job resume to os.getcwd().
+
+- Save non-result files to a TEMP directory, obtained by e.g. self.gettmpdir()
+  from inside a Job instance.
+
+- Load datasets through pylearn.  Pylearn has internal configuration that allows
+  it to find files both on mammouth and DIRO networks.  You just call
+  MNIST.head() or shapeset1.train_valid_test() and bingo.
+
+- Manage experiments in a postgres database.  Which ones have been queued, which
+  ones are running, which are finished, simple results, etc.
+
+- To analyze results, select from PG and create a dedicated table in sqlite.
+  Make columns for all the dictionary keys from all the selected entries.
+
+
+DbDict
+------
+
+A DbDict is a dictionary whose keys are simple enough to be stored into a
+database.  The implementation would be cleanest if all keys were one of the
+SqlAlchemy types: Text, Integer, Float(53).
+
+
+Job
+---
+
+A Job is like a DbDict with some special keys in it:  job_module, job_symbol.
+
+Also a Job is a class with methods in it, like a thread.
+
+class MyJob(Job):
+    def __init__(self):
+        """Called once per lifetime of the class instance.  Can be used to
+        create new jobs and save them to the database.   This function will not
+        be called when a Job is retrieved from the database.
+
+        Parent creates keys: job_id, job_module, job_symbol, job_state, job_history.
+
+        job_state = NEW  (possibilities: RUNNING, STOPPED, DONE)
+
+        job_history = "[('created', <time>), ('started', <time>, <hostname>), ('stopped', <time>, <hostname>) ...]"
+        
+        """
+
+    def start(self):
+        """Called once per lifetime of the compute job.
+
+        This is a good place to initialize internal variables.
+
+        After this function returns, either stop() or continue() will be called.
+        
+        job_state -> RUNNING
+
+        """
+    def restart(self):
+        """Called to resume computations on a previously stop()'ed job.  The
+        os.getcwd() is just like it was after some previous stop() command.
+
+        This is a good place to load internal variables from os.getcwd().
+
+        job_state -> RUNNING
+        
+        """
+
+    def continue(self):
+        """Called repeatedly between [re]start() and stop().
+        
+        Return True if the job has more work to, and would like continue() to be
+        called again. (job_state unchanged)
+
+        Return False or None if work is complete. (job_state -> DONE).
+
+        """
+
+    def stop(self):
+        """Called to request that a job save progress.
+        
+        This is a good place to save internal variables to os.getcwd().
+        
+        Probably this is the last call the instance will get before being
+        deleted.
+
+        job_state -> STOPPED
+        """
+
+
+JOB DRIVER
+----------
+
+When a job is started, save:
+
+- workdir
+
+- dir
+
+- network (e.g. mammouth vs. diro... where are jobdir and workdir?
+  Alternatively, automatically rsync finished jobs' workdir and jobdir to diro.)
+
+
+****RSYNC****
+
+
+
+When running classification experiments
+---------------------------------------
+
+Have convention of saving (train, valid, test) X (NLL, RATE).
+Should the convention be enforced?  How?
+
