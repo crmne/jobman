@@ -1,26 +1,5 @@
 
 
-How to run experiments using DbDict
------------------------------------
-
-- Inherit from tools.Job.  This is where you put the logic that takes some
-  parameters, and computes some results associated with those parameters.
-
-- Save result files, and files needed for job resume to os.getcwd().
-
-- Save non-result files to a TEMP directory, obtained by e.g. self.gettmpdir()
-  from inside a Job instance.
-
-- Load datasets through pylearn.  Pylearn has internal configuration that allows
-  it to find files both on mammouth and DIRO networks.  You just call
-  MNIST.head() or shapeset1.train_valid_test() and bingo.
-
-- Manage experiments in a postgres database.  Which ones have been queued, which
-  ones are running, which are finished, simple results, etc.
-
-- To analyze results, select from PG and create a dedicated table in sqlite.
-  Make columns for all the dictionary keys from all the selected entries.
-
 
 DbDict
 ------
@@ -37,7 +16,27 @@ A Job is like a DbDict with some special keys in it:  job_module, job_symbol.
 
 Also a Job is a class with methods in it, like a thread.
 
+class Job(object):
+
+    new_stdout == 'job_stdout'
+    new_stderr == 'job_stderr'
+
+    def remap_stdout(self):
+        """
+        Called before start and restart.  
+
+        Parent-class behaviour is to replace sys.stdout with open(self.new_stdout, 'w+').
+
+        """
+
+    def remap_stderr(self):
+        """
+        Called before start and restart.
+        
+        """
+
 class MyJob(Job):
+
     def __init__(self):
         """Called once per lifetime of the class instance.  Can be used to
         create new jobs and save them to the database.   This function will not
@@ -106,7 +105,55 @@ When a job is started, save:
   Alternatively, automatically rsync finished jobs' workdir and jobdir to diro.)
 
 
-****RSYNC****
+dbdict-run-job
+--------------
+
+prepare job dir
+~~~~~~~~~~~~~~~~
+
+On iro, cd to fringant2/.../job_id/
+
+when restarting on mammouth, cd to somewhere and rsync -r fringant2/.../job_id job_id
+
+after stopping on mammouth rsync -r job_id fringant2/.../job_id
+
+.. note: 
+    What to do on error in rsync?  Where to report problems?
+
+.. note: 
+    What to do with stderr, stdout?  
+
+job queue table
+~~~~~~~~~~~~~~~
+New table: id job_id priority
+
+This is the table that dbdict-run-job will pop jobs from.
+
+
+How to run experiments using DbDict
+-----------------------------------
+
+- Inherit from tools.Job.  This is where you put the logic that takes some
+  parameters, and computes some results associated with those parameters.
+
+- Write a loop that creates a bunch of Jobs, and then tests to see if they are
+  already in the db before inserting them.
+
+- Insert the new job ids and priority into the qu
+- Save result files, and files needed for job resume to os.getcwd().
+
+- Save non-result files to a TEMP directory, obtained by e.g. self.gettmpdir()
+  from inside a Job instance.
+
+- Load datasets through pylearn.  Pylearn has internal configuration that allows
+  it to find files both on mammouth and DIRO networks.  You just call
+  MNIST.head() or shapeset1.train_valid_test() and bingo.
+
+- Manage experiments in a postgres database.  Which ones have been queued, which
+  ones are running, which are finished, simple results, etc.
+
+- To analyze results, select from PG and create a dedicated table in sqlite.
+  Make columns for all the dictionary keys from all the selected entries.
 
 
 
