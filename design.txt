@@ -1,29 +1,218 @@
 
+TODO
+====
 
+- Class interface for jobs (SHAPING UP)
+
+- How exactly will state work (STILL A MYSTERY sql vs. file vs. script)
+    - How to insert jobs
+    - How to retrieve jobs
+
+- How will the driver work (rsync / file conventions)
+
+
+
+Components
+==========
 
 DbDict
 ------
 
-A DbDict is a dictionary whose keys are simple enough to be stored into a
-database.  The implementation would be cleanest if all keys were one of the
-SqlAlchemy types: Text, Integer, Float(53).
+A DbDict is a restricted dictionary.
+
+It's keys are restricted to simple types, simple enough to be stored into a
+database.  Strings, integers, floating-points.
 
 
-Job
----
+Experiment
+----------
 
-A Job is like a DbDict with some special keys in it:  job_module, job_symbol.
+An Experiment is a python class with methods like start(), run(), stop().  A
+user should make an Experiment class whose run() method does some computations
+like training a neural network and measuring test errors, training an SVM,
+doing some feature extraction, etc.
 
-Also a Job is a class with methods in it, like a thread.
+An Experiment's arguments are stored in a DbDict.
 
-class Job(object):
+The results of an experiment can be stored in two places: in a DbDict (for
+easy SQL searching later on) and in files.
+
+
+ExperimentLauncher
+------------------
+
+Experiments are not standalone executables, they need to be run by some
+additional code.  There are several ways to launch an experiment:
+
+- running on your local machine vs. cluster vs. condor vs. mammouth
+
+- loading the arguments from the commandline vs. file vs. SQL query 
+
+- running alone, or running in parallel with other experiments.
+
+The ExperimentLauncher is an executable python program that can run
+experiments in these different ways.
+
+
+
+Workflow (How to run experiments)
+=================================
+
+First, you'll need a Python program to compute what you want.  Think about how
+long it will take and whether you will want to be able to resume after being
+stopped.
+
+If you want to run a simple or short experiment that is not restartable,
+simply extend dbdict.Experiment like this:
+
+.. code-block:: python
+
+    class MyExperiment(dbdict.Experiment):
+
+        def __init__(self, dct):
+            self.dct = dct
+
+        def run(self):
+            
+            # compute something
+            result = self.dct.a * self.dct.b
+
+            # store it 
+            self.dct.result = result
+
+            # write some other results to a file
+            f = open('some_file', 'w')
+            print >> f, "hello from the job?"
+
+            # return False or None to indicate the job is done
+
+If you want to run a more elaborate experiment, then extend dbdict.Experiment
+like this:
+
+.. code-block:: python
+
+    class MyRestartableExperiment(dbdict.Experiment):
+
+        def __init__(self, state):
+            """Called once per lifetime of the class instance.  Can be used to
+            create new jobs and save them to the database.   This function will not
+            be called when a Job is retrieved from the database.
+
+            Parent creates keys: job_id, job_module, job_symbol, job_state, job_history.
+
+            job_state = NEW  (possibilities: RUNNING, STOPPED, DONE)
+
+            job_history = "[('created', <time>), ('started', <time>, <hostname>), ('stopped', <time>, <hostname>) ...]"
+            
+            """
+
+        def start(self):
+            """Called once per lifetime of the compute job.
+
+            This is a good place to initialize internal variables.
+
+            After this function returns, either stop() or run() will be called.
+            
+            job_state -> RUNNING
+
+            """
+
+        def resume(self):
+            """Called to resume computations on a previously stop()'ed job.  The
+            os.getcwd() is just like it was after some previous stop() command.
+
+            This is a good place to load internal variables from os.getcwd().
+
+            job_state -> RUNNING
+            
+            """
+
+        def run(self):
+            """Called repeatedly between [re]start() and stop().
+            
+            Return True if the job has more work to, and would like run() to be
+            called again. (job_state unchanged)
+
+            Return False or None if work is complete. (job_state -> DONE).
+
+            """
+
+        def stop(self):
+            """Called to request that a job save progress.
+            
+            This is a good place to save internal variables to os.getcwd().
+            
+            Probably this is the last call the instance will get before being
+            deleted.
+
+            job_state -> STOPPED
+            """
+
+
+Having written your Experiment subclass, you can now test it directly, or
+using the ExperimentLauncher.
+
+.. code-block:: python
+
+    if __name__ == '__main__':
+        
+        class Config(object):
+            a = 3
+            b = 50
+        
+        experiment = MyExperiment(Config())
+        experiment.run()
+
+.. code-block:: bash
+
+    dbdict-run my_file.MyExperiment 'dict(a=3, b=50)'
+
+
+To run a batch of experiments on a cluster using 3 concurrent processes using
+the SQL-based job list, you have to insert the jobs into a database table, and
+then launch 10 instances of dbdict-run.
+
+.. code-block:: python
+    
+    from dbdict.tools import insert, view_table
+
+    def add_jobs():
+        experiment_module = 'my_repo.some_file' #match you module name
+        experiment_symbol = 'MyExperiment'      #match your class name
+        experiment_name = 'showing some stuff'
+        for a in 3, 4, 5:
+            for b in 0.0, 0.1, 3.0:
+                insert(locals(), ignore_duplicates=False)
+    add_jobs()
+
+    dbdict_run_table('my_launcher_view', experiment_name='showing_some_stuff')
+
+
+
+.. code-block:: bash
+
+    dbidispatch --condor dbdict-run sql <dbstring> my_launcher_view
+
+
+
+Component Documentation
+=======================
+
+DbDict
+------
+
+
+Experiment
+----------
+
+class Experiment(object):
 
     new_stdout == 'job_stdout'
     new_stderr == 'job_stderr'
 
     def remap_stdout(self):
         """
-        Called before start and restart.  
+        Called before start and resume.  
 
         Parent-class behaviour is to replace sys.stdout with open(self.new_stdout, 'w+').
 
@@ -31,65 +220,36 @@ class Job(object):
 
     def remap_stderr(self):
         """
-        Called before start and restart.
+        Called before start and resume.
         
         """
 
-class MyJob(Job):
-
-    def __init__(self):
-        """Called once per lifetime of the class instance.  Can be used to
-        create new jobs and save them to the database.   This function will not
-        be called when a Job is retrieved from the database.
-
-        Parent creates keys: job_id, job_module, job_symbol, job_state, job_history.
-
-        job_state = NEW  (possibilities: RUNNING, STOPPED, DONE)
-
-        job_history = "[('created', <time>), ('started', <time>, <hostname>), ('stopped', <time>, <hostname>) ...]"
-        
+    def tempdir(self):
         """
+        Return the recommended filesystem location for temporary files.
 
-    def start(self):
-        """Called once per lifetime of the compute job.
-
-        This is a good place to initialize internal variables.
-
-        After this function returns, either stop() or continue() will be called.
+        The idea is that this will be a fast, local disk partition, suitable
+        for temporary storage.
         
-        job_state -> RUNNING
+        Files here will not generally be available at the time of resume().
 
-        """
-    def restart(self):
-        """Called to resume computations on a previously stop()'ed job.  The
-        os.getcwd() is just like it was after some previous stop() command.
-
-        This is a good place to load internal variables from os.getcwd().
-
-        job_state -> RUNNING
+        The return value of this function may be controlled by one or more
+        environment variables.  
         
-        """
+        Will return $DBDICT_EXPERIMENT_TEMPDIR if present.
+        Failing that, will return $TMP/username-dbdict/hash(self)
 
-    def continue(self):
-        """Called repeatedly between [re]start() and stop().
-        
-        Return True if the job has more work to, and would like continue() to be
-        called again. (job_state unchanged)
-
-        Return False or None if work is complete. (job_state -> DONE).
 
         """
 
-    def stop(self):
-        """Called to request that a job save progress.
-        
-        This is a good place to save internal variables to os.getcwd().
-        
-        Probably this is the last call the instance will get before being
-        deleted.
 
-        job_state -> STOPPED
-        """
+Environment Variables
+=====================
+
+
+TMP - sometimes used by Experiment.tempdir()
+
+DBDICT_EXPERIMENT_TEMPDIR - used by Experiment.tempdir()
 
 
 JOB DRIVER
