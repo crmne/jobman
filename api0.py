@@ -387,28 +387,39 @@ class DbHandle (object):
                         .options(eagerload('_attrs')))\
                         .filter_by(**kwargs)
 
-    def createView(h_self, viewname, mappings):
+    def createView(h_self, view):
 
         s = h_self._session;
         cols = [];
         
-        for i, newcol in enumerate(mappings):
-            if isinstance(newcol[1],int):
-                cols.append([newcol[0],'ival']);
-            elif isinstance(newcol[1],float):
-                cols.append([newcol[0],'fval']);
-            elif isinstance(newcol[1], (str,unicode)):
-                cols.append([newcol[0],'sval']);
-            else: # eg. object
-                cols.append([newcol[0],'bval']);
+        for col in view.columns:
+            if col.name is "id":
+                continue;
+            elif isinstance(col.type, (Integer,Float)):
+                cols.append([col.name,'fval']);
+            elif isinstance(col.type,String):
+                cols.append([col.name,'sval']);
+            elif isinstance(col.type,Binary):
+                cols.append([col.name,'bval']);
+            else:
+                assert "Error: wrong column type in view",view.name;
         
         # generate raw sql command string
-        viewsql = crazy_sql_command(h_self._pair_table.name, viewname, cols);
-        return viewsql;
-        print 'Creating sql view with command:\n', viewsql;
+        viewsql = crazy_sql_command(view.name, cols, \
+                                    h_self._pair_table.name, \
+                                    h_self._link_table.name);
+        
+        #print 'Creating sql view with command:\n', viewsql;
 
-        #s.execute(viewsql);
-        #s.commit();
+        h_self._engine.execute(viewsql);
+        s.commit();
+
+        class MappedClass(object):
+            pass
+
+        mapper(MappedClass, view)
+
+        return MappedClass
         
 
 def db_from_engine(engine, 
