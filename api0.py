@@ -1,9 +1,10 @@
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Table, Column, MetaData, ForeignKey    
-from sqlalchemy import Integer, String, Float, DateTime, Text, Binary
+from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
+from sql_commands import crazy_sql_command
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -38,7 +39,7 @@ class DbHandle (object):
 
             Column('id', Integer, primary_key=True)
             Column('name', String(128))
-            Column('ntype', Integer)
+            Column('ntype', Boolean)
             Column('fval', Double)
             Column('sval', Text))
             Column('bval', Blob)  
@@ -60,7 +61,8 @@ class DbHandle (object):
 
     e_bad_table = 'incompatible columns in table'
 
-    def __init__(h_self, Session, dict_table, pair_table, link_table):
+    def __init__(h_self, Session, engine, dict_table, pair_table, link_table):
+        h_self._engine = engine;
         h_self._dict_table = dict_table
         h_self._pair_table = pair_table
         h_self._link_table = link_table
@@ -92,7 +94,7 @@ class DbHandle (object):
                 if k_self.sval is not None: val = k_self.sval
                 return  val
             def __set_val(k_self, val):
-                if isinstance(val, str):
+                if isinstance(val, (str,unicode)):
                     k_self.fval = None
                     k_self.bval = None
                     k_self.sval = val
@@ -276,7 +278,7 @@ class DbHandle (object):
                 q = q_self._query
                 T = h_self._Dict
                 for kw, arg in kwargs.items():
-                    if isinstance(arg, str):
+                    if isinstance(arg, (str,unicode)):
                         q = q.filter(T._attrs.any(name=kw, sval=arg))
                     else:
                         try:
@@ -385,6 +387,29 @@ class DbHandle (object):
                         .options(eagerload('_attrs')))\
                         .filter_by(**kwargs)
 
+    def createView(h_self, viewname, mappings):
+
+        s = h_self._session;
+        cols = [];
+        
+        for i, newcol in enumerate(mappings):
+            if isinstance(newcol[1],int):
+                cols.append([newcol[0],'ival']);
+            elif isinstance(newcol[1],float):
+                cols.append([newcol[0],'fval']);
+            elif isinstance(newcol[1], (str,unicode)):
+                cols.append([newcol[0],'sval']);
+            else: # eg. object
+                cols.append([newcol[0],'bval']);
+        
+        # generate raw sql command string
+        viewsql = crazy_sql_command(h_self._pair_table.name, viewname, cols);
+        return viewsql;
+        print 'Creating sql view with command:\n', viewsql;
+
+        #s.execute(viewsql);
+        #s.commit();
+        
 
 def db_from_engine(engine, 
         table_prefix='DbHandle_default_',
@@ -423,7 +448,7 @@ def db_from_engine(engine,
     t_keyval = Table(table_prefix+keyval_suffix, metadata,
             Column('id', Integer, primary_key=True),
             Column('name', String(128), nullable=False), #name of attribute
-            Column('ntype', Integer),
+            Column('ntype', Boolean),
             Column('fval', Float(53)),
             Column('sval', Text),
             Column('bval', Binary))
@@ -439,7 +464,7 @@ def db_from_engine(engine,
     #warning: tables can exist, but have incorrect schema
     # see bug mentioned in DbHandle constructor
 
-    return DbHandle(Session, t_trial, t_keyval, t_link)
+    return DbHandle(Session, engine, t_trial, t_keyval, t_link)
 
 def sqlite_memory_db(echo=False, **kwargs):
     """Return a DbHandle backed by a memory-based database"""
@@ -451,4 +476,20 @@ def sqlite_file_db(filename, echo=False, **kwargs):
     engine = create_engine('sqlite:///%s' % filename, echo=False)
     return db_from_engine(engine, **kwargs)
 
+_db_host = 'jais.iro.umontreal.ca'
+_pwd='potatomasher';
 
+def postgres_db(echo=False, **kwargs):
+    """Create an engine to access lisa_db on gershwin
+    This function caches the return value between calls.
+    """
+    db_str ='postgres://dumi:%s@%s/lisa_db' % (_pwd,_db_host)
+
+    # should force the app release extra connections releasing
+    # connections should let us schedule more jobs, since each one
+    # operates autonomously most of the time, just checking the db
+    # rarely. TODO: optimize this for large numbers of jobs
+    pool_size = 1;
+    engine = create_engine(db_str, pool_size=pool_size, echo=echo)
+
+    return db_from_engine(engine, **kwargs)
