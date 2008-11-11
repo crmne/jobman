@@ -98,12 +98,10 @@ like this:
             create new jobs and save them to the database.   This function will not
             be called when a Job is retrieved from the database.
 
-            Parent creates keys: job_id, job_module, job_symbol, job_state, job_history.
+            Parent creates keys: dbdict_id, dbdict_module, dbdict_symbol, dbdict_state.
 
-            job_state = NEW  (possibilities: RUNNING, STOPPED, DONE)
+            dbdict_state = NEW  (possibilities: NEW, RUNNING, DONE)
 
-            job_history = "[('created', <time>), ('started', <time>, <hostname>), ('stopped', <time>, <hostname>) ...]"
-            
             """
 
         def start(self):
@@ -113,7 +111,7 @@ like this:
 
             After this function returns, either stop() or run() will be called.
             
-            job_state -> RUNNING
+            dbdict_state -> RUNNING
 
             """
 
@@ -123,29 +121,19 @@ like this:
 
             This is a good place to load internal variables from os.getcwd().
 
-            job_state -> RUNNING
+            dbdict_state -> RUNNING
             
             """
 
-        def run(self):
-            """Called repeatedly between [re]start() and stop().
+        def run(self, channel):
+            """Called after start() or resume().
             
-            Return True if the job has more work to, and would like run() to be
-            called again. (job_state unchanged)
+            channel() may return different things at different times.  
+                None   - run should continue.
+                'stop' - the job should save state as soon as possible because
+                         the process may soon be terminated
 
-            Return False or None if work is complete. (job_state -> DONE).
-
-            """
-
-        def stop(self):
-            """Called to request that a job save progress.
-            
-            This is a good place to save internal variables to os.getcwd().
-            
-            Probably this is the last call the instance will get before being
-            deleted.
-
-            job_state -> STOPPED
+            When this function returns, dbdict_state -> DONE.
             """
 
 
@@ -238,7 +226,10 @@ class Experiment(object):
         
         Will return $DBDICT_EXPERIMENT_TEMPDIR if present.
         Failing that, will return $TMP/username-dbdict/hash(self)
+        Failing that, will return /tmp/username-dbdict/hash(self)
 
+        .. note::
+            Maybe we should use Python stdlib's tempdir mechanism. 
 
         """
 

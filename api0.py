@@ -5,6 +5,7 @@ from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
 from sql_commands import crazy_sql_command
+import psycopg2, psycopg2.extensions
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -75,6 +76,7 @@ class DbHandle (object):
         if ['dict_id', 'pair_id'] != [c.name for c in link_table.c]:
             raise ValueError(h_self.e_bad_table, pair_table)
 
+        h_self._session_fn = Session
         h_self._session = Session()
 
         class KeyVal (object):
@@ -159,7 +161,7 @@ class DbHandle (object):
             def __setitem__(d_self, key, val):
                 s = h_self._session
                 d_self._set_in_session(key, val, s)
-                s.update(d_self)
+                s.update(d_self)  #session update, not dict-like update
                 s.commit()
 
             def __delitem__(d_self, key):
@@ -189,6 +191,7 @@ class DbHandle (object):
                 return [kv.val for kv in d_self._attrs]
 
             def update(d_self, dct, **kwargs):
+                """Like dict.update(), set keys from kwargs"""
                 s = h_self._session
                 for k, v in dct.items():
                     d_self._set_in_session(k, v, s)
@@ -420,6 +423,9 @@ class DbHandle (object):
         mapper(MappedClass, view)
 
         return MappedClass
+
+    def session(h_self):
+        return h_self._session_fn()
         
 
 def db_from_engine(engine, 
@@ -446,7 +452,7 @@ def db_from_engine(engine,
      - I{table_prefix + link_suffix}
 
     """
-    Session = sessionmaker(autoflush=True, transactional=True)
+    Session = sessionmaker(autoflush=True, autocommit=False)
 
     metadata = MetaData()
 
@@ -500,7 +506,26 @@ def postgres_db(echo=False, **kwargs):
     # connections should let us schedule more jobs, since each one
     # operates autonomously most of the time, just checking the db
     # rarely. TODO: optimize this for large numbers of jobs
-    pool_size = 1;
+    pool_size = 0;
     engine = create_engine(db_str, pool_size=pool_size, echo=echo)
 
     return db_from_engine(engine, **kwargs)
+
+def postgres_serial(user, password, database, host, echo=False, **kwargs):
+    """
+    """
+    this = postgres_serial
+
+    if not hasattr(this,'engine'):
+        def connect():
+            c = psycopg2.connect(user=user, password=password, database=database, host=host)
+            c.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+            return c
+        pool_size = 0
+        this.engine = create_engine('postgres://'
+                ,creator=connect
+                ,pool_size=0 # should force the app release connections
+                )
+
+    return db_from_engine(this.engine, **kwargs)
+
