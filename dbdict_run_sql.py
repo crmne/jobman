@@ -14,8 +14,8 @@ import psycopg2, psycopg2.extensions
 
 from .api0 import db_from_engine, postgres_db
 from .tools import run_state, DictProxyState, COMPLETE, INCOMPLETE, SYMBOL, MODULE
+from .dconfig import save_items
 
-_TEST_CONCURRENCY = False
 # _TEST CONCURRENCY
 # To ensure that concurrency is handled properly by the consumer (book_dct)
 # set this flag to True and (manually) run the following test.
@@ -26,6 +26,62 @@ _TEST_CONCURRENCY = False
 # You should see that the process that started first gets the job,
 # and the process that started second tries to get the same job, 
 # fails, and then gets another one instead.
+_TEST_CONCURRENCY = False
+
+_help = """Usage:
+dbdict-run sql postgres://<user>:<pass>@<host>/<db>/<api0-table> <experiment-root>
+
+    user        - postgres username
+    pass        - password
+    hostname    - the network address of the host on which a postgres server is 
+                  running (on port ??)
+    database    - a database served by the postgres server on <hostname>
+    api0-table  - the name (actually, table_prefix) associated with tables, 
+                  created by dbdict.api0.
+
+    experiment-root - a local or network path.  Network paths begin with ssh://
+                  E.g. /tmp/blah
+                       ssh://mammouth:blah
+                       ssh://foo@linux.org:/tmp/blah
+
+Experiment-root is used to store the file results of experiments.  If a job with a given <id>
+creates file 'a.txt', and directory 'b' with file 'foo.py', then these will be rsync'ed to the
+experiment-root when job <id> has finished running.  They will be found here:
+
+    <experiment-root>/<db>/<api0-table>/<id>/workdir/a.txt
+    <experiment-root>/<db>/<api0-table>/<id>/workdir/b/foo.py
+
+Files 'stdout', 'stderr', and 'state.py' will be created.
+
+    <experiment-root>/<db>/<api0-table>/<id>/stdout   - opened for append
+    <experiment-root>/<db>/<api0-table>/<id>/stderr   - opened for append
+    <experiment-root>/<db>/<api0-table>/<id>/state.py - overwritten with database version
+
+If a job is restarted or resumed, then those files are rsync'ed back to the current working
+directory, and stdout and stderr are re-opened for appending.  When a resumed job stops for
+the second (or more) time, the cwd is rsync'ed back to the experiment-root.  In this way, the
+experiment-root accumulates the results of experiments that run.
+
+"""
+
+STATUS = 'dbdict_sql_status'
+PRIORITY = 'dbdict_sql_priority'
+HOST = 'dbdict_sql_hostname'
+HOST_WORKDIR = 'dbdict_sql_host_workdir'
+PUSH_ERROR = 'dbdict_sql_push_error'
+
+START = 0
+"""dbdict_status == START means a experiment is ready to run"""
+
+RUNNING = 1
+"""dbdict_status == RUNNING means a experiment is running on dbdict_hostname"""
+
+DONE = 2
+"""dbdict_status == DONE means a experiment has completed (not necessarily successfully)"""
+
+RESTART_PRIORITY = 2.0
+"""Stopped experiments are marked with this priority"""
+
 
 def postgres_serial(user, password, host, database, **kwargs):
     """Return a DbHandle instance that communicates with a postgres database at transaction
@@ -101,56 +157,6 @@ def add_experiments_to_db(exp_cls, jobs, db, verbose=0, add_dups=False, type_che
                 print 'SKIPPING', job
             rval.append((False, job))
 
-
-_help = """Usage:
-dbdict-run sql postgres://<user>:<pass>@<host>/<db>/<api0-table> <experiment-root>
-
-    user        - postgres username
-    pass        - password
-    hostname    - the network address of the host on which a postgres server is 
-                  running (on port ??)
-    database    - a database served by the postgres server on <hostname>
-    api0-table  - the name (actually, table_prefix) associated with tables, 
-                  created by dbdict.api0.
-
-    experiment-root - a local or network path.  Network paths begin with ssh://
-                  E.g. /tmp/blah
-                       ssh://mammouth:blah
-                       ssh://foo@linux.org:/tmp/blah
-
-Experiment-root is used to store the file results of experiments.  If a job with a given <id>
-creates file 'a.txt', and directory 'b' with file 'c.py', then these will be rsync'ed to the
-experiment-root when job <id> has finished running.  They will be found here:
-
-    <experiment-root>/<db>/<api0-table>/<id>/a.txt
-    <experiment-root>/<db>/<api0-table>/<id>/b/c.py
-
-Also in that directory, 'stdout' and 'stderr' files will be created.
-
-If a job is restarted or resumed, then those files are rsync'ed back to the current working
-directory, and stdout and stderr are re-opened for appending.  When a resumed job stops for
-the second (or more) time, the cwd is rsync'ed back to the experiment-root.  In this way, the
-experiment-root accumulates the results of experiments that run.
-
-"""
-
-STATUS = 'dbdict_sql_status'
-PRIORITY = 'dbdict_sql_priority'
-HOST = 'dbdict_sql_hostname'
-HOST_WORKDIR = 'dbdict_sql_host_workdir'
-PUSH_ERROR = 'dbdict_sql_push_error'
-
-START = 0
-"""dbdict_status == START means a experiment is ready to run"""
-
-RUNNING = 1
-"""dbdict_status == RUNNING means a experiment is running on dbdict_hostname"""
-
-DONE = 2
-"""dbdict_status == DONE means a experiment has completed (not necessarily successfully)"""
-
-RESTART_PRIORITY = 2.0
-"""Stopped experiments are marked with this priority"""
 
 def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=0):
     """Find a trial in the lisa_db with status START.
@@ -396,6 +402,9 @@ def run_sql():
             #
             try:
                 os.chdir(workdir)
+                #pickle the state #TODO: write it human-readable
+                #cPickle.dump(dict((k,v) for k,v in dct.items()), open('state.pickle','w'))
+                save_items(dct.items(), open('state.py', 'w'))
                 exploc.push()
             except Exception, e:
                 dct[PUSH_ERROR] = str(e)
