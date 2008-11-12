@@ -5,7 +5,6 @@ from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
 from sql_commands import crazy_sql_command
-import psycopg2, psycopg2.extensions
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -496,11 +495,10 @@ def sqlite_file_db(filename, echo=False, **kwargs):
 _db_host = 'jais.iro.umontreal.ca'
 _pwd='potatomasher';
 
-def postgres_db(echo=False, **kwargs):
-    """Create an engine to access lisa_db on gershwin
-    This function caches the return value between calls.
+def postgres_db(user, password, host, database, echo=False, **kwargs):
+    """Create an engine to access a postgres_dbhandle
     """
-    db_str ='postgres://dumi:%s@%s/lisa_db' % (_pwd,_db_host)
+    db_str ='postgres://%(user)s:%(password)s@%(host)s/%(database)s' % locals()
 
     # should force the app release extra connections releasing
     # connections should let us schedule more jobs, since each one
@@ -510,22 +508,4 @@ def postgres_db(echo=False, **kwargs):
     engine = create_engine(db_str, pool_size=pool_size, echo=echo)
 
     return db_from_engine(engine, **kwargs)
-
-def postgres_serial(user, password, database, host, echo=False, **kwargs):
-    """
-    """
-    this = postgres_serial
-
-    if not hasattr(this,'engine'):
-        def connect():
-            c = psycopg2.connect(user=user, password=password, database=database, host=host)
-            c.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
-            return c
-        pool_size = 0
-        this.engine = create_engine('postgres://'
-                ,creator=connect
-                ,pool_size=0 # should force the app release connections
-                )
-
-    return db_from_engine(this.engine, **kwargs)
 
