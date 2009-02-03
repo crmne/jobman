@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, desc
 import sqlalchemy.pool
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Table, Column, MetaData, ForeignKey    
+from sqlalchemy import Table, Column, MetaData, ForeignKey, ForeignKeyConstraint
 from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.databases import postgres
 from sqlalchemy.orm import mapper, relation, backref, eagerload
@@ -18,7 +18,6 @@ class DbHandle (object):
     Attributes:
     dict_table
     pair_table
-    link_table
 
 
 
@@ -51,30 +50,19 @@ class DbHandle (object):
             #TODO: Consider union?
             #TODO: Are there stanard ways of doing this kind of thing?
 
-    link_table
-
-        An SqlAlchemy-mapped class corresponding to database table with the
-        following schema:
-
-            Column('dict_id', Integer, ForeignKey('%s.id' % t_trial), primary_key=True),
-            Column('keyval_id', Integer, ForeignKey('%s.id' % t_keyval), primary_key=True))
-
     """
 
     e_bad_table = 'incompatible columns in table'
 
-    def __init__(h_self, Session, engine, dict_table, pair_table, link_table):
+    def __init__(h_self, Session, engine, dict_table, pair_table):
         h_self._engine = engine;
         h_self._dict_table = dict_table
         h_self._pair_table = pair_table
-        h_self._link_table = link_table
 
         #TODO: replace this crude algorithm (ticket #17)
         if ['id', 'create', 'write', 'read', 'status', 'priority','hash'] != [c.name for c in dict_table.c]:
             raise ValueError(h_self.e_bad_table, dict_table)
-        if ['id', 'name', 'ntype', 'fval', 'sval', 'bval'] != [c.name for c in pair_table.c]:
-            raise ValueError(h_self.e_bad_table, pair_table)
-        if ['dict_id', 'pair_id'] != [c.name for c in link_table.c]:
+        if ['id', 'dict_id', 'name', 'ntype', 'fval', 'sval', 'bval'] != [c.name for c in pair_table.c]:
             raise ValueError(h_self.e_bad_table, pair_table)
 
         h_self._session_fn = Session
@@ -305,7 +293,6 @@ class DbHandle (object):
         mapper(Dict, dict_table,
                 properties = {
                     '_attrs': relation(KeyVal, 
-                        secondary=link_table, 
                         cascade="all, delete-orphan")
                     })
 
@@ -473,11 +460,9 @@ class DbHandle (object):
         # generate raw sql command string
         viewsql = crazy_sql_command(view.name, cols, \
                                     h_self._dict_table.name, \
-                                    h_self._pair_table.name, \
-                                    h_self._link_table.name);
+                                    h_self._pair_table.name)
         
-        #print 'Creating sql view with command:\n', viewsql;
-
+        print 'Creating sql view with command:\n', viewsql;
         h_self._engine.execute(viewsql);
         s.commit();
         s.close()
@@ -508,8 +493,7 @@ class DbHandle (object):
 def db_from_engine(engine, 
         table_prefix='DbHandle_default_',
         trial_suffix='trial',
-        keyval_suffix='keyval',
-        link_suffix='link'):
+        keyval_suffix='keyval'):
     """Create a DbHandle instance
 
     @type engine: sqlalchemy engine (e.g. from create_engine)
@@ -518,7 +502,6 @@ def db_from_engine(engine,
     @type table_prefix: string
     @type trial_suffix: string
     @type keyval_suffix: string
-    @type link_suffix: string
 
     @rtype: DbHandle instance
 
@@ -526,7 +509,6 @@ def db_from_engine(engine,
     many-to-many pattern that it needs: 
      - I{table_prefix + trial_suffix},
      - I{table_prefix + keyval_suffix}
-     - I{table_prefix + link_suffix}
 
     """
     Session = sessionmaker(autoflush=True, autocommit=False)
@@ -540,29 +522,25 @@ def db_from_engine(engine,
             Column('read', DateTime),
             Column('status', Integer),
             Column('priority', Float(53)),
-            Column('hash', postgres.PGBigInteger)
-            )
+            Column('hash', postgres.PGBigInteger))
 
     t_keyval = Table(table_prefix+keyval_suffix, metadata,
             Column('id', Integer, primary_key=True),
-            Column('name', String(128), nullable=False), #name of attribute
+            Column('dict_id', Integer, index=True),
+            Column('name', String(128), index=True, nullable=False), #name of attribute
             Column('ntype', Boolean),
             Column('fval', Float(53)),
             Column('sval', Text),
-            Column('bval', Binary))
+            Column('bval', Binary),
+            ForeignKeyConstraint(['dict_id'], [table_prefix+trial_suffix+'.id']))
 
-    t_link = Table(table_prefix+link_suffix, metadata,
-            Column('dict_id', Integer, ForeignKey('%s.id' % t_trial),
-                primary_key=True),
-            Column('pair_id', Integer, ForeignKey('%s.id' % t_keyval),
-                primary_key=True))
-
+                #, ForeignKey('%s.id' % t_trial)),
     metadata.bind = engine
     metadata.create_all() # no-op when tables already exist
     #warning: tables can exist, but have incorrect schema
     # see bug mentioned in DbHandle constructor
 
-    return DbHandle(Session, engine, t_trial, t_keyval, t_link)
+    return DbHandle(Session, engine, t_trial, t_keyval)
 
 def sqlite_memory_db(echo=False, **kwargs):
     """Return a DbHandle backed by a memory-based database"""
