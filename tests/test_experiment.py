@@ -1,4 +1,4 @@
-from pylearn.dbdict.experiment import *
+from dbdict.experiment import *
 from unittest import TestCase
 
 import StringIO
