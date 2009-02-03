@@ -1,4 +1,5 @@
-import sys
+import sys, signal
+from .tools import DictProxyState, load_state_fn, run_state
 
 # N.B.
 # don't put exotic imports here
@@ -35,34 +36,29 @@ def _dispatch_cmd(self, stack=sys.argv):
 class RunCmdline(object):
     def __init__(self):
         try:
-            filename = sys.argv.pop(0)
-            symbol = sys.argv.pop(0)
-            config = sys.argv.pop(0)
-            assert filename != 'help'
-        except:
+            dct = eval('dict(' + sys.argv.pop(0) + ')')
+        except Exception, e:
+            print >> sys.stderr, "Exception:", e
             self.help()
             return
 
-        job_module = __import__(filename, fromlist=[None], level=0)
-        try:
-            job_class = getattr(job_module, symbol)
-        except:
-            print >> sys.stderr, "failed to load job class:", filename, symbol
-            raise
-        class Conf(object):
-            def __init__(self, dct):
-                for k, v in dct.items():
-                    setattr(self, k, v)
-        conf = Conf(eval('dict(' + config + ')'))
-        job = job_class(conf)
+        channel_rval = [None]
 
-        job.start()
-        job.run(lambda : None)
+        def on_sigterm(signo, frame):
+            channel_rval[0] = 'stop'
 
-        print conf.__dict__
+        #install a SIGTERM handler that asks the run_state function to return
+        signal.signal(signal.SIGTERM, on_sigterm)
+        signal.signal(signal.SIGINT, on_sigterm)
+
+        def channel(*args, **kwargs):
+            return channel_rval[0]
+
+        run_state(dct, channel)
+        print dct
 
     def help(self):
-        print "Usage: dbdict-experiment file <filename> <ExperimentName> <config>"
+        print >> sys.stderr, "Usage: dbdict-experiment cmdline <config>"
 
 
 class RunExperiment(object):

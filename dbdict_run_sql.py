@@ -13,7 +13,7 @@ from sqlalchemy.orm import eagerload
 import psycopg2, psycopg2.extensions 
 
 from .api0 import db_from_engine, postgres_db
-from .tools import run_state, DictProxyState, COMPLETE, INCOMPLETE, SYMBOL, MODULE
+from .tools import run_state, DictProxyState, COMPLETE, INCOMPLETE, SYMBOL, MODULE # tools
 from .dconfig import save_items
 
 # _TEST CONCURRENCY
@@ -291,16 +291,20 @@ class ExperimentLocation(object):
 
         :returns: "<host>:<path>", of the sort used by ssh and rsync.
         """
-        path = os.path.join(
-                ':'.join([self.host, self.path]), 
-                self.dbname, 
-                self.tablename, 
-                self.id)
+        if self.host:
+            path = os.path.join(
+                    ':'.join([self.host, self.path]), 
+                    self.dbname, 
+                    self.tablename, 
+                    self.id)
+        else:
+            path = os.path.join(self.path, 
+                    self.dbname, self.tablename, self.id)
 
         if direction == 'push':
-            rsync_cmd = 'rsync -r * "%s"' % path
+            rsync_cmd = 'rsync -a * "%s/"' % path
         elif direction == 'pull':
-            rsync_cmd = 'rsync -r "%s/*" .' % path
+            rsync_cmd = 'rsync -a "%s/" .' % path
         else:
             raise Exception('invalid direction', direction)
 
@@ -315,13 +319,18 @@ class ExperimentLocation(object):
         return self.rsync('push')
 
     def touch(self):
-        host = self.host
         path = os.path.join(self.path, self.dbname, self.tablename, self.id)
-        ssh_cmd = ('ssh %(host)s  "mkdir -p \'%(path)s\' && cd \'%(path)s\' '
-        '&& touch stdout stderr && mkdir -p workdir"' % locals())
-        ssh_rval = os.system(ssh_cmd)
-        if 0 != ssh_rval:
-            raise Exception('ssh failure', (ssh_rval, ssh_cmd))
+        if self.host:
+            host = self.host
+            touch_cmd = ('ssh %(host)s  "mkdir -p \'%(path)s\' && cd \'%(path)s\' '
+            '&& touch stdout stderr && mkdir workdir"' % locals())
+        else:
+            touch_cmd = ("mkdir -p '%(path)s' && cd '%(path)s' "
+            '&& touch stdout stderr && mkdir workdir' % locals())
+        print "ECHO", touch_cmd
+        touch_rval = os.system(touch_cmd)
+        if 0 != touch_rval:
+            raise Exception('touch failure', (touch_rval, touch_cmd))
 
     def delete(self):
         #something like ssh %s 'rm -Rf %s' should work, but it's pretty scary...
@@ -340,6 +349,9 @@ def run_sql():
         exproot = sys.argv.pop(0)
     except:
         exproot = os.getcwd()
+
+    if not exproot.startswith('/'):
+        exproot = os.path.join(os.getcwd(), exproot)
 
     #TODO: THIS IS A GOOD IDEA RIGHT?
     #   It makes module-lookup work based on cwd-relative paths

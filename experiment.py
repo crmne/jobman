@@ -1,5 +1,7 @@
+"""Helper code for implementing dbdict-compatible jobs"""
+import inspect, sys, copy
 
-#These should be
+#State values should be instances of these types:
 INT = type(0)
 FLT = type(0.0)
 STR = type('')
@@ -7,96 +9,114 @@ STR = type('')
 COMPLETE = None    #jobs can return this by returning nothing as well
 INCOMPLETE = True  #jobs can return this and be restarted
 
+def subdict(dct, prefix):
+    """Return the dictionary formed by keys in `dct` that start with the string `prefix`.
 
-class Experiment(object):
+    In the returned dictionary, the `prefix` is removed from the keynames.
+    Updates to the sub-dict are reflected in the original dictionary.
 
-    new_stdout = 'job_stdout'
-    new_stderr = 'job_stderr'
+    Example:
+        a = {'aa':0, 'ab':1, 'bb':2}
+        s = subdict(a, 'a') # returns dict-like object with keyvals {'a':0, 'b':1}
+        s['a'] = 5
+        s['c'] = 9
+        # a == {'aa':5, 'ab':1, 'ac':9, 'bb':2}
 
-    def remap_stdout(self):
-        """
-        Called before start and resume.
+    """
+    class SubDict(object):
+        def __copy__(s):
+            rval = {}
+            rval.update(s)
+            return rval
+        def __eq__(s, other):
+            if len(s) != len(other): 
+                return False
+            for k in other:
+                if other[k] != s[k]:
+                    return False
+            return True
+        def __len__(s):
+            return len(s.items())
+        def __str__(s):
+            d = {}
+            d.update(s)
+            return str(d)
+        def keys(s):
+            return [k[len(prefix):] for k in dct if k.startswith(prefix)]
+        def values(s):
+            return [dct[k] for k in dct if k.startswith(prefix)]
+        def items(s):
+            return [(k[len(prefix):],dct[k]) for k in dct if k.startswith(prefix)]
+        def update(s, other):
+            for k,v in other.items():
+                self[k] = v
+        def __getitem__(s, a):
+            return dct[prefix+a]
+        def __setitem__(s, a, v):
+            dct[prefix+a] = v
 
-        Default behaviour is to replace sys.stdout with open(self.new_stdout, 'w+').
+    return SubDict()
 
-        """
-        if self.new_stdout:
-            sys.stdout = open(self.new_stdout, 'w+')
+def subdict_copy(dct, prefix):
+    return copy.copy(subdict(dct, prefix))
 
-    def remap_stderr(self):
-        """
-        Called before start and resume.
+def call_with_kwargs_from_dict(fn, dct, logfile='stderr'):
+    """Call function `fn` with kwargs taken from dct.
 
-        Default behaviour is to replace sys.stderr with open(self.new_stderr, 'w+').
-        
-        """
-        if self.new_stderr:
-            sys.stderr = open(self.new_stderr, 'w+')
+    When fn has a '**' parameter, this function is equivalent to fn(**dct).
 
-    def tempdir(self):
-        """
-        Return the recommended filesystem location for temporary files.
+    When fn has no '**' parameter, this function removes keys from dct which are not parameter
+    names of `fn`.  The keys which are ignored in this way are logged to the `logfile`.  If
+    logfile is the string 'stdout' or 'stderr', then errors are logged to sys.stdout or
+    sys.stderr respectively.
 
-        The idea is that this will be a fast, local disk partition, suitable
-        for temporary storage.
-        
-        Files here will not generally be available at the time of resume().
+    The reason this function exists is to make it easier to provide default arguments and 
 
-        The return value of this function may be controlled by one or more
-        environment variables.  
-        
-        Will return $DBDICT_EXPERIMENT_TEMPDIR if present.
-        Failing that, will return $TMP/username-dbdict/hash(self)
-        Failing that, will return /tmp/username-dbdict/hash(self)
+    :param fn: function to call
+    :param dct: dictionary from which to take arguments of fn
+    :param logfile: log ignored keys to this file
+    :type logfile: file-like object or string 'stdout' or string 'stderr'
 
-        .. note::
-            Maybe we should use Python stdlib's tempdir mechanism. 
+    :returns: fn(**<something>)
 
-        """
+    """
+    argspec = inspect.getargspec(fn)
+    argnames = argspec[0]
+    if argspec[2] == None: #if there is no room for a **args type-thing in fn...
+        kwargs = {}
+        for k,v in dct.items():
+            if k in argnames:
+                kwargs[k] = v
+            else:
+                if not logfile:
+                    pass
+                elif logfile == 'stderr':
+                    print >> sys.stderr, "WARNING: DictProxyState.call_substate ignoring key-value pair:", k, v
+                elif logfile == 'stdout':
+                    print >> sys.stdout, "WARNING: DictProxyState.call_substate ignoring key-value pair:", k, v
+                else:
+                    print >> logfile, "WARNING: DictProxyState.call_substate ignoring key-value pair:", k, v
+        return fn(**kwargs)
+    else:
+        #there is a **args type thing in fn. Here we pass everything.
+        return fn(**dct)
 
-        print >> sys.stderr, "TODO: get tempdir correctly"
-        return '/tmp/dbdict-experiment'
+#MAKE YOUR OWN DBDICT-COMPATIBLE EXPERIMENTS IN THIS MODEL
+def sample_experiment(state, channel):
 
+    #read from the state to obtain parameters, configuration, etc.
+    print >> sys.stdout, state.items()
 
-    def __init__(self, state):
-        """Called once per lifetime of the class instance.  Can be used to
-        create new jobs and save them to the database.   This function will not
-        be called when a Job is retrieved from the database.
+    import time
+    for i in xrange(100):
+        time.sleep(1)
+        # use the channel to know if the job should stop ASAP
+        if channel() == 'stop':
+            break
 
-        Parent creates keys: dbdict_id, dbdict_module, dbdict_symbol, dbdict_status.
+    # modify state to record results
+    state['answer'] = 42
 
-        """
-
-    def start(self):
-        """Called once per lifetime of the compute job.
-
-        This is a good place to initialize internal variables.
-
-        After this function returns, either stop() or run() will be called.
-        
-        dbdict_status -> RUNNING
-
-        """
-
-    def resume(self):
-        """Called to resume computations on a previously stop()'ed job.  The
-        os.getcwd() is just like it was after some previous stop() command.
-
-        This is a good place to load internal variables from os.getcwd().
-
-        dbdict_status -> RUNNING
-        
-        """
-        return self.start()
-
-    def run(self, channel):
-        """Called after start() or resume().
-        
-        channel() may return different things at different times.  
-            None   - run should continue.
-            'stop' - the job should save state as soon as possible because
-                     the process may soon be terminated
-
-        When this function returns, dbdict_status -> DONE.
-        """
+    #return either INCOMPLETE or COMPLETE to indicate that the job should be re-run or not.
+    return COMPLETE
 

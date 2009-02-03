@@ -1,7 +1,9 @@
 from sqlalchemy import create_engine, desc
+import sqlalchemy.pool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Table, Column, MetaData, ForeignKey    
 from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
+from sqlalchemy.databases import postgres
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
 from sql_commands import crazy_sql_command
@@ -68,7 +70,7 @@ class DbHandle (object):
         h_self._link_table = link_table
 
         #TODO: replace this crude algorithm (ticket #17)
-        if ['id', 'create', 'write', 'read'] != [c.name for c in dict_table.c]:
+        if ['id', 'create', 'write', 'read', 'status', 'priority','hash'] != [c.name for c in dict_table.c]:
             raise ValueError(h_self.e_bad_table, dict_table)
         if ['id', 'name', 'ntype', 'fval', 'sval', 'bval'] != [c.name for c in pair_table.c]:
             raise ValueError(h_self.e_bad_table, pair_table)
@@ -76,7 +78,6 @@ class DbHandle (object):
             raise ValueError(h_self.e_bad_table, pair_table)
 
         h_self._session_fn = Session
-        h_self._session = Session()
 
         class KeyVal (object):
             """KeyVal interfaces between python types and the database.
@@ -129,10 +130,15 @@ class DbHandle (object):
             handle - reference to L{DbHandle} (creator)
 
             """
-            def __init__(d_self):
-                s = h_self._session
-                s.save(d_self)
-                s.commit()
+            def __init__(d_self, session=None):
+                if session is None:
+                    s = h_self._session_fn()
+                    s.add(d_self) #d_self transient -> pending
+                    s.commit()    #d_self -> persistent
+                    s.close()     #d_self -> detached
+                else:
+                    s = session
+                    s.save(d_self)
 
             _forbidden_keys = set(['session'])
 
@@ -157,14 +163,27 @@ class DbHandle (object):
                         return a.val
                 raise KeyError(key)
 
-            def __setitem__(d_self, key, val):
-                s = h_self._session
-                d_self._set_in_session(key, val, s)
-                s.update(d_self)  #session update, not dict-like update
-                s.commit()
+            def __setitem__(d_self, key, val, session=None):
+                if session is None:
+                    s = h_self._session_fn()
+                    s.add(d_self)
+                    d_self._set_in_session(key, val, s)
+                    s.commit()
+                    s.close()
+                else:
+                    s = session
+                    s.add(d_self)
+                    d_self._set_in_session(key, val, s)
 
-            def __delitem__(d_self, key):
-                s = h_self._session
+            def __delitem__(d_self, key, session=None):
+                if session is None:
+                    s = h_self._session_fn()
+                    commit_close = True
+                else:
+                    s = session
+                    commit_close = False
+                s.add(d_self)
+
                 #find the item to delete in d_self._attrs
                 to_del = None
                 for i,a in enumerate(d_self._attrs):
@@ -177,8 +196,12 @@ class DbHandle (object):
                     i, a = to_del
                     s.delete(a)
                     del d_self._attrs[i]
-                s.commit()
-                s.update(d_self)
+                if commit_close:
+                    s.commit()
+                    s.close()
+
+            def iteritems(d_self):
+                return d_self.items()
 
             def items(d_self):
                 return [(kv.name, kv.val) for kv in d_self._attrs]
@@ -189,21 +212,32 @@ class DbHandle (object):
             def values(d_self):
                 return [kv.val for kv in d_self._attrs]
 
-            def update(d_self, dct, **kwargs):
+            def update(d_self, dct, session=None, **kwargs):
                 """Like dict.update(), set keys from kwargs"""
-                s = h_self._session
+                if session is None:
+                    s = h_self._session_fn()
+                    commit_close = True
+                else:
+                    s = session
+                    commit_close = False
+                s.add(d_self)
                 for k, v in dct.items():
                     d_self._set_in_session(k, v, s)
                 for k, v in kwargs.items():
                     d_self._set_in_session(k, v, s)
-                s.update(d_self)
-                s.commit()
+
+                if commit_close:
+                    s.commit()
+                    s.close()
 
             def get(d_self, key, default):
                 try:
                     return d_self[key]
                 except KeyError:
                     return default
+
+            def __str__(self):
+                return 'Dict'+ str(dict(self))
 
             #
             # database stuff
@@ -216,10 +250,13 @@ class DbHandle (object):
                 
                 """
                 if session is None:
-                    session = h_self._session
+                    session = h_self._session_fn()
+                    session.add(d_self) #so session knows about us
                     session.refresh(d_self)
                     session.commit()
+                    session.close()
                 else:
+                    session.add(d_self) #so session knows about us
                     session.refresh(self.dbrow)
 
             def delete(d_self, session=None):
@@ -228,15 +265,30 @@ class DbHandle (object):
                 @param session: use the given session, and do not commit.
                 """
                 if session is None:
-                    session = h_self._session
-                    session.delete(d_self)
+                    session = h_self._session_fn()
+                    session.add(d_self) #so session knows about us
+                    session.delete(d_self) #mark for deletion
                     session.commit()
+                    session.close()
                 else:
+                    session.add(d_self) #so session knows about us
                     session.delete(d_self)
 
             # helper routine by update() and __setitem__
             def _set_in_session(d_self, key, val, session):
                 """Modify an existing key or create a key to hold val"""
+                
+                #FIRST SOME MIRRORING HACKS
+                if key == 'dbdict.status':
+                    ival = int(val)
+                    d_self.status = ival
+                if key == 'dbdict.sql.priority':
+                    fval = float(val)
+                    d_self.priority = fval
+                if key == 'dbdict.hash':
+                    ival = int(val)
+                    d_self.hash = ival
+
                 if key in d_self._forbidden_keys:
                     raise KeyError(key)
                 created = None
@@ -272,27 +324,32 @@ class DbHandle (object):
             def __getitem__(q_self, item):
                 return q_self._query.__getitem__(item)
 
-            def filter_by(q_self, **kwargs):
+            def filter_eq(q_self, kw, arg):
                 """Return a Query object that restricts to dictionaries containing
                 the given kwargs"""
 
                 #Note: when we add new types to the key columns, add them here
                 q = q_self._query
                 T = h_self._Dict
-                for kw, arg in kwargs.items():
-                    if isinstance(arg, (str,unicode)):
-                        q = q.filter(T._attrs.any(name=kw, sval=arg))
+                if isinstance(arg, (str,unicode)):
+                    q = q.filter(T._attrs.any(name=kw, sval=arg))
+                else:
+                    try:
+                        f = float(arg)
+                    except (TypeError, ValueError):
+                        f = None
+                    if f is None:
+                        q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
                     else:
-                        try:
-                            f = float(arg)
-                        except (TypeError, ValueError):
-                            f = None
-                        if f is None:
-                            q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
-                        else:
-                            q = q.filter(T._attrs.any(name=kw, fval=f))
+                        q = q.filter(T._attrs.any(name=kw, fval=f))
 
                 return h_self._Query(q)
+
+            def filter_eq_dct(q_self, dct):
+                rval = q_self
+                for key, val in dct.items():
+                    rval = rval.filter_eq(key,val)
+                return rval
 
             def all(q_self):
                 """Return an iterator over all matching dictionaries.
@@ -350,9 +407,12 @@ class DbHandle (object):
         h_self._Query = _Query
 
     def __iter__(h_self):
-        return h_self.query().__iter__()
+        s = h_self.session()
+        rval = list(h_self.query(s).__iter__())
+        s.close()
+        return rval.__iter__()
 
-    def insert_kwargs(h_self, **dct):
+    def insert_kwargs(h_self, session=None, **dct):
         """
         @rtype:  DbHandle with reference to self
         @return: a DbHandle initialized as a copy of dct
@@ -363,10 +423,9 @@ class DbHandle (object):
         @param dct: dictionary to insert
 
         """
-        rval = h_self._Dict()
-        if dct: rval.update(dct)
-        return rval
-    def insert(h_self, dct):
+        return h_self.insert(dct, session=session)
+
+    def insert(h_self, dct, session=None):
         """
         @rtype:  DbHandle with reference to self
         @return: a DbHandle initialized as a copy of dct
@@ -377,22 +436,27 @@ class DbHandle (object):
         @param dct: dictionary to insert
 
         """
-        rval = h_self._Dict()
-        if dct: rval.update(dct)
+        if session is None:
+            s = h_self.session()
+            rval = h_self._Dict(s)
+            if dct: rval.update(dct, session=s)
+            s.commit()
+            s.close()
+        else:
+            rval = h_self._Dict(session)
+            if dct: rval.update(dct, session=session)
         return rval
 
-    def query(h_self, **kwargs): 
+    def query(h_self, session):
         """Construct an SqlAlchemy query, which can be subsequently filtered
         using the instance methods of DbQuery"""
-
-        return h_self._Query(h_self._session.query(h_self._Dict)\
-                        .options(eagerload('_attrs')))\
-                        .filter_by(**kwargs)
+        return h_self._Query(session.query(h_self._Dict)\
+                        .options(eagerload('_attrs')))
 
     def createView(h_self, view):
 
-        s = h_self._session;
-        cols = [];
+        s = h_self.session()
+        cols = []
         
         for col in view.columns:
             if col.name is "id":
@@ -408,6 +472,7 @@ class DbHandle (object):
         
         # generate raw sql command string
         viewsql = crazy_sql_command(view.name, cols, \
+                                    h_self._dict_table.name, \
                                     h_self._pair_table.name, \
                                     h_self._link_table.name);
         
@@ -415,6 +480,7 @@ class DbHandle (object):
 
         h_self._engine.execute(viewsql);
         s.commit();
+        s.close()
 
         class MappedClass(object):
             pass
@@ -425,6 +491,18 @@ class DbHandle (object):
 
     def session(h_self):
         return h_self._session_fn()
+
+    def get(h_self, id):
+        s = h_self.session()
+        rval = s.query(h_self._Dict).get(id)
+        if rval:
+            #eagerload hack
+            str(rval)
+            rval.id
+        s.close()
+        return rval
+
+
         
 
 def db_from_engine(engine, 
@@ -459,7 +537,11 @@ def db_from_engine(engine,
             Column('id', Integer, primary_key=True),
             Column('create', DateTime),
             Column('write', DateTime),
-            Column('read', DateTime))
+            Column('read', DateTime),
+            Column('status', Integer),
+            Column('priority', Float(53)),
+            Column('hash', postgres.PGBigInteger)
+            )
 
     t_keyval = Table(table_prefix+keyval_suffix, metadata,
             Column('id', Integer, primary_key=True),
@@ -492,20 +574,12 @@ def sqlite_file_db(filename, echo=False, **kwargs):
     engine = create_engine('sqlite:///%s' % filename, echo=False)
     return db_from_engine(engine, **kwargs)
 
-_db_host = 'jais.iro.umontreal.ca'
-_pwd='potatomasher';
-
-def postgres_db(user, password, host, database, echo=False, **kwargs):
+def postgres_db(user, password, host, database, echo=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
     """Create an engine to access a postgres_dbhandle
     """
     db_str ='postgres://%(user)s:%(password)s@%(host)s/%(database)s' % locals()
 
-    # should force the app release extra connections releasing
-    # connections should let us schedule more jobs, since each one
-    # operates autonomously most of the time, just checking the db
-    # rarely. TODO: optimize this for large numbers of jobs
-    pool_size = 0;
-    engine = create_engine(db_str, pool_size=pool_size, echo=echo)
+    engine = create_engine(db_str, echo=echo, poolclass=poolclass)
 
     return db_from_engine(engine, **kwargs)
 
