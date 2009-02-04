@@ -3,6 +3,10 @@ import sys, subprocess
 from .dconfig import Config
 from .tools import Job # tools.py
 
+###
+### TODO: Fix this file, so it can work as a demo example
+###
+
 #
 # Models
 #
