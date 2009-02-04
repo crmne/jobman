@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+
+if __name__ == '__main__':
+   from jobman import run_cmdline
+   run_cmdline()
+
