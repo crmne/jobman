@@ -40,13 +40,13 @@ class DbHandle (object):
 
             Column('id', Integer, primary_key=True)
             Column('name', String(128))
-            Column('ntype', Boolean)
+            Column('type', String(1))
             Column('fval', Double)
-            Column('sval', Text))
-            Column('bval', Blob)  
+            Column('ival', BigInteger)
+            Column('sval', Text)
+            Column('bval', Blob)
 
             #TODO: Consider difference between text and binary
-            #TODO: Consider adding a 'type' column
             #TODO: Consider union?
             #TODO: Are there stanard ways of doing this kind of thing?
 
@@ -62,7 +62,7 @@ class DbHandle (object):
         #TODO: replace this crude algorithm (ticket #17)
         if ['id', 'create', 'write', 'read', 'status', 'priority','hash'] != [c.name for c in dict_table.c]:
             raise ValueError(h_self.e_bad_table, dict_table)
-        if ['id', 'dict_id', 'name', 'ntype', 'fval', 'sval', 'bval'] != [c.name for c in pair_table.c]:
+        if ['id', 'dict_id', 'name', 'type', 'ival', 'fval', 'sval', 'bval'] != [c.name for c in pair_table.c]:
             raise ValueError(h_self.e_bad_table, pair_table)
 
         h_self._session_fn = Session
@@ -79,34 +79,43 @@ class DbHandle (object):
                 return "<Param(%s,'%s', %s)>" % (k_self.id, k_self.name, repr(k_self.val))
             def __get_val(k_self):
                 val = None
-                if k_self.fval is not None: val = [int, float][k_self.ntype](k_self.fval)
-                if k_self.bval is not None: val = eval(str(k_self.bval))
-                if k_self.sval is not None: val = k_self.sval
-                return  val
-            def __set_val(k_self, val):
-                if isinstance(val, (str,unicode)):
-                    k_self.fval = None
-                    k_self.bval = None
-                    k_self.sval = val
+                if k_self.type == 'i':
+                    val = int(k_self.ival)
+                elif k_self.type == 'f':
+                    val = float(k_self.fval)
+                elif k_self.type == 'b':
+                    val = eval(str(k_self.bval))
+                elif k_self.type == 's':
+                    val = k_self.sval
                 else:
-                    k_self.sval = None
-                    try:
-                        f = float(val)
-                    except (TypeError, ValueError):
-                        f = None
-                    if f is None: #binary data
-                        k_self.bval = repr(val)
-                        assert eval(k_self.bval) == val
-                        k_self.fval = None
-                        k_self.ntype = None
-                    else:
-                        k_self.bval = None
-                        k_self.fval = f
-                        k_self.ntype = isinstance(val,float)
+                    raise ValueError('Incompatible value in column "type"',
+                            k_self.type)
+                return val
+
+            def __set_val(k_self, val):
+                k_self.ival = None
+                k_self.fval = None
+                k_self.bval = None
+                k_self.sval = None
+
+                if isinstance(val, (str,unicode)):
+                    k_self.type = 's'
+                    k_self.sval = val
+                elif isinstance(val, float):
+                    k_self.type = 'f'
+                    k_self.fval = float(val)
+                elif isinstance(val, int):
+                    k_self.type = 'i'
+                    k_self.ival = int(val)
+                else:
+                    k_self.type = 'b'
+                    k_self.bval = repr(val)
+                    assert eval(k_self.bval) == val
+
             val = property(__get_val, __set_val)
 
         mapper(KeyVal, pair_table)
-        
+
         class Dict (object):
             """
             Instances are dict-like objects with additional features for
@@ -320,15 +329,12 @@ class DbHandle (object):
                 T = h_self._Dict
                 if isinstance(arg, (str,unicode)):
                     q = q.filter(T._attrs.any(name=kw, sval=arg))
+                elif isinstance(arg, float):
+                    q = q.filter(T._attrs.any(name=kw, fval=arg))
+                elif isinstance(val, int):
+                    q = q.filter(T._attrs.any(name=kw, ival=arg))
                 else:
-                    try:
-                        f = float(arg)
-                    except (TypeError, ValueError):
-                        f = None
-                    if f is None:
-                        q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
-                    else:
-                        q = q.filter(T._attrs.any(name=kw, fval=f))
+                    q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
 
                 return h_self._Query(q)
 
@@ -444,7 +450,7 @@ class DbHandle (object):
 
         s = h_self.session()
         cols = []
-        
+
         for col in view.columns:
             if col.name is "id":
                 continue;
@@ -456,12 +462,12 @@ class DbHandle (object):
                 cols.append([col.name,'bval']);
             else:
                 assert "Error: wrong column type in view",view.name;
-        
+
         # generate raw sql command string
         viewsql = crazy_sql_command(view.name, cols, \
                                     h_self._dict_table.name, \
                                     h_self._pair_table.name)
-        
+
         print 'Creating sql view with command:\n', viewsql;
         h_self._engine.execute(viewsql);
         s.commit();
@@ -488,9 +494,8 @@ class DbHandle (object):
         return rval
 
 
-        
 
-def db_from_engine(engine, 
+def db_from_engine(engine,
         table_prefix='DbHandle_default_',
         trial_suffix='trial',
         keyval_suffix='keyval'):
@@ -528,7 +533,9 @@ def db_from_engine(engine,
             Column('id', Integer, primary_key=True),
             Column('dict_id', Integer, index=True),
             Column('name', String(128), index=True, nullable=False), #name of attribute
-            Column('ntype', Boolean),
+            Column('type', String(1)),
+            #Column('ntype', Boolean),
+            Column('ival', postgres.PGBigInteger),
             Column('fval', Float(53)),
             Column('sval', Text),
             Column('bval', Binary),
