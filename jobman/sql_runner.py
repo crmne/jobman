@@ -10,7 +10,7 @@ from optparse import OptionParser
 
 from tools import *
 from runner import runner_registry
-from channel import StandardChannel
+from channel import StandardChannel, JobError
 
 
 ################################################################################
