@@ -1,3 +1,5 @@
+from sqlalchemy.sql.expression import column
+from sqlalchemy.orm import aliased
 
 def crazy_sql_command(viewname, cols, dicttab, keytab, id_col='id', dict_id='dict_id'):
 
@@ -26,3 +28,36 @@ def crazy_sql_command(viewname, cols, dicttab, keytab, id_col='id', dict_id='dic
     rval = header + "\n".join(col_queries)
 
     return rval
+
+def create_view(db_handle, viewname):
+
+    s = db_handle.session()
+
+    # Get column names
+    kv = db_handle._KeyVal
+    d = db_handle._Dict
+    name_query = s.query(kv.name, kv.type).distinct()
+
+    safe_names = []
+    sub_queries = []
+    for name, type in name_query.all():
+        safe_name = name.replace('_','').replace('.','_')
+        sub_query = s.query(kv.dict_id, column(type+'val').label(safe_name))\
+                .filter_by(name = name)\
+                .subquery()
+
+        safe_names.append(safe_name)
+        sub_queries.append(sub_query)
+
+    # Crazy query
+    main_query = s.query(d.id, *[column(name) for name in safe_names])\
+            .outerjoin( *[(sub_query, sub_query.c.dict_id==d.id)
+                            for sub_query in sub_queries] )
+
+    create_view_statement = 'CREATE OR REPLACE VIEW %s AS ' % viewname
+    create_view_statement += main_query.statement
+
+
+    s.close()
+
+
