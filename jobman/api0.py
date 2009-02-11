@@ -6,7 +6,6 @@ from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.databases import postgres
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
-from sql_commands import crazy_sql_command
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -446,31 +445,39 @@ class DbHandle (object):
         return h_self._Query(session.query(h_self._Dict)\
                         .options(eagerload('_attrs')))
 
-    def createView(h_self, view):
+    def createView(h_self, viewname):
 
         s = h_self.session()
-        cols = []
+        kv = h_self._KeyVal
+        d = h_self._Dict
 
-        for col in view.columns:
-            if col.name is "id":
-                continue;
-            elif isinstance(col.type, (Integer,Float)):
-                cols.append([col.name,'fval']);
-            elif isinstance(col.type,String):
-                cols.append([col.name,'sval']);
-            elif isinstance(col.type,Binary):
-                cols.append([col.name,'bval']);
-            else:
-                assert "Error: wrong column type in view",view.name;
+        # Get column names
+        name_query = s.query(kv.name, kv.type).distinct()
 
-        # generate raw sql command string
-        viewsql = crazy_sql_command(view.name, cols, \
-                                    h_self._dict_table.name, \
-                                    h_self._pair_table.name)
+        # Generate sub-queries for the big "join"
+        safe_names = []
+        sub_queries = []
+        for name, type in name_query.all():
+            safe_name = name.replace('_','').replace('.','_')
+            safe_names.append(safe_name)
 
-        print 'Creating sql view with command:\n', viewsql;
-        h_self._engine.execute(viewsql);
-        s.commit();
+            sub_query = s\
+                    .query(kv.dict_id, column(type+'val').label(safe_name))\
+                    .filter_by(name = name)\
+                    .subquery()
+            sub_queries.append(sub_query)
+
+        # Main "select" statement with big "join"
+        main_query = s.query(d.id, *[column(name) for name in safe_names])\
+                .outerjoin( *[(sub_query, sub_query.c.dict_id==d.id)
+                                for sub_query in sub_queries] )
+
+        viewsql = 'CREATE OR REPLACE VIEW %s AS ' % viewname
+        viewsql += main_query.statement
+
+        print 'Creating sql view with command:\n', viewsql
+        h_self._engine.execute(viewsql)
+        s.commit()
         s.close()
 
         class MappedClass(object):
@@ -510,7 +517,7 @@ def db_from_engine(engine,
 
     @rtype: DbHandle instance
 
-    @note: The returned DbHandle will use three tables to implement the
+    @note: The returned DbHandle will use two tables to implement the
     many-to-many pattern that it needs: 
      - I{table_prefix + trial_suffix},
      - I{table_prefix + keyval_suffix}
