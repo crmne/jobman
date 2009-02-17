@@ -6,6 +6,11 @@ from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
 from sqlalchemy.databases import postgres
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.sql import operators, select
+from sqlalchemy.sql.expression import column
+
+from sqlalchemy.sql import expression
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.sql.expression import outerjoin, table
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -455,37 +460,62 @@ class DbHandle (object):
         name_query = s.query(kv.name, kv.type).distinct()
 
         # Generate sub-queries for the big "join"
+        # and build the table structure of the view
+        cols = [Column('id',]
         safe_names = []
         sub_queries = []
-        for name, type in name_query.all():
+        for name, val_type_char in name_query.all():
+            if val_type_char == 'i':
+                val_type = Integer
+            elif val_type_char == 'f':
+                val_type = Float
+            elif val_type_char == 'b':
+                val_type = Binary
+            elif val_type_char == 's':
+                val_type = String
+            else:
+                raise ValueError('Incompatible value in column "type"',
+                        val_type_char)
+            val_type_string = val_type_char + 'val'
+
             safe_name = name.replace('_','').replace('.','_')
             safe_names.append(safe_name)
 
-            sub_query = s\
-                    .query(kv.dict_id, column(type+'val').label(safe_name))\
-                    .filter_by(name = name)\
-                    .subquery()
+            cols.append(Column(safe_name, val_type))
+            #print 'name =', name, ', type =', type
+
+            sub_query = select(
+                    [kv.dict_id, column(val_type_string).label(safe_name)],
+                    kv.name == name)
+            sub_query = sub_query.alias(safe_name)
             sub_queries.append(sub_query)
 
-        # Main "select" statement with big "join"
-        main_query = s.query(d.id, *[column(name) for name in safe_names])\
-                .outerjoin( *[(sub_query, sub_query.c.dict_id==d.id)
-                                for sub_query in sub_queries] )
 
-        viewsql = 'CREATE OR REPLACE VIEW %s AS ' % viewname
-        viewsql += main_query.statement
+        # Big "join" from which we select
+        big_join = h_self._dict_table
+        for sub_query in sub_queries:
+            big_join = big_join.outerjoin(sub_query,
+                    sub_query.c.dict_id == d.id)
 
-        print 'Creating sql view with command:\n', viewsql
-        h_self._engine.execute(viewsql)
+        # Main "select" query, with the same information as the view
+        main_query = select([d.id] + [column(name) for name in safe_names],
+                from_obj = big_join)
+        main_query = main_query.compile()
+        quoted_params = {}
+        for (key, val) in main_query.params.items():
+            quoted_params[key] = repr(val)
+        main_query_sql = str(main_query) % quoted_params
+
+        # Finally, the view creation command
+        create_view_sql = 'CREATE OR REPLACE VIEW %s AS %s'\
+                % (viewname, main_query_sql)
+        print 'Creating sql view with command:\n', create_view_sql
+
+        # Execution
+        h_self._engine.execute(create_view_sql);
+
         s.commit()
         s.close()
-
-        class MappedClass(object):
-            pass
-
-        mapper(MappedClass, view)
-
-        return MappedClass
 
     def session(h_self):
         return h_self._session_fn()
