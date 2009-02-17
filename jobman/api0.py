@@ -1,16 +1,17 @@
-from sqlalchemy import create_engine, desc
 import sqlalchemy.pool
-from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy import create_engine, desc
 from sqlalchemy import Table, Column, MetaData, ForeignKey, ForeignKeyConstraint
 from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
-from sqlalchemy.databases import postgres
-from sqlalchemy.orm import mapper, relation, backref, eagerload
-from sqlalchemy.sql import operators, select
-from sqlalchemy.sql.expression import column
 
-from sqlalchemy.sql import expression
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import mapper, relation, backref, eagerload
+
+from sqlalchemy.databases import postgres
 from sqlalchemy.engine.base import Connection
-from sqlalchemy.sql.expression import outerjoin, table
+
+from sqlalchemy.sql import operators, select
+from sqlalchemy.sql.expression import column, outerjoin
 
 class Todo(Exception): """Replace this with some working code!"""
 
