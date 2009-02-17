@@ -461,7 +461,7 @@ class DbHandle (object):
 
         # Generate sub-queries for the big "join"
         # and build the table structure of the view
-        cols = [Column('id',]
+        cols = [Column('id', Integer, primary_key=True)]
         safe_names = []
         sub_queries = []
         for name, val_type_char in name_query.all():
@@ -516,6 +516,16 @@ class DbHandle (object):
 
         s.commit()
         s.close()
+
+        # Create mapper class for the view
+        class MappedView(object):
+            pass
+
+        t_view = Table(viewname, MetaData(), *cols)
+        mapper(MappedView, t_view)
+
+        return MappedView
+
 
     def session(h_self):
         return h_self._session_fn()
