@@ -115,11 +115,11 @@ class DBRSyncChannel(RSyncChannel):
 
         try:
             state = expand(self.dbstate)
-            experiment = resolve(state.dbdict.experiment)
+            experiment = resolve(state.jobman.experiment)
             remote_path = os.path.join(remote_root, self.dbname, self.tablename, str(self.dbstate.id))
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state, redirect_stdout, redirect_stderr)
         except:
-            self.dbstate['dbdict.status'] = self.DONE
+            self.dbstate['jobman.status'] = self.DONE
             raise
 
     def save(self):
@@ -130,16 +130,16 @@ class DBRSyncChannel(RSyncChannel):
         # Extract a single experiment from the table that is not already running.
         # set self.experiment and self.state
         super(DBRSyncChannel, self).setup()
-        self.state.dbdict.sql.host_name = socket.gethostname()
-        self.state.dbdict.sql.host_workdir = self.path
+        self.state.jobman.sql.host_name = socket.gethostname()
+        self.state.jobman.sql.host_workdir = self.path
         self.dbstate.update(flatten(self.state))
 
     def run(self):
         # We pass the force flag as True because the status flag is
         # already set to RUNNING by book_dct in __init__
         v = super(DBRSyncChannel, self).run(force = True)
-        if v is self.INCOMPLETE and self.state.dbdict.sql.priority != self.RESTART_PRIORITY:
-            self.state.dbdict.sql.priority = self.RESTART_PRIORITY
+        if v is self.INCOMPLETE and self.state.jobman.sql.priority != self.RESTART_PRIORITY:
+            self.state.jobman.sql.priority = self.RESTART_PRIORITY
             self.save()
         return v
 
@@ -181,7 +181,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     command.
 
     Example use:
-        dbdict-run sqlschedule postgres://user:pass@host/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host/dbname/tablename \\
             mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
@@ -203,7 +203,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
 
     state = parse(*strings)
     resolve(experiment) # we try to load the function associated to the experiment
-    state['dbdict.experiment'] = experiment
+    state['jobman.experiment'] = experiment
     sql.add_experiments_to_db([state], db, verbose = 1, add_dups = options.force)
 
 runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
@@ -249,7 +249,7 @@ def runner_sqlschedule_filemerge(options, dbdescr, experiment, mainfile, *other_
     state = _state
 
     resolve(experiment) # we try to load the function associated to the experiment
-    state['dbdict.experiment'] = experiment
+    state['jobman.experiment'] = experiment
     sql.add_experiments_to_db([state], db, verbose = 1, add_dups = options.force)
 
 runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner_sqlschedule_filemerge)
@@ -293,7 +293,7 @@ def runner_sql(options, dbdescr, exproot):
     with sqlschedule.
 
     Example use:
-        dbdict-run sql \\
+        jobman sql \\
             postgres://user:pass@host/dbname/tablename \\
             ssh://central_host:myexperiments
     """

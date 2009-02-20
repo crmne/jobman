@@ -281,13 +281,13 @@ class DbHandle (object):
                 """Modify an existing key or create a key to hold val"""
 
                 #FIRST SOME MIRRORING HACKS
-                if key == 'dbdict.status':
+                if key == 'jobman.status':
                     ival = int(val)
                     d_self.status = ival
-                if key == 'dbdict.sql.priority':
+                if key == 'jobman.sql.priority':
                     fval = float(val)
                     d_self.priority = fval
-                if key == 'dbdict.hash':
+                if key == 'jobman.hash':
                     ival = int(val)
                     d_self.hash = ival
 

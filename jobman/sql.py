@@ -12,15 +12,15 @@ import psycopg2, psycopg2.extensions
 from api0 import db_from_engine, postgres_db, DbHandle
 
 
-EXPERIMENT = 'dbdict.experiment'
+EXPERIMENT = 'jobman.experiment'
 #using the dictionary to store these is too slow
-STATUS = 'dbdict.status'
-HASH = 'dbdict.hash'
-PRIORITY = 'dbdict.sql.priority'
+STATUS = 'jobman.status'
+HASH = 'jobman.hash'
+PRIORITY = 'jobman.sql.priority'
 
-HOST = 'dbdict.sql.hostname'
-HOST_WORKDIR = 'dbdict.sql.host_workdir'
-PUSH_ERROR = 'dbdict.sql.push_error'
+HOST = 'jobman.sql.hostname'
+HOST_WORKDIR = 'jobman.sql.host_workdir'
+PUSH_ERROR = 'jobman.sql.push_error'
 
 START = 0
 RUNNING = 1
@@ -147,7 +147,7 @@ def book_dct_non_postgres(db):
 def parse_dbstring(dbstring):
     postgres = 'postgres://'
     if not dbstring.startswith(postgres):
-        raise ValueError('For now, dbdict dbstrings must start with postgres://', dbstring)
+        raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
     dbstring = dbstring[len(postgres):]
 
     #username_and_password
@@ -193,7 +193,7 @@ def get_password(hostname, dbname):
 
     :TODO: Replace this mechanism with a section in the pylearn configuration file
     """
-    password_path = os.getenv('HOME')+'/.dbdict_%s'%dbname
+    password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
     try:
         password = open(password_path).readline()[:-1] #cut the trailing newline
     except:
