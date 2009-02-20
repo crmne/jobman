@@ -102,8 +102,8 @@ class DBRSyncChannel(RSyncChannel):
             = username, password, hostname, dbname, tablename
 
         self.db = sql.postgres_serial(
-            user = self.username, 
-            password = self.password, 
+            user = self.username,
+            password = self.password,
             host = self.hostname,
             database = self.dbname,
             table_prefix = self.tablename)
@@ -125,7 +125,7 @@ class DBRSyncChannel(RSyncChannel):
     def save(self):
         super(DBRSyncChannel, self).save()
         self.dbstate.update(flatten(self.state))
-    
+
     def setup(self):
         # Extract a single experiment from the table that is not already running.
         # set self.experiment and self.state
@@ -195,8 +195,8 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
         raise UsageError('Wrong syntax for dbdescr')
 
     db = sql.postgres_serial(
-        user = username, 
-        password = password, 
+        user = username,
+        password = password,
         host = hostname,
         database = dbname,
         table_prefix = tablename)
@@ -232,8 +232,8 @@ def runner_sqlschedule_filemerge(options, dbdescr, experiment, mainfile, *other_
         raise UsageError('Wrong syntax for dbdescr')
 
     db = sql.postgres_serial(
-        user = username, 
-        password = password, 
+        user = username,
+        password = password,
         host = hostname,
         database = dbname,
         table_prefix = tablename)

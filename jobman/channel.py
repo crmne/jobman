@@ -31,7 +31,7 @@ class Channel(object):
     INCOMPLETE = property(lambda s:True,
             doc=("Experiments should return this value to indicate that "
             "they are not done (if done return `COMPLETE`)"))
-    
+
     START = property(lambda s: 0,
             doc="dbdict.status == START means a experiment is ready to run")
     RUNNING = property(lambda s: 1,

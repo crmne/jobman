@@ -117,7 +117,7 @@ def runner_cmdline(options, experiment, *strings):
     channel.run(force = options.force)
     if options.dry_run:
         shutil.rmtree(workdir, ignore_errors=True)
-        
+
 runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 
 
@@ -194,7 +194,7 @@ def runner_filemerge(options, experiment, mainfile, *other_files):
     channel.run(force = options.force)
     if options.dry_run:
         shutil.rmtree(workdir, ignore_errors=True)
-        
+
 runner_registry['filemerge'] = (parser_filemerge, runner_filemerge)
 
 
@@ -350,7 +350,7 @@ def runner_help(options, topic = None):
             return rval
 
         And then you could run it this way:
-        
+
         dbdict-run cmdline my_experiments.experiment \\
                            some_param=1 \\
                            other_param=0.4

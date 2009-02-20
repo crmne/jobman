@@ -7,7 +7,7 @@ import sqlalchemy
 import sqlalchemy.pool
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import eagerload
-import psycopg2, psycopg2.extensions 
+import psycopg2, psycopg2.extensions
 
 from api0 import db_from_engine, postgres_db, DbHandle
 
@@ -37,7 +37,7 @@ def postgres_serial(user, password, host, database, poolclass=sqlalchemy.pool.Nu
     :param password: the password for the username
     :param host: the network address of the host on which the postgres server is running
     :param database: a database served by the postgres server
-    
+
     """
     this = postgres_serial
 
@@ -73,7 +73,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=0):
     s = db.session() #open a new session
 
     # NB. we need the query and attribute update to be in the same transaction
-    assert s.autocommit == False 
+    assert s.autocommit == False
 
     dcts_seen = set([])
     keep_trying = True
@@ -162,7 +162,7 @@ def parse_dbstring(dbstring):
     else:
         username = username_and_password[:colon_pos]
         password = username_and_password[colon_pos+1:]
-    
+
     #hostname
     colon_pos = dbstring.find('/')
     hostname = dbstring[:colon_pos]
@@ -258,7 +258,7 @@ def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority
 
 
 # TODO: FIXME: WARNING
-# Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to 
+# Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to
 # database, so that hashing can be done consistently
 def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, session=None):
     """Add experiments paramatrized by jobs[i] to database db.
