@@ -82,6 +82,12 @@ class Channel(object):
     def run(self):
         pass
 
+################################################################################
+### Empty Channel: useful for debugging
+################################################################################
+class EmptyChannel(Channel):
+    def save(self):
+        pass
 
 ################################################################################
 ### Channel for a single experiment
