@@ -4,7 +4,7 @@ import re
 ################################################################################
 ### misc
 ################################################################################
-
+import copy
 class DD(dict):
     def __getattr__(self, attr):
         return self[attr]
@@ -14,6 +14,11 @@ class DD(dict):
         return 'DD%s' % dict(self)
     def __repr__(self):
         return str(self)
+    def __deepcopy__(self, memo):
+        z = DD()
+        for k,kv in self.iteritems():
+            z[k] = copy.deepcopy(kv)
+        return z
 
 def defaults_merge(d, defaults):
     for k, v in defaults.iteritems():
