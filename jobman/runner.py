@@ -93,7 +93,7 @@ def runner_cmdline(options, experiment, *strings):
     syntax information.
 
     Example use:
-        dbdict-run cmdline mymodule.my_experiment \\
+        jobman cmdline mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
@@ -161,10 +161,10 @@ def runner_filemerge(options, experiment, mainfile, *other_files):
     numbers.b = 56
 
     Given these files, the following command using filemerge:
-    $ dbdict-run filemerge mymodule.my_experiment blah1.txt blah2.txt
+    $ jobman filemerge mymodule.my_experiment blah1.txt blah2.txt
 
     is equivalent to this one using cmdline:
-    $ dbdict-run cmdline mymodule.my_experiment \\
+    $ jobman cmdline mymodule.my_experiment \\
         text.first=hello text.second=world \\
         number=12 numbers.a=55 numbers.b=56
     """
@@ -224,7 +224,7 @@ def runner_help(options, topic = None):
     elif topic == 'experiment':
         helptext = """
 
-        dbdict-run serves to run experiments. To define an experiment, you
+        jobman serves to run experiments. To define an experiment, you
         only have to define a function respecting the following protocol in
         a python file or module:
 
@@ -236,7 +236,7 @@ def runner_help(options, topic = None):
         be resumed at a later point. Note that the return value `None`
         is interpreted as channel.COMPLETE.
 
-        If a command defined by dbdict-run has an <experiment> parameter,
+        If a command defined by jobman has an <experiment> parameter,
         that parameter must be a string such that it could be used in a
         python import statement to import the my_experiment function. For
         example if you defined my_experiment in my_module.py, you can pass
@@ -245,13 +245,13 @@ def runner_help(options, topic = None):
         When entering my_experiment, the current working directory will be
         set for you to a directory specially created for the experiment.
         The location and name of that directory vary depending on which
-        dbdict-run command you run. You may create logs, save files, pictures,
+        jobman command you run. You may create logs, save files, pictures,
         results, etc. in it.
 
         state is an object containing the parameters given to the experiment.
         For example, if you run the followinc command:
 
-        dbdict-run cmdline my_module.my_experiment a.x=6
+        jobman cmdline my_module.my_experiment a.x=6
 
         `state.a.x` will contain the integer 6, and so will `state['a']['x']`.
         If the state is changed, it will be saved when the experiment ends
@@ -351,18 +351,18 @@ def runner_help(options, topic = None):
 
         And then you could run it this way:
         
-        dbdict-run cmdline my_experiments.experiment \\
+        jobman cmdline my_experiments.experiment \\
                            some_param=1 \\
                            other_param=0.4
 
         Or this way:
 
-        dbdict-run sqlschedule postgres://user:pass@host/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host/dbname/tablename \\
                            my_experiments.experiment \\
                            some_param=1 \\
                            other_param=0.4
 
-        dbdict-run sql postgres://user:pass@host/dbname/tablename exproot
+        jobman sql postgres://user:pass@host/dbname/tablename exproot
 
         You need to make sure that the module `my_experiments` is accessible
         from python. You can check with the command
