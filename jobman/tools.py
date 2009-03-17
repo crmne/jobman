@@ -7,8 +7,14 @@ import re
 import copy
 class DD(dict):
     def __getattr__(self, attr):
+        if attr == '__getstate__':
+            return super(DD, self).__getstate__
+        elif attr == '__slots__':
+            return super(DD, self).__slots__
         return self[attr]
     def __setattr__(self, attr, value):
+        # Safety check to ensure consistent behavior with __getattr__.
+        assert attr not in ('__getstate__', '__slots__')
         self[attr] = value
     def __str__(self):
         return 'DD%s' % dict(self)
