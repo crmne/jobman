@@ -1,5 +1,6 @@
-
+import os
 import re
+import sql
 
 ################################################################################
 ### misc
@@ -170,3 +171,66 @@ def format_help(topic):
     s = re.sub(string = s, pattern = '(^\n*)|(\n*$)', repl = '')
 
     return s
+
+
+################################################################################
+### Helper functions operating on experiment directories
+################################################################################
+
+
+def find_conf_files(cwd, fname='current.conf', recurse=True):
+    """
+    This generator will iterator from the given directory, and find all job
+    configuration files recursively (if specified). Job config files are read
+    and a dict is returned with the proper key/value pairs.
+
+    @param cwd: diretory to start iterating from
+    @param fname: name of the job config file to look for and parse
+    @param recurse: enable recursive search of job config files
+    """
+    for jobid in os.listdir(cwd):
+        e = os.path.join(cwd, jobid)
+
+        if os.path.isdir(e) and recurse:
+            find_conf_files(e, fname)
+                
+        try:
+            e_config = open(os.path.join(e, fname),'r')
+        except:
+            e_config = None
+
+        if e_config:
+            data = e_config.read().split('\n') 
+            # trailing \n at end of file creates empty string
+            jobdd = DD(parse(*data[:-1]))
+
+            try:
+                jobid = int(jobid)
+            except ValueError:
+                jobid = None
+            yield (jobid, jobdd)
+
+
+def rebuild_DB_from_FS(db, cwd='./', keep_id=True, verbose=False):
+    """
+    This method is meant to rebuild a database from the contents of the .conf
+    files stored in an experiment directory. This can be useful for consolidating
+    data stored in multiple locations or after bad things happen to the DB...
+
+    @param db: db handle (as returned by sql.db) of the DB in which to insert job dicts
+    @param cwd: current working dir or path from which to start looking for conf files
+    @param keep_id: attempt to use the directory name as job id for inserting in DB
+    @param verbose: prints info about which jobs are succesfully inserted
+    """
+    tot = 0
+    for (jobid, jobdd) in find_conf_files(cwd):
+        if keep_id and jobid:
+            jobdd[sql.JOBID] = jobid
+        status = sql.insert_dict(jobdd, db) 
+        if status: tot += 1
+
+        if verbose:
+            print '** inserted job %i **' % jobdd[sql.JOBID]
+
+    if verbose:
+        print '==== Inserted %i jobs ====' % tot
