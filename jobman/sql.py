@@ -11,7 +11,7 @@ import psycopg2, psycopg2.extensions
 
 from api0 import db_from_engine, postgres_db, DbHandle
 
-
+JOBID = 'dbdict.id'
 EXPERIMENT = 'dbdict.experiment'
 #using the dictionary to store these is too slow
 STATUS = 'dbdict.status'
@@ -55,7 +55,7 @@ def postgres_serial(user, password, host, database, poolclass=sqlalchemy.pool.Nu
     db._is_serialized_session_db = True
     return db
 
-def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=0):
+def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     """Find a trial in the lisa_db with status START.
 
     A trial will be returned with status=RUNNING.
@@ -126,6 +126,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=0):
                 dct = None
             wait = numpy.random.rand(1)*retry_max_sleep
             if verbose: print 'another process stole our dct. Waiting %f secs' % wait
+            print 'waiting for %i second' % wait
             time.sleep(wait)
 
     if dct:
@@ -309,3 +310,37 @@ def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, 
             rval.append((False, job))
 
 
+def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
+    """
+    In its simplest form, this function retrieves a specific job from the database, and
+    creates a duplicate in the DB, ready to be executed. 
+
+    :param kwargs: can be used to modify the top-level dictionary before it is 
+                   reinserted in the DB.
+    :param args: since jobdict is a hierarchical dictionary, args is a variable
+                 length list containing ('path_to_subdict',subdict_update) pairs
+    """
+
+    s = db.session()
+    
+    jobdict = s.query(db._Dict).filter_by(id=job_id).all()
+    if not jobdict:
+        raise ValueError('Failed to retrieve job with ID%i' % job_id)
+
+    newjob = dict(jobdict[0]) # this detaches the job dict from the api0.Dict object
+
+    # those should be added @ insertion time
+    newjob.pop(HASH)
+    newjob.pop(STATUS)
+    newjob.pop(PRIORITY)
+
+    # modify job before reinserting (if need be)
+    newjob.update(kwargs)
+    for arg in args:
+        subd = getattr(newjob, arg[0])
+        subd.update(arg[1])
+
+    rval =  insert_dict(newjob, db, force_dup=True, session=s, priority=priority)
+
+    s.close()
+    return rval
