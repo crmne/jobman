@@ -99,7 +99,7 @@ def runner_cmdline(options, experiment, *strings):
             lr=0.03
     """
     state = expand(parse(*strings))
-    state.setdefault('dbdict', DD()).experiment = experiment
+    state.setdefault('jobman', DD()).experiment = experiment
     experiment = resolve(experiment)
     if options.workdir and options.dry_run:
         raise UsageError('Please use only one of: --workdir, --dry-run.')
@@ -117,7 +117,7 @@ def runner_cmdline(options, experiment, *strings):
     channel.run(force = options.force)
     if options.dry_run:
         shutil.rmtree(workdir, ignore_errors=True)
-        
+
 runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 
 
@@ -177,7 +177,7 @@ def runner_filemerge(options, experiment, mainfile, *other_files):
             with open(file) as f:
                 _state.update(parse(*map(str.strip, f.readlines())))
     state = expand(_state)
-    state.setdefault('dbdict', DD()).experiment = experiment
+    state.setdefault('jobman', DD()).experiment = experiment
     experiment = resolve(experiment)
     if options.workdir and options.dry_run:
         raise UsageError('Please use only one of: --workdir, --dry-run.')
@@ -194,7 +194,7 @@ def runner_filemerge(options, experiment, mainfile, *other_files):
     channel.run(force = options.force)
     if options.dry_run:
         shutil.rmtree(workdir, ignore_errors=True)
-        
+
 runner_registry['filemerge'] = (parser_filemerge, runner_filemerge)
 
 
@@ -315,7 +315,7 @@ def runner_help(options, topic = None):
             regexp::re.compile
             regexp.pattern='a.*c'
 
-          from pylearn.dbdict.newstuff import make
+          from jobman.tools import make
           def experiment(state, channel):
               regexp = make(state.regexp) # regexp is now re.compile(pattern = 'a.*c')
               print regexp.sub('blahblah', 'hello abbbbc there')
@@ -350,7 +350,7 @@ def runner_help(options, topic = None):
             return rval
 
         And then you could run it this way:
-        
+
         jobman cmdline my_experiments.experiment \\
                            some_param=1 \\
                            other_param=0.4

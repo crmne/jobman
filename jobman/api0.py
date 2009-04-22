@@ -207,7 +207,7 @@ class DbHandle (object):
 
             def items(d_self):
                 return [(kv.name, kv.val) for kv in d_self._attrs]
-            
+
             def keys(d_self):
                 return [kv.name for kv in d_self._attrs]
 
@@ -245,11 +245,11 @@ class DbHandle (object):
             # database stuff
             #
 
-            def refresh(d_self, session=None): 
+            def refresh(d_self, session=None):
                 """Sync key-value pairs from database to self
 
                 @param session: use the given session, and do not commit.
-                
+
                 """
                 if session is None:
                     session = h_self._session_fn()
@@ -263,7 +263,7 @@ class DbHandle (object):
 
             def delete(d_self, session=None):
                 """Delete this dictionary from the database
-                
+
                 @param session: use the given session, and do not commit.
                 """
                 if session is None:
@@ -279,16 +279,20 @@ class DbHandle (object):
             # helper routine by update() and __setitem__
             def _set_in_session(d_self, key, val, session):
                 """Modify an existing key or create a key to hold val"""
-                
+
                 #FIRST SOME MIRRORING HACKS
-                if key == 'dbdict.id':
-                    d_self.id = int(val)
-                if key == 'dbdict.status':
-                    d_self.status = int(val)
-                if key == 'dbdict.sql.priority':
-                    d_self.priority = float(val)
-                if key == 'dbdict.hash':
-                    d_self.hash = int(val)
+                if key == 'jobman.id':
+                    ival = int(val)
+                    d_self.id = ival
+                if key == 'jobman.status':
+                    ival = int(val)
+                    d_self.status = ival
+                if key == 'jobman.sql.priority':
+                    fval = float(val)
+                    d_self.priority = fval
+                if key == 'jobman.hash':
+                    ival = int(val)
+                    d_self.hash = ival
 
                 if key in d_self._forbidden_keys:
                     raise KeyError(key)
@@ -305,7 +309,7 @@ class DbHandle (object):
 
         mapper(Dict, dict_table,
                 properties = {
-                    '_attrs': relation(KeyVal, 
+                    '_attrs': relation(KeyVal,
                         cascade="all, delete-orphan")
                     })
 
@@ -413,7 +417,7 @@ class DbHandle (object):
         """
         @rtype:  DbHandle with reference to self
         @return: a DbHandle initialized as a copy of dct
-        
+
         @type dct: dict-like instance whose keys are strings, and values are
         either strings, integers, floats
 
@@ -426,7 +430,7 @@ class DbHandle (object):
         """
         @rtype:  DbHandle with reference to self
         @return: a DbHandle initialized as a copy of dct
-        
+
         @type dct: dict-like instance whose keys are strings, and values are
         either strings, integers, floats
 
@@ -558,7 +562,7 @@ def db_from_engine(engine,
     @rtype: DbHandle instance
 
     @note: The returned DbHandle will use two tables to implement the
-    many-to-many pattern that it needs: 
+    many-to-many pattern that it needs:
      - I{table_prefix + trial_suffix},
      - I{table_prefix + keyval_suffix}
 

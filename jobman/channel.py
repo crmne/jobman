@@ -31,13 +31,13 @@ class Channel(object):
     INCOMPLETE = property(lambda s:True,
             doc=("Experiments should return this value to indicate that "
             "they are not done (if done return `COMPLETE`)"))
-    
+
     START = property(lambda s: 0,
-            doc="dbdict.status == START means a experiment is ready to run")
+            doc="jobman.status == START means a experiment is ready to run")
     RUNNING = property(lambda s: 1,
-            doc="dbdict.status == RUNNING means a experiment is running on dbdict_hostname")
+            doc="jobman.status == RUNNING means a experiment is running on jobman_hostname")
     DONE = property(lambda s: 2,
-            doc="dbdict.status == DONE means a experiment has completed (not necessarily successfully)")
+            doc="jobman.status == DONE means a experiment has completed (not necessarily successfully)")
 
     # Methods to be used by the experiment to communicate with the channel
 
@@ -112,7 +112,7 @@ class SingleChannel(Channel):
     def run(self, force = False):
         self.setup()
 
-        status = self.state.dbdict.get('status', self.START)
+        status = self.state.jobman.get('status', self.START)
         if status is self.DONE and not force:
             # If you want to disregard this, use the --force flag (not yet implemented)
             raise JobError(JobError.RUNNING,
@@ -120,14 +120,14 @@ class SingleChannel(Channel):
         elif status is self.RUNNING and not force:
             raise JobError(JobError.DONE,
                            'The job is already running.')
-        self.state.dbdict.status = self.RUNNING
+        self.state.jobman.status = self.RUNNING
 
         v = self.COMPLETE
         with self: #calls __enter__ and then __exit__
             try:
                 v = self.experiment(self.state, self)
             finally:
-                self.state.dbdict.status = self.DONE if v is self.COMPLETE else self.START
+                self.state.jobman.status = self.DONE if v is self.COMPLETE else self.START
 
         return v
 

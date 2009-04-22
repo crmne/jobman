@@ -7,20 +7,20 @@ import sqlalchemy
 import sqlalchemy.pool
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import eagerload
-import psycopg2, psycopg2.extensions 
+import psycopg2, psycopg2.extensions
 
 from api0 import db_from_engine, postgres_db, DbHandle
 
-JOBID = 'dbdict.id'
-EXPERIMENT = 'dbdict.experiment'
+JOBID = 'jobman.id'
+EXPERIMENT = 'jobman.experiment'
 #using the dictionary to store these is too slow
-STATUS = 'dbdict.status'
-HASH = 'dbdict.hash'
-PRIORITY = 'dbdict.sql.priority'
+STATUS = 'jobman.status'
+HASH = 'jobman.hash'
+PRIORITY = 'jobman.sql.priority'
 
-HOST = 'dbdict.sql.hostname'
-HOST_WORKDIR = 'dbdict.sql.host_workdir'
-PUSH_ERROR = 'dbdict.sql.push_error'
+HOST = 'jobman.sql.hostname'
+HOST_WORKDIR = 'jobman.sql.host_workdir'
+PUSH_ERROR = 'jobman.sql.push_error'
 
 START = 0
 RUNNING = 1
@@ -37,7 +37,7 @@ def postgres_serial(user, password, host, database, poolclass=sqlalchemy.pool.Nu
     :param password: the password for the username
     :param host: the network address of the host on which the postgres server is running
     :param database: a database served by the postgres server
-    
+
     """
     this = postgres_serial
 
@@ -73,7 +73,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     s = db.session() #open a new session
 
     # NB. we need the query and attribute update to be in the same transaction
-    assert s.autocommit == False 
+    assert s.autocommit == False
 
     dcts_seen = set([])
     keep_trying = True
@@ -148,7 +148,7 @@ def book_dct_non_postgres(db):
 def parse_dbstring(dbstring):
     postgres = 'postgres://'
     if not dbstring.startswith(postgres):
-        raise ValueError('For now, dbdict dbstrings must start with postgres://', dbstring)
+        raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
     dbstring = dbstring[len(postgres):]
 
     #username_and_password
@@ -163,7 +163,7 @@ def parse_dbstring(dbstring):
     else:
         username = username_and_password[:colon_pos]
         password = username_and_password[colon_pos+1:]
-    
+
     #hostname
     colon_pos = dbstring.find('/')
     hostname = dbstring[:colon_pos]
@@ -194,7 +194,7 @@ def get_password(hostname, dbname):
 
     :TODO: Replace this mechanism with a section in the pylearn configuration file
     """
-    password_path = os.getenv('HOME')+'/.dbdict_%s'%dbname
+    password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
     try:
         password = open(password_path).readline()[:-1] #cut the trailing newline
     except:
@@ -259,7 +259,7 @@ def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority
 
 
 # TODO: FIXME: WARNING
-# Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to 
+# Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to
 # database, so that hashing can be done consistently
 def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, session=None):
     """Add experiments paramatrized by jobs[i] to database db.
