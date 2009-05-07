@@ -16,6 +16,13 @@ from channel import StandardChannel
 ################################################################################
 
 def parse_and_run(command, arguments):
+    if command==None:
+        #allow other parameter for help used in other program
+        for arg in arguments:
+            if arg in [ "--help", "-h" ]:
+                command="help"
+                arguments=[]
+
     parser, runner = runner_registry.get(command, (None, None))
     if not runner:
         raise UsageError('Unknown runner: "%s"' % command)
@@ -37,7 +44,7 @@ def run(runner, arguments):
 def run_cmdline():
     try:
         if len(sys.argv) <= 1:
-            raise UsageError('Usage: %s <run_type> [<arguments>*]' % sys.argv[0])
+            raise UsageError('Usage: "%s <run_type> [<arguments>*]" or "%s help" for help' % (sys.argv[0],sys.argv[0]))
         cmd = None
         args = []
         for arg in sys.argv[1:]:
