@@ -134,6 +134,13 @@ class DBRSyncChannel(RSyncChannel):
         self.state.jobman.sql.host_workdir = self.path
         self.dbstate.update(flatten(self.state))
 
+    def touch(self):
+        try:
+            super(DBRSyncChannel, self).touch()
+        except:
+            self.dbstate['jobman.status'] = self.ERR_START
+            raise
+        
     def run(self):
         # We pass the force flag as True because the status flag is
         # already set to RUNNING by book_dct in __init__
