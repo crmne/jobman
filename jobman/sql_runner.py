@@ -116,7 +116,7 @@ class DBRSyncChannel(RSyncChannel):
         try:
             state = expand(self.dbstate)
             if state.has_key("dbdict"):
-                state.jobman=state.dbdic
+                state.jobman=state.dbdict
             experiment = resolve(state.jobman.experiment)
             remote_path = os.path.join(remote_root, self.dbname, self.tablename, str(self.dbstate.id))
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state, redirect_stdout, redirect_stderr)
