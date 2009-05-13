@@ -195,6 +195,9 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
+
+        you can use the jobman.experiments.example1 as a working 
+        mymodule.my_experiment
     """
 
     try:
@@ -365,6 +368,9 @@ def runner_sqlview(options, dbdescr, viewname, *strings):
         Now this will create a view with a columns for each parameter and 
         key=value set in the state by the jobs.
         jobman sqlview postgres://user:pass@host/dbname/tablename viewname
+
+        you can use the jobman.experiments.example1 as a working 
+        mymodule.my_experiment
     """
     try:
         username, password, hostname, dbname, tablename \
