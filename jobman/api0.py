@@ -339,7 +339,7 @@ class DbHandle (object):
                     q = q.filter(T._attrs.any(name=kw, sval=arg))
                 elif isinstance(arg, float):
                     q = q.filter(T._attrs.any(name=kw, fval=arg))
-                elif isinstance(val, int):
+                elif isinstance(arg, int):
                     q = q.filter(T._attrs.any(name=kw, ival=arg))
                 else:
                     q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
