@@ -261,7 +261,7 @@ def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority
 # TODO: FIXME: WARNING
 # Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to
 # database, so that hashing can be done consistently
-def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, session=None):
+def add_experiments_to_db(jobs, db, verbose=0, force_dup=False, type_check=None, session=None):
     """Add experiments paramatrized by jobs[i] to database db.
 
     Default behaviour is to ignore jobs which are already in the database.
@@ -274,8 +274,8 @@ def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, 
     :param jobs: The parameters of experiments to run.
     :type jobs: an iterable object over dictionaries
     :param verbose: print which jobs are added and which are skipped
-    :param add_dups: False will ignore a job if it matches (on all items()) with a db entry.
-    :type add_dups: Bool
+    :param force_dup: forces insertion even if an identical dictionary is already in the db.
+    :type force_dup: Bool
 
     :returns: list of (Bool,job[i]) in which the flags mean the corresponding job actually was
     inserted.
