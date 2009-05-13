@@ -332,3 +332,56 @@ def runner_sql(options, dbdescr, exproot):
             print 'No more jobs to run (run %i jobs)' % nrun
 
 runner_registry['sql'] = (parser_sql, runner_sql)
+
+parser_sqlview = OptionParser(usage = '%prog sqlview <tablepath> <viewname>')
+parser_sqlview.add_option('-d', '--drop',action="store_true", dest="drop",
+                          help = 'If true, will drop the view. (default false)')
+
+def runner_sqlview(options, dbdescr, viewname, *strings):
+    """
+    Create/drop a view of the scheduled experiments.
+
+    Usage: sqlsview <tablepath> <viewname>
+
+    The jobs should be scheduled first with the sqlschedule command.
+    Also, it is more interesting to execute it after some experiment have 
+    finished.
+
+    Assuming that a postgres database is running on `host`, contains a
+    database called `dbname` and that `user` has the permissions to
+    create, read and modify tables on that database, tablepath should
+    be of the following form:
+        postgres://user:pass@host/dbname/tablename
+
+
+
+    Example use:
+        That was executed and at least one exeperiment was finished.
+        jobman sqlschedule postgres://user:pass@host/dbname/tablename \\
+            mymodule.my_experiment \\
+            stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
+            stopper.n=10000 \\ # the argument "n" of nsteps is 10000
+            lr=0.03
+        Now this will create a view with a columns for each parameter and 
+        key=value set in the state by the jobs.
+        jobman sqlview postgres://user:pass@host/dbname/tablename viewname
+    """
+    try:
+        username, password, hostname, dbname, tablename \
+            = sql.parse_dbstring(dbdescr)
+    except:
+        raise UsageError('Wrong syntax for dbdescr')
+
+    db = sql.postgres_serial(
+        user = username,
+        password = password,
+        host = hostname,
+        database = dbname,
+        table_prefix = tablename)
+
+    if options.drop:
+        db.dropView(viewname)
+    else:
+        db.createView(viewname)
+
+runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)

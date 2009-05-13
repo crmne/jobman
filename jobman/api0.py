@@ -530,6 +530,20 @@ class DbHandle (object):
 
         return MappedView
 
+    def dropView(h_self, viewname):
+
+        s = h_self.session()
+        kv = h_self._KeyVal
+        d = h_self._Dict
+
+        drop_view_sql = 'DROP VIEW %s'%(viewname)
+        print 'Deleting sql view with command:\n', drop_view_sql
+
+        # Execution
+        h_self._engine.execute(drop_view_sql);
+
+        s.commit()
+        s.close()
 
     def session(h_self):
         return h_self._session_fn()
