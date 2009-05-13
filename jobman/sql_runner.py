@@ -213,7 +213,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     state = parse(*strings)
     resolve(experiment) # we try to load the function associated to the experiment
     state['jobman.experiment'] = experiment
-    sql.add_experiments_to_db([state], db, verbose = 1, add_dups = options.force)
+    sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
 
 runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
 
@@ -259,7 +259,7 @@ def runner_sqlschedule_filemerge(options, dbdescr, experiment, mainfile, *other_
 
     resolve(experiment) # we try to load the function associated to the experiment
     state['jobman.experiment'] = experiment
-    sql.add_experiments_to_db([state], db, verbose = 1, add_dups = options.force)
+    sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
 
 runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner_sqlschedule_filemerge)
 
