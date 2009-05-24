@@ -460,6 +460,9 @@ class DbHandle (object):
         kv = h_self._KeyVal
         d = h_self._Dict
 
+        # If view already exists, drop it
+        drop_view_sql = 'DROP VIEW IF EXISTS %s' % viewname
+
         # Get column names
         name_query = s.query(kv.name, kv.type).distinct()
 
@@ -516,6 +519,7 @@ class DbHandle (object):
         print 'Creating sql view with command:\n', create_view_sql
 
         # Execution
+        h_self._engine.execute(drop_view_sql);
         h_self._engine.execute(create_view_sql);
 
         s.commit()
