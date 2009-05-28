@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import os
 import re
 import sql
@@ -143,6 +144,30 @@ def parse(*strings):
             v = convert(v)
         d[k] = v
     return d
+
+_comment_pattern = re.compile('#.*')
+def parse_files(*files):
+    state = {}
+    def process(file, cwd = None, prefix = None):
+        if '=' in file or '::' in file:
+            d = parse(file)
+            if prefix:
+                d = dict(('%s.%s' % (prefix, k), v) for k, v in d.iteritems())
+            state.update(d)
+        elif '<-' in file:
+            next_prefix, file = map(str.strip, file.split('<-', 1))
+            process(file, cwd, '%s.%s' % (prefix, next_prefix) if prefix else next_prefix)
+        else:
+            if cwd:
+                file = os.path.realpath(os.path.join(cwd, file))
+            with open(file) as f:
+                lines = [_comment_pattern.sub('', x) for x in map(str.strip, f.readlines())]
+                for line in lines:
+                    if line:
+                        process(line, os.path.split(file)[0], prefix)
+    for file in files:
+        process(file)
+    return state
 
 def format_d(d, sep = '\n', space = True):
     d = flatten(d)
