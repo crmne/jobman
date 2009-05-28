@@ -1,11 +1,12 @@
 import os
 import re
 import sql
+import copy
 
 ################################################################################
 ### misc
 ################################################################################
-import copy
+
 class DD(dict):
     def __getattr__(self, attr):
         if attr == '__getstate__':
@@ -33,7 +34,6 @@ def defaults_merge(d, defaults):
             defaults_merge(d.setdefault(k, DD()), v)
         else:
             d.setdefault(k, v)
-
 
 ################################################################################
 ### resolve
@@ -75,7 +75,7 @@ def flatten(obj):
     """nested dictionary -> flat dictionary with '.' notation """
     d = {}
     def helper(d, prefix, obj):
-        if isinstance(obj, (str, int, float, list, tuple)):
+        if isinstance(obj, (str, int, float, list, tuple)) or obj in (True, False, None):
             d[prefix] = obj #convert(obj)
         else:
             if isinstance(obj, dict):
@@ -135,12 +135,12 @@ def parse(*strings):
         s2 = re.split(' *:: *', string, 1)
         if len(s1) == 1 and len(s2) == 1:
             raise UsageError('Expected a keyword argument in place of "%s"' % s1[0])
-        elif len(s1) == 2:
-            k, v = s1
-            v = convert(v)
         elif len(s2) == 2:
             k, v = s2
             k += '.__builder__'
+        elif len(s1) == 2:
+            k, v = s1
+            v = convert(v)
         d[k] = v
     return d
 

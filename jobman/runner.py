@@ -150,7 +150,9 @@ parser_filemerge.add_option('-w', '--workdir', action = 'store', dest = 'workdir
 parser_filemerge.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
                           help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
 
-def runner_filemerge(options, experiment, mainfile, *other_files):
+_comment_pattern = re.compile('#.*')
+
+def runner_filemerge(options, experiment, *files):
     """
     Start an experiment with parameters given in files.
 
@@ -181,14 +183,30 @@ def runner_filemerge(options, experiment, mainfile, *other_files):
     you can use the jobman.experiments.example1 as a working 
     mymodule.my_experiment
     """
-    with open(mainfile) as f:
-        _state = parse(*map(str.strip, f.readlines()))
-    for file in other_files:
-        if '=' in file:
-            _state.update(parse(file))
+    #with open(mainfile) as f:
+    #    _state = parse(*map(str.strip, f.readlines()))
+
+    _state = DD()
+    def process(file, cwd = None, prefix = None):
+        if '=' in file or '::' in file:
+            d = parse(file)
+            if prefix:
+                d = dict(('%s.%s' % (prefix, k), v) for k, v in d.iteritems())
+            _state.update(d)
+        elif '<-' in file:
+            next_prefix, file = map(str.strip, file.split('<-', 1))
+            process(file, cwd, '%s.%s' % (prefix, next_prefix) if prefix else next_prefix)
         else:
+            if cwd:
+                file = os.path.realpath(os.path.join(cwd, file))
             with open(file) as f:
-                _state.update(parse(*map(str.strip, f.readlines())))
+                lines = [_comment_pattern.sub('', x) for x in map(str.strip, f.readlines())]
+                for line in lines:
+                    if line:
+                        process(line, os.path.split(file)[0], prefix)
+    for file in files:
+        process(file)
+
     state = expand(_state)
     state.setdefault('jobman', DD()).experiment = experiment
     experiment = resolve(experiment)
