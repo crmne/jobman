@@ -486,6 +486,8 @@ class DbHandle (object):
             val_type_string = val_type_char + 'val'
 
             safe_name = name.replace('_','').replace('.','_')
+            if safe_name in safe_names:
+                safe_name += '_' + val_type_char
             safe_names.append(safe_name)
 
             cols.append(Column(safe_name, val_type))
