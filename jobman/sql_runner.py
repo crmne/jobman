@@ -220,6 +220,91 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
 
 runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
 
+################################################################################
+### sqlschedules
+################################################################################
+
+parser_sqlschedules = OptionParser(usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>')
+parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
+                              help = 'force adding the experiment to the database even if it is already there')
+def generate_combination(repl,sep=" "):
+    if repl == []:
+        return []
+    else:
+        res = []
+        x = repl[0]
+        res1 = generate_combination(repl[1:],sep)
+        for y in x:
+            if res1 == []:
+                res.append(y)
+            else:
+                res.extend([y+sep+r for r in res1])
+        return res
+
+def generate_commands(sp):
+### Find replacement lists in the arguments
+    repl = []
+    p = re.compile('\{\{\S*?\}\}')
+    for arg in sp:
+        reg = p.findall(arg)
+        if len(reg)==1:
+            reg = p.search(arg)
+            curargs = reg.group()[2:-2].split(",")
+            newcurargs = []
+            for curarg in curargs:
+                new = p.sub(curarg,arg)
+                newcurargs.append(new)
+            repl.append(newcurargs)
+        elif len(reg)>1:
+            s=p.split(arg)
+            tmp=[]
+            for i in range(len(reg)):
+                if s[i]:
+                    tmp.append(s[i])
+                tmp.append(reg[i][2:-2].split(","))
+            i+=1
+            if s[i]:
+                tmp.append(s[i])
+            repl.append(generate_combination(tmp,''))
+        else:
+            repl.append([arg])
+    argscombination = generate_combination(repl)
+    args_modif = generate_combination([x for x in repl if len(x)>1])
+
+    return (argscombination,args_modif)
+
+def runner_sqlschedules(options, dbdescr, experiment, *strings):
+    """
+    Schedule a job to run using the sql command.
+
+    Usage: sqlschedules <tablepath> <experiment> <parameters>
+
+    See the sqlschedule command. We accept the dbidispatch syntax.
+
+    """
+
+    try:
+        username, password, hostname, dbname, tablename \
+            = sql.parse_dbstring(dbdescr)
+    except:
+        raise UsageError('Wrong syntax for dbdescr')
+
+    db = sql.postgres_serial(
+        user = username,
+        password = password,
+        host = hostname,
+        database = dbname,
+        table_prefix = tablename)
+
+    resolve(experiment) # we try to load the function associated to the experiment
+
+    (commands,choise_args)=generate_commands(strings)
+    for cmd in commands:
+        state = parse(cmd)
+        state['jobman.experiment'] = experiment
+        sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
+
+runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
 ################################################################################
 ### sqlschedule_filemerge
