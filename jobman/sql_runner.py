@@ -229,7 +229,7 @@ parser_sqlschedule_filemerge = OptionParser(usage = '%prog sqlschedule_filemerge
 parser_sqlschedule_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                                         help = 'force adding the experiment to the database even if it is already there')
 
-def runner_sqlschedule_filemerge(options, dbdescr, experiment, mainfile, *other_files):
+def runner_sqlschedule_filemerge(options, dbdescr, experiment, *files):
     """
     Schedule a job to run using the sql command using parameter files.
 
@@ -250,14 +250,17 @@ def runner_sqlschedule_filemerge(options, dbdescr, experiment, mainfile, *other_
         database = dbname,
         table_prefix = tablename)
 
-    with open(mainfile) as f:
-        _state = parse(*map(str.strip, f.readlines()))
-    for file in other_files:
-        if '=' in file:
-            _state.update(parse(file))
-        else:
-            with open(file) as f:
-                _state.update(parse(*map(str.strip, f.readlines())))
+    _state = parse_files(*files)
+
+#     with open(mainfile) as f:
+#         _state = parse(*map(str.strip, f.readlines()))
+#     for file in other_files:
+#         if '=' in file:
+#             _state.update(parse(file))
+#         else:
+#             with open(file) as f:
+#                 _state.update(parse(*map(str.strip, f.readlines())))
+
     state = _state
 
     resolve(experiment) # we try to load the function associated to the experiment
