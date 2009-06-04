@@ -227,6 +227,10 @@ runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
 parser_sqlschedules = OptionParser(usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>')
 parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                               help = 'force adding the experiment to the database even if it is already there')
+parser_sqlschedules.add_option('-r', '--repeat',
+                               dest = 'repeat', default = 1, type='int',
+                               help = 'repeat each jobs N times')
+
 def generate_combination(repl,sep=" "):
     if repl == []:
         return []
@@ -306,10 +310,23 @@ generate the cross-product of possible value between the segment.
     resolve(experiment) # we try to load the function associated to the experiment
 
     (commands,choise_args)=generate_commands(strings)
-    for cmd in commands:
-        state = parse(cmd)
-        state['jobman.experiment'] = experiment
-        sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
+    if options.force:
+        for cmd in commands:
+            state = parse(cmd)
+            state['jobman.experiment'] = experiment
+            sql.add_experiments_to_db([state]*(options.repeat), 
+                                      db, verbose = 1, force_dup = True)
+    else:
+        #if the first insert fail, we won't force the other as the force option was not gived.
+        for cmd in commands:
+            state = parse(cmd)
+            state['jobman.experiment'] = experiment
+            ret = sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
+            if ret[0][0]:
+                sql.add_experiments_to_db([state]*(options.repeat-1), db, 
+                                          verbose = 1, force_dup = True)
+            else:
+                print "The last cmd failed to insert, we won't repeat it. use --force to force the duplicate of job in the db."
 
 runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
@@ -416,7 +433,8 @@ def runner_sql(options, dbdescr, exproot):
         while n != 0:
             workdir = tempfile.mkdtemp()
             #print 'wdir', workdir
-            channel = DBRSyncChannel(username, password, hostname, dbname, tablename,
+            channel = DBRSyncChannel(username, password, hostname, dbname,
+                                     tablename,
                                      workdir,
                                      exproot,
                                      redirect_stdout = True,
