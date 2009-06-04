@@ -308,6 +308,7 @@ def add_experiments_to_db(jobs, db, verbose=0, force_dup=False, type_check=None,
             if verbose:
                 print 'SKIPPING', job
             rval.append((False, job))
+    return rval
 
 
 def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
