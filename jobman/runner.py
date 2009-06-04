@@ -44,7 +44,7 @@ def run(runner, arguments):
 def run_cmdline():
     try:
         if len(sys.argv) <= 1:
-            raise UsageError('Usage: "%s <run_type> [<arguments>*]" or "%s help" for help' % (sys.argv[0],sys.argv[0]))
+            raise UsageError('Usage: "%s <command> [<arguments>*]" \nor "%s help" for help' % (sys.argv[0],sys.argv[0]))
         cmd = None
         args = []
         for arg in sys.argv[1:]:

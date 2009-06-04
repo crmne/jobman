@@ -275,11 +275,18 @@ def generate_commands(sp):
 
 def runner_sqlschedules(options, dbdescr, experiment, *strings):
     """
-    Schedule a job to run using the sql command.
+    Schedule multiple jobs from the command line to run using the sql command.
 
     Usage: sqlschedules <tablepath> <experiment> <parameters>
 
-    See the sqlschedule command. We accept the dbidispatch syntax.
+    See the sqlschedule command for <tablepath> <experiment>
+    We accept the dbidispatch syntax:
+    where <parameters> is interpreted as follows:
+The parameters may contain one or many segments of the form {{a,b,c,d}},
+which generate multiple jobs to execute. Each segement will be replaced
+by one value in the segment separated by comma. The first will have the
+a value, the second the b value, etc. If their is many segment, it will
+generate the cross-product of possible value between the segment.
 
     """
 
@@ -368,7 +375,7 @@ def runner_sql(options, dbdescr, exproot):
     """
     Run jobs from a sql table.
 
-    Usage: sql <tablepath> <exproot>
+    Usage: sql [options] <tablepath> <exproot>
 
     The jobs should be scheduled first with the sqlschedule command.
 
