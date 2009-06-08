@@ -6,13 +6,12 @@ import inspect
 import shutil
 import optparse
 from optparse import OptionParser
-import random
-import time
 
 from tools import *
 from channel import StandardChannel
 
 import parse
+import workdirgen
 
 ################################################################################
 ### Running
@@ -93,7 +92,7 @@ parser_cmdline.add_option('-2', '--sigint', action = 'store_true', dest = 'allow
                           help = 'allow sigint (CTRL-C) to interrupt a process')
 parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                           help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
-parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workdir_gen', default = None,
+parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workdir_gen', default = 'date',
                           help = 'function serving to generate the relative path of the workdir')
 
 def runner_cmdline(options, experiment, *strings):
@@ -125,19 +124,11 @@ def runner_cmdline(options, experiment, *strings):
         raise UsageError('Please use only one of: --workdir, --dry-run.')
     if options.workdir:
         workdir = options.workdir
-    elif options.workdir_gen:
-        workdir_gen = resolve(options.workdir_gen)
-        workdir = workdir_gen(state)
     elif options.dry_run:
         workdir = tempfile.mkdtemp()
     else:
-        t = time.time()
-        year, month, day, hour, minute, second, wday, yday, isdst = time.localtime()
-        workdir = "jobman_%04i%02i%02i_%02i%02i%02i_%04i%04i" % (year, month, day,
-                                                                 hour, minute, second,
-                                                                 (t-int(t)) * 10000, random.randint(0, 10000))
-        #old default - it sucks
-        #workdir = format_d(state, sep=',', space = False)
+        workdir_gen = getattr(workdirgen, options.workdir_gen, None) or resolve(options.workdir_gen)
+        workdir = workdir_gen(state)
     channel = StandardChannel(workdir,
                               experiment, state,
                               redirect_stdout = options.redirect or options.redirect_stdout,
