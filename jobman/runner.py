@@ -73,7 +73,7 @@ runner_registry = dict()
 ### cmdline
 ################################################################################
 
-parser_cmdline = OptionParser(usage = '%prog cmdline [options] <experiment> <parameters>')
+parser_cmdline = OptionParser(usage = '%prog cmdline [options] <experiment> <parameters>', add_help_option=False)
 parser_cmdline.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                           help = 'force running the experiment even if it is already running or completed')
 parser_cmdline.add_option('--redirect-stdout', action = 'store_true', dest = 'redirect_stdout', default = False,
@@ -136,7 +136,7 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 ### filemerge
 ################################################################################
 
-parser_filemerge = OptionParser(usage = '%prog filemerge [options] <experiment> <file> <file2> ...')
+parser_filemerge = OptionParser(usage = '%prog filemerge [options] <experiment> <file> <file2> ...', add_help_option=False)
 parser_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                           help = 'force running the experiment even if it is already running or completed')
 parser_filemerge.add_option('--redirect-stdout', action = 'store_true', dest = 'redirect_stdout', default = False,
@@ -379,7 +379,9 @@ def runner_help(options, topic = None):
     else:
         helptext = runner_registry.get(topic, None)[1]
     print format_help(helptext)
-
+    if runner_registry.get(topic, None)[0]:
+        runner_registry.get(topic, None)[0].print_help()
+    
 runner_registry['help'] = (None, runner_help)
 
 

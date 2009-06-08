@@ -162,7 +162,9 @@ class DBRSyncChannel(RSyncChannel):
 ### sqlschedule
 ################################################################################
 
-parser_sqlschedule = OptionParser(usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>')
+parser_sqlschedule = OptionParser(
+    usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>',
+    add_help_option=False)
 parser_sqlschedule.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                               help = 'force adding the experiment to the database even if it is already there')
 
@@ -224,7 +226,9 @@ runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
 ### sqlschedules
 ################################################################################
 
-parser_sqlschedules = OptionParser(usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>')
+parser_sqlschedules = OptionParser(
+    usage = '%prog sqlschedule [options] <tablepath> <experiment> <parameters>',
+    add_help_option=False)
 parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                               help = 'force adding the experiment to the database even if it is already there')
 parser_sqlschedules.add_option('-r', '--repeat',
@@ -334,7 +338,9 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 ### sqlschedule_filemerge
 ################################################################################
 
-parser_sqlschedule_filemerge = OptionParser(usage = '%prog sqlschedule_filemerge [options] <tablepath> <experiment> <parameters|files>')
+parser_sqlschedule_filemerge = OptionParser(
+    usage = '%prog sqlschedule_filemerge [options] <tablepath> <experiment> <parameters|files>',
+    add_help_option=False)
 parser_sqlschedule_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                                         help = 'force adding the experiment to the database even if it is already there')
 
@@ -383,7 +389,8 @@ runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner
 ### sql
 ################################################################################
 
-parser_sql = OptionParser(usage = '%prog sql [options] <tablepath> <exproot>')
+parser_sql = OptionParser(usage = '%prog sql [options] <tablepath> <exproot>',
+                          add_help_option=False)
 parser_sql.add_option('-n', dest = 'n', type = 'int', default = 1,
                       help = 'Run N experiments sequentially (default 1) '
                       '(if N is <= 0, runs as many experiments as possible).')
@@ -449,7 +456,8 @@ def runner_sql(options, dbdescr, exproot):
 
 runner_registry['sql'] = (parser_sql, runner_sql)
 
-parser_sqlview = OptionParser(usage = '%prog sqlview <tablepath> <viewname>')
+parser_sqlview = OptionParser(usage = '%prog sqlview <tablepath> <viewname>',
+                              add_help_option=False)
 parser_sqlview.add_option('-d', '--drop',action="store_true", dest="drop",
                           help = 'If true, will drop the view. (default false)')
 
