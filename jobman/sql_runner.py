@@ -167,6 +167,8 @@ parser_sqlschedule = OptionParser(
     add_help_option=False)
 parser_sqlschedule.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                               help = 'force adding the experiment to the database even if it is already there')
+parser_sqlschedule.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+                              help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
 def runner_sqlschedule(options, dbdescr, experiment, *strings):
     """
@@ -215,7 +217,9 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
         database = dbname,
         table_prefix = tablename)
 
-    state = parse(*strings)
+    parser = reval(options.parser)
+
+    state = parser(*strings)
     resolve(experiment) # we try to load the function associated to the experiment
     state['jobman.experiment'] = experiment
     sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
@@ -234,19 +238,21 @@ parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'f
 parser_sqlschedules.add_option('-r', '--repeat',
                                dest = 'repeat', default = 1, type='int',
                                help = 'repeat each jobs N times')
+parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+                               help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
-def generate_combination(repl,sep=" "):
+def generate_combination(repl):
     if repl == []:
         return []
     else:
         res = []
         x = repl[0]
-        res1 = generate_combination(repl[1:],sep)
+        res1 = generate_combination(repl[1:])
         for y in x:
             if res1 == []:
-                res.append(y)
+                res.append([y])
             else:
-                res.extend([y+sep+r for r in res1])
+                res.extend([[y]+r for r in res1])
         return res
 
 def generate_commands(sp):
@@ -290,12 +296,13 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
     See the sqlschedule command for <tablepath> <experiment>
     We accept the dbidispatch syntax:
     where <parameters> is interpreted as follows:
-The parameters may contain one or many segments of the form {{a,b,c,d}},
-which generate multiple jobs to execute. Each segement will be replaced
-by one value in the segment separated by comma. The first will have the
-a value, the second the b value, etc. If their is many segment, it will
-generate the cross-product of possible value between the segment.
 
+      The parameters may contain one or many segments of the form
+      {{a,b,c,d}}, which generate multiple jobs to execute. Each
+      segement will be replaced by one value in the segment separated
+      by comma. The first will have the a value, the second the b
+      value, etc. If their is many segment, it will generate the
+      cross-product of possible value between the segment.
     """
 
     try:
@@ -304,6 +311,8 @@ generate the cross-product of possible value between the segment.
     except:
         raise UsageError('Wrong syntax for dbdescr')
 
+    parser = reval(options.parser)
+
     db = sql.postgres_serial(
         user = username,
         password = password,
@@ -311,19 +320,21 @@ generate the cross-product of possible value between the segment.
         database = dbname,
         table_prefix = tablename)
 
-    resolve(experiment) # we try to load the function associated to the experiment
+    ### resolve(experiment) # we try to load the function associated to the experiment
 
     (commands,choise_args)=generate_commands(strings)
+    print commands, choise_args
+
     if options.force:
         for cmd in commands:
-            state = parse(cmd)
+            state = parser(*cmd)
             state['jobman.experiment'] = experiment
             sql.add_experiments_to_db([state]*(options.repeat), 
                                       db, verbose = 1, force_dup = True)
     else:
         #if the first insert fail, we won't force the other as the force option was not gived.
         for cmd in commands:
-            state = parse(cmd)
+            state = parser(*cmd)
             state['jobman.experiment'] = experiment
             ret = sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
             if ret[0][0]:
@@ -334,55 +345,55 @@ generate the cross-product of possible value between the segment.
 
 runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
-################################################################################
-### sqlschedule_filemerge
-################################################################################
+# ################################################################################
+# ### sqlschedule_filemerge
+# ################################################################################
 
-parser_sqlschedule_filemerge = OptionParser(
-    usage = '%prog sqlschedule_filemerge [options] <tablepath> <experiment> <parameters|files>',
-    add_help_option=False)
-parser_sqlschedule_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
-                                        help = 'force adding the experiment to the database even if it is already there')
+# parser_sqlschedule_filemerge = OptionParser(
+#     usage = '%prog sqlschedule_filemerge [options] <tablepath> <experiment> <parameters|files>',
+#     add_help_option=False)
+# parser_sqlschedule_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
+#                                         help = 'force adding the experiment to the database even if it is already there')
 
-def runner_sqlschedule_filemerge(options, dbdescr, experiment, *files):
-    """
-    Schedule a job to run using the sql command using parameter files.
+# def runner_sqlschedule_filemerge(options, dbdescr, experiment, *files):
+#     """
+#     Schedule a job to run using the sql command using parameter files.
 
-    This command is to sqlschedule what the filemerge command is to
-    cmdline.
-    """
+#     This command is to sqlschedule what the filemerge command is to
+#     cmdline.
+#     """
 
-    try:
-        username, password, hostname, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+#     try:
+#         username, password, hostname, dbname, tablename \
+#             = sql.parse_dbstring(dbdescr)
+#     except:
+#         raise UsageError('Wrong syntax for dbdescr')
 
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        database = dbname,
-        table_prefix = tablename)
+#     db = sql.postgres_serial(
+#         user = username,
+#         password = password,
+#         host = hostname,
+#         database = dbname,
+#         table_prefix = tablename)
 
-    _state = parse_files(*files)
+#     _state = parse_files(*files)
 
-#     with open(mainfile) as f:
-#         _state = parse(*map(str.strip, f.readlines()))
-#     for file in other_files:
-#         if '=' in file:
-#             _state.update(parse(file))
-#         else:
-#             with open(file) as f:
-#                 _state.update(parse(*map(str.strip, f.readlines())))
+# #     with open(mainfile) as f:
+# #         _state = parse(*map(str.strip, f.readlines()))
+# #     for file in other_files:
+# #         if '=' in file:
+# #             _state.update(parse(file))
+# #         else:
+# #             with open(file) as f:
+# #                 _state.update(parse(*map(str.strip, f.readlines())))
 
-    state = _state
+#     state = _state
 
-    resolve(experiment) # we try to load the function associated to the experiment
-    state['jobman.experiment'] = experiment
-    sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
+#     resolve(experiment) # we try to load the function associated to the experiment
+#     state['jobman.experiment'] = experiment
+#     sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
 
-runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner_sqlschedule_filemerge)
+# runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner_sqlschedule_filemerge)
 
 
 ################################################################################
@@ -461,7 +472,7 @@ parser_sqlview = OptionParser(usage = '%prog sqlview <tablepath> <viewname>',
 parser_sqlview.add_option('-d', '--drop',action="store_true", dest="drop",
                           help = 'If true, will drop the view. (default false)')
 
-def runner_sqlview(options, dbdescr, viewname, *strings):
+def runner_sqlview(options, dbdescr, viewname):
     """
     Create/drop a view of the scheduled experiments.
 

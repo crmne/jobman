@@ -1,4 +1,5 @@
 from __future__ import with_statement
+import sys
 import os
 import re
 import sql
@@ -63,14 +64,39 @@ def resolve(name, try_import=True):
     return builder
 
 ################################################################################
-### dictionary
+### reval
 ################################################################################
 
-def convert(obj):
-    try:
-        return eval(obj, {}, {})
-    except (NameError, SyntaxError):
-        return obj
+_reval_resolve_pattern = re.compile('@([a-zA-Z0-9_\\.]+)')
+_reval_varfetch_pattern = re.compile('(?:^|[^%])%([a-zA-Z0-9_]+)')
+_reval_vareval_pattern1 = re.compile('!!([a-zA-Z0-9_]+)')
+_reval_vareval_pattern2 = re.compile('!([a-zA-Z0-9_]+)')
+def _reval(s, depth, d):
+    orig_s = s
+    s = _reval_resolve_pattern.sub('resolve("\\1")', s)
+    s = _reval_vareval_pattern1.sub('eval(str(%%\\1))', s)
+    s = _reval_vareval_pattern2.sub('eval(str(%\\1))', s)
+    required = set(_reval_varfetch_pattern.findall(s))
+    s = s.replace('%%', 'state.')
+    s = s.replace('%', '__auto_')
+
+    newvars = dict(resolve = resolve)
+    for k, v in d.iteritems():
+        newvars['__auto_%s' % k] = v
+        if k not in required:
+            raise Exception('There is no %s variable to substitute in %s' % (k, orig_s))
+        required.remove(k)
+    if required:
+        raise Exception('The variables %s are missing in the pattern %s' % (list(sorted(required)), orig_s))
+    caller = sys._getframe(depth + 1)
+    return eval(s, caller.f_globals, dict(caller.f_locals, **newvars))
+
+def reval(s, **d):
+    return _reval(s, 1, d)
+
+################################################################################
+### dictionary
+################################################################################
 
 def flatten(obj):
     """nested dictionary -> flat dictionary with '.' notation """
@@ -118,6 +144,24 @@ def realize(d):
 def make(d):
     return realize(expand(d))
 
+
+
+def realize2(d, depth):
+    depth += 1 # this accounts for this frame
+    if not isinstance(d, dict):
+        return d
+    # note: we need to add 1 to depth because the call is in a generator expression
+    d = dict((k, realize2(v, depth + 1)) for k, v in d.iteritems())
+    if '__builder__' in d:
+        return _reval(d.pop('__builder__'), depth, d)
+    return d
+
+def _make2(d, depth):
+    return realize2(expand(d), depth + 1)
+
+def make2(d, **keys):
+    return _make2(dict(d, **keys), 1)
+
 ################################################################################
 ### errors
 ################################################################################
@@ -126,48 +170,8 @@ class UsageError(Exception):
     pass
 
 ################################################################################
-### parsing and formatting
+### formatting
 ################################################################################
-
-def parse(*strings):
-    d = {}
-    for string in strings:
-        s1 = re.split(' *= *', string, 1)
-        s2 = re.split(' *:: *', string, 1)
-        if len(s1) == 1 and len(s2) == 1:
-            raise UsageError('Expected a keyword argument in place of "%s"' % s1[0])
-        elif len(s2) == 2:
-            k, v = s2
-            k += '.__builder__'
-        elif len(s1) == 2:
-            k, v = s1
-            v = convert(v)
-        d[k] = v
-    return d
-
-_comment_pattern = re.compile('#.*')
-def parse_files(*files):
-    state = {}
-    def process(file, cwd = None, prefix = None):
-        if '=' in file or '::' in file:
-            d = parse(file)
-            if prefix:
-                d = dict(('%s.%s' % (prefix, k), v) for k, v in d.iteritems())
-            state.update(d)
-        elif '<-' in file:
-            next_prefix, file = map(str.strip, file.split('<-', 1))
-            process(file, cwd, '%s.%s' % (prefix, next_prefix) if prefix else next_prefix)
-        else:
-            if cwd:
-                file = os.path.realpath(os.path.join(cwd, file))
-            with open(file) as f:
-                lines = [_comment_pattern.sub('', x) for x in map(str.strip, f.readlines())]
-                for line in lines:
-                    if line:
-                        process(line, os.path.split(file)[0], prefix)
-    for file in files:
-        process(file)
-    return state
 
 def format_d(d, sep = '\n', space = True):
     d = flatten(d)
@@ -202,7 +206,7 @@ def format_help(topic):
 ### Helper functions operating on experiment directories
 ################################################################################
 
-
+from jobman import parse
 def find_conf_files(cwd, fname='current.conf', recurse=True):
     """
     This generator will iterator from the given directory, and find all job
@@ -219,15 +223,16 @@ def find_conf_files(cwd, fname='current.conf', recurse=True):
         if os.path.isdir(e) and recurse:
             find_conf_files(e, fname)
                 
-        try:
-            e_config = open(os.path.join(e, fname),'r')
-        except:
-            e_config = None
+#         try:
+#             e_config = open(os.path.join(e, fname),'r')
+#         except:
+#             e_config = None
 
         if e_config:
-            data = e_config.read().split('\n') 
+            ## data = e_config.read().split('\n') 
             # trailing \n at end of file creates empty string
-            jobdd = DD(parse(*data[:-1]))
+            ## jobdd = DD(parse(*data[:-1]))
+            jobdd = DD(parse.filemerge(os.path.join(e, fname)))
 
             try:
                 jobid = int(jobid)

@@ -10,6 +10,7 @@ from optparse import OptionParser
 from tools import *
 from channel import StandardChannel
 
+import parse
 
 ################################################################################
 ### Running
@@ -87,7 +88,9 @@ parser_cmdline.add_option('-w', '--workdir', action = 'store', dest = 'workdir',
 parser_cmdline.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
                           help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
 parser_cmdline.add_option('-2', '--sigint', action = 'store_true', dest = 'allow_sigint', default = False,
-        help = 'allow sigint (CTRL-C) to interrupt a process')
+                          help = 'allow sigint (CTRL-C) to interrupt a process')
+parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+                          help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
 def runner_cmdline(options, experiment, *strings):
     """
@@ -108,7 +111,9 @@ def runner_cmdline(options, experiment, *strings):
         you can use the jobman.experiments.example1 as a working 
         mymodule.my_experiment
     """
-    state = expand(parse(*strings))
+    parser = reval(options.parser)
+    _state = parser(*strings)
+    state = expand(_state)
     state.setdefault('jobman', DD()).experiment = experiment
     experiment = resolve(experiment)
     if options.workdir and options.dry_run:
@@ -132,77 +137,77 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 
 
 
-################################################################################
-### filemerge
-################################################################################
+# ################################################################################
+# ### filemerge
+# ################################################################################
 
-parser_filemerge = OptionParser(usage = '%prog filemerge [options] <experiment> <file> <file2> ...', add_help_option=False)
-parser_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
-                          help = 'force running the experiment even if it is already running or completed')
-parser_filemerge.add_option('--redirect-stdout', action = 'store_true', dest = 'redirect_stdout', default = False,
-                          help = 'redirect stdout to the workdir/stdout file')
-parser_filemerge.add_option('--redirect-stderr', action = 'store_true', dest = 'redirect_stderr', default = False,
-                          help = 'redirect stderr to the workdir/stdout file')
-parser_filemerge.add_option('-r', '--redirect', action = 'store_true', dest = 'redirect', default = False,
-                          help = 'redirect stdout and stderr to the workdir/stdout and workdir/stderr files')
-parser_filemerge.add_option('-w', '--workdir', action = 'store', dest = 'workdir', default = None,
-                          help = 'the working directory in which to run the experiment')
-parser_filemerge.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
-                          help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
+# parser_filemerge = OptionParser(usage = '%prog filemerge [options] <experiment> <file> <file2> ...', add_help_option=False)
+# parser_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
+#                           help = 'force running the experiment even if it is already running or completed')
+# parser_filemerge.add_option('--redirect-stdout', action = 'store_true', dest = 'redirect_stdout', default = False,
+#                           help = 'redirect stdout to the workdir/stdout file')
+# parser_filemerge.add_option('--redirect-stderr', action = 'store_true', dest = 'redirect_stderr', default = False,
+#                           help = 'redirect stderr to the workdir/stdout file')
+# parser_filemerge.add_option('-r', '--redirect', action = 'store_true', dest = 'redirect', default = False,
+#                           help = 'redirect stdout and stderr to the workdir/stdout and workdir/stderr files')
+# parser_filemerge.add_option('-w', '--workdir', action = 'store', dest = 'workdir', default = None,
+#                           help = 'the working directory in which to run the experiment')
+# parser_filemerge.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
+#                           help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
 
-def runner_filemerge(options, experiment, *files):
-    """
-    Start an experiment with parameters given in files.
+# def runner_filemerge(options, experiment, *files):
+#     """
+#     Start an experiment with parameters given in files.
 
-    Usage: filemerge [options] <experiment> <file> <file2> ...
+#     Usage: filemerge [options] <experiment> <file> <file2> ...
 
-    Run an experiment with parameters provided in plain text files.
-    A single experiment will be run with the union of all the
-    parameters listed in the files.
+#     Run an experiment with parameters provided in plain text files.
+#     A single experiment will be run with the union of all the
+#     parameters listed in the files.
 
-    Example:
-    <in file blah1.txt>
-    text.first = "hello"
-    text.second = "world"
+#     Example:
+#     <in file blah1.txt>
+#     text.first = "hello"
+#     text.second = "world"
 
-    <in file blah2.txt>
-    number = 12
-    numbers.a = 55
-    numbers.b = 56
+#     <in file blah2.txt>
+#     number = 12
+#     numbers.a = 55
+#     numbers.b = 56
 
-    Given these files, the following command using filemerge:
-    $ jobman filemerge mymodule.my_experiment blah1.txt blah2.txt
+#     Given these files, the following command using filemerge:
+#     $ jobman filemerge mymodule.my_experiment blah1.txt blah2.txt
 
-    is equivalent to this one using cmdline:
-    $ jobman cmdline mymodule.my_experiment \\
-        text.first=hello text.second=world \\
-        number=12 numbers.a=55 numbers.b=56
+#     is equivalent to this one using cmdline:
+#     $ jobman cmdline mymodule.my_experiment \\
+#         text.first=hello text.second=world \\
+#         number=12 numbers.a=55 numbers.b=56
 
-    you can use the jobman.experiments.example1 as a working 
-    mymodule.my_experiment
-    """
+#     you can use the jobman.experiments.example1 as a working 
+#     mymodule.my_experiment
+#     """
 
-    _state = parse_files(*files)
-    state = expand(_state)
-    state.setdefault('jobman', DD()).experiment = experiment
-    experiment = resolve(experiment)
-    if options.workdir and options.dry_run:
-        raise UsageError('Please use only one of: --workdir, --dry-run.')
-    if options.workdir:
-        workdir = options.workdir
-    elif options.dry_run:
-        workdir = tempfile.mkdtemp()
-    else:
-        workdir = format_d(state, sep=',', space = False)
-    channel = StandardChannel(workdir,
-                              experiment, state,
-                              redirect_stdout = options.redirect or options.redirect_stdout,
-                              redirect_stderr = options.redirect or options.redirect_stderr)
-    channel.run(force = options.force)
-    if options.dry_run:
-        shutil.rmtree(workdir, ignore_errors=True)
+#     _state = parse_files(*files)
+#     state = expand(_state)
+#     state.setdefault('jobman', DD()).experiment = experiment
+#     experiment = resolve(experiment)
+#     if options.workdir and options.dry_run:
+#         raise UsageError('Please use only one of: --workdir, --dry-run.')
+#     if options.workdir:
+#         workdir = options.workdir
+#     elif options.dry_run:
+#         workdir = tempfile.mkdtemp()
+#     else:
+#         workdir = format_d(state, sep=',', space = False)
+#     channel = StandardChannel(workdir,
+#                               experiment, state,
+#                               redirect_stdout = options.redirect or options.redirect_stdout,
+#                               redirect_stderr = options.redirect or options.redirect_stderr)
+#     channel.run(force = options.force)
+#     if options.dry_run:
+#         shutil.rmtree(workdir, ignore_errors=True)
 
-runner_registry['filemerge'] = (parser_filemerge, runner_filemerge)
+# runner_registry['filemerge'] = (parser_filemerge, runner_filemerge)
 
 
 
@@ -329,6 +334,17 @@ def runner_help(options, topic = None):
 
           If the above experiment was called with the state produced by the
           parameters in the example, it would print 'hello blahblah there'.
+
+        path/to/file.conf
+
+          A file containing key=value and key::builder pairs, one on each line,
+          or relative paths to other configuration files to load.
+
+        NOTE: all of the above applies to the default command line arguments
+        parser, parse.filemerge. The option to put configuration files is not
+        available in the parse.standard parser and other parsers may add, change
+        or remove functionality. You can change the parser with the --parser
+        option if it is available.
         """
 
     elif topic == 'example':
@@ -379,8 +395,8 @@ def runner_help(options, topic = None):
     else:
         helptext = runner_registry.get(topic, None)[1]
     print format_help(helptext)
-    if runner_registry.get(topic, None)[0]:
-        runner_registry.get(topic, None)[0].print_help()
+    if runner_registry.get(topic, [None])[0]:
+        runner_registry.get(topic, [None])[0].print_help()
     
 runner_registry['help'] = (None, runner_help)
 
