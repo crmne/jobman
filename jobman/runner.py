@@ -6,6 +6,8 @@ import inspect
 import shutil
 import optparse
 from optparse import OptionParser
+import random
+import time
 
 from tools import *
 from channel import StandardChannel
@@ -89,8 +91,10 @@ parser_cmdline.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_
                           help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
 parser_cmdline.add_option('-2', '--sigint', action = 'store_true', dest = 'allow_sigint', default = False,
                           help = 'allow sigint (CTRL-C) to interrupt a process')
-parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                           help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
+parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workdir_gen', default = None,
+                          help = 'function serving to generate the relative path of the workdir')
 
 def runner_cmdline(options, experiment, *strings):
     """
@@ -111,19 +115,29 @@ def runner_cmdline(options, experiment, *strings):
         you can use the jobman.experiments.example1 as a working 
         mymodule.my_experiment
     """
-    parser = reval(options.parser)
+    parser = getattr(parse, options.parser, None) or resolve(options.parser)
     _state = parser(*strings)
     state = expand(_state)
     state.setdefault('jobman', DD()).experiment = experiment
+    state.jobman.time = time.ctime()
     experiment = resolve(experiment)
     if options.workdir and options.dry_run:
         raise UsageError('Please use only one of: --workdir, --dry-run.')
     if options.workdir:
         workdir = options.workdir
+    elif options.workdir_gen:
+        workdir_gen = resolve(options.workdir_gen)
+        workdir = workdir_gen(state)
     elif options.dry_run:
         workdir = tempfile.mkdtemp()
     else:
-        workdir = format_d(state, sep=',', space = False)
+        t = time.time()
+        year, month, day, hour, minute, second, wday, yday, isdst = time.localtime()
+        workdir = "jobman_%04i%02i%02i_%02i%02i%02i_%04i%04i" % (year, month, day,
+                                                                 hour, minute, second,
+                                                                 (t-int(t)) * 10000, random.randint(0, 10000))
+        #old default - it sucks
+        #workdir = format_d(state, sep=',', space = False)
     channel = StandardChannel(workdir,
                               experiment, state,
                               redirect_stdout = options.redirect or options.redirect_stdout,
@@ -340,11 +354,11 @@ def runner_help(options, topic = None):
           A file containing key=value and key::builder pairs, one on each line,
           or relative paths to other configuration files to load.
 
-        NOTE: all of the above applies to the default command line arguments
-        parser, parse.filemerge. The option to put configuration files is not
-        available in the parse.standard parser and other parsers may add, change
-        or remove functionality. You can change the parser with the --parser
-        option if it is available.
+        NOTE: all of the above applies to the default command line
+        arguments parser, filemerge. The option to put configuration
+        files is not available in the parse.standard parser and other
+        parsers may add, change or remove functionality. You can
+        change the parser with the --parser option if it is available.
         """
 
     elif topic == 'example':

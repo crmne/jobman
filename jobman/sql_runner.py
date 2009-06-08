@@ -11,6 +11,7 @@ from optparse import OptionParser
 from tools import *
 from runner import runner_registry
 from channel import StandardChannel, JobError
+import parse
 
 
 ################################################################################
@@ -217,7 +218,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
         database = dbname,
         table_prefix = tablename)
 
-    parser = reval(options.parser)
+    parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
     state = parser(*strings)
     resolve(experiment) # we try to load the function associated to the experiment
@@ -311,7 +312,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
     except:
         raise UsageError('Wrong syntax for dbdescr')
 
-    parser = reval(options.parser)
+    parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
     db = sql.postgres_serial(
         user = username,
