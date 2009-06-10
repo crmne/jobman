@@ -1,6 +1,7 @@
 from __future__ import with_statement
 
 import sys
+import time
 import tempfile
 import inspect
 import shutil
