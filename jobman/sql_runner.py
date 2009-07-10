@@ -168,7 +168,7 @@ parser_sqlschedule = OptionParser(
     add_help_option=False)
 parser_sqlschedule.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
                               help = 'force adding the experiment to the database even if it is already there')
-parser_sqlschedule.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+parser_sqlschedule.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                               help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
 def runner_sqlschedule(options, dbdescr, experiment, *strings):
