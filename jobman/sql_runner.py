@@ -73,7 +73,7 @@ class RSyncChannel(StandardChannel):
                 keep_trying = attempt < num_retries
                 # wait anywhere from 30s to [2,4,6] mins before retrying
                 if keep_trying: 
-                    r = random.randint(15,attempt*20)
+                    r = random.randint(30,attempt*120)
                     print >> os.sys.stderr, 'RSync Error at attempt %i/%i: sleeping %is' %(attempt,num_retries,r)
                     time.sleep(r)
 
