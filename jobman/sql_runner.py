@@ -6,6 +6,8 @@ import tempfile
 import shutil
 import socket
 import optparse
+import time
+import random
 from optparse import OptionParser
 
 from tools import *
@@ -40,7 +42,7 @@ class RSyncChannel(StandardChannel):
             self.host = ''
             self.remote_path = os.path.realpath(remote_path)
 
-    def rsync(self, direction):
+    def rsync(self, direction, num_retries=3):
         """The directory at which experiment-related files are stored.
         """
 
@@ -58,8 +60,24 @@ class RSyncChannel(StandardChannel):
         else:
             raise RSyncException('invalid direction', direction)
 
-        rsync_rval = os.system(rsync_cmd)
-        if rsync_rval != 0:
+        keep_trying = True
+        rsync_rval = 1 # some non-null value
+
+        # allow n-number of retries, with random hold-off between retries
+        attempt = 0
+        while rsync_rval!=0 and keep_trying:
+            rsync_rval = os.system(rsync_cmd)
+
+            if rsync_rval != 0:
+                attempt += 1
+                keep_trying = attempt < num_retries
+                # wait anywhere from 30s to [2,4,6] mins before retrying
+                if keep_trying: 
+                    r = random.randint(15,attempt*20)
+                    print >> os.sys.stderr, 'RSync Error at attempt %i/%i: sleeping %is' %(attempt,num_retries,r)
+                    time.sleep(r)
+
+        if rsync_rval!=0:
             raise RSyncException('rsync failure', (rsync_rval, rsync_cmd))
 
     def touch(self):
