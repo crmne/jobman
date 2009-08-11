@@ -11,7 +11,7 @@ from sqlalchemy.databases import postgres
 from sqlalchemy.engine.base import Connection
 
 from sqlalchemy.sql import operators, select
-from sqlalchemy.sql.expression import column, outerjoin
+from sqlalchemy.sql.expression import column, outerjoin, not_
 
 class Todo(Exception): """Replace this with some working code!"""
 
@@ -202,6 +202,9 @@ class DbHandle (object):
                     s.commit()
                     s.close()
 
+            def __iter__(d_self):
+                return iter(d_self.keys())
+
             def iteritems(d_self):
                 return d_self.items()
 
@@ -351,6 +354,16 @@ class DbHandle (object):
                 for key, val in dct.items():
                     rval = rval.filter_eq(key,val)
                 return rval
+
+            def filter_missing(q_self, kw):
+                """Return a Query object that restricts to dictionaries
+                NOT containing the given keyword"""
+                q = q_self._query
+                T = h_self._Dict
+
+                q = q.filter(not_(T._attrs.any(name=kw)))
+
+                return h_self._Query(q)
 
             def all(q_self):
                 """Return an iterator over all matching dictionaries.
