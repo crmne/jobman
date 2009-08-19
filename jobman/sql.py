@@ -311,10 +311,12 @@ def add_experiments_to_db(jobs, db, verbose=0, force_dup=False, type_check=None,
     return rval
 
 
-def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
+def duplicate_job(db, job_id, priority=1.0, delete_keys=[], *args, **kwargs):
     """
     In its simplest form, this function retrieves a specific job from the database, and
-    creates a duplicate in the DB, ready to be executed. 
+    creates a duplicate in the DB, ready to be executed.
+
+    :param delete_keys:
 
     :param kwargs: can be used to modify the top-level dictionary before it is 
                    reinserted in the DB.
@@ -323,7 +325,7 @@ def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
     """
 
     s = db.session()
-    
+
     jobdict = s.query(db._Dict).filter_by(id=job_id).all()
     if not jobdict:
         raise ValueError('Failed to retrieve job with ID%i' % job_id)
@@ -334,6 +336,11 @@ def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
     newjob.pop(HASH)
     newjob.pop(STATUS)
     newjob.pop(PRIORITY)
+
+    # These ones should be removed
+    for key in delete_keys:
+        if key in newjob:
+            newjob.pop(key)
 
     # modify job before reinserting (if need be)
     newjob.update(kwargs)
