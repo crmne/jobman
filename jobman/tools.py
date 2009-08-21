@@ -11,31 +11,36 @@ import copy
 
 class DD(dict):
     def __getattr__(self, attr):
-#         if attr == '__getstate__':
-#             return super(DD, self).__getstate__
-#         elif attr == '__slots__':
-#             return super(DD, self).__slots__
-        if attr.startswith('__'):
-            return super(DD, self).__getattr__(attr)
-        try:
-            return self[attr]
-        except KeyError:
-            raise AttributeError(attr)
+        if attr == '__getstate__':
+            return super(DD, self).__getstate__
+        elif attr == '__slots__':
+            return super(DD, self).__slots__
+        return self[attr]
+#         if attr.startswith('__'):
+#             return super(DD, self).__getattr__(attr)
+#         try:
+#             return self[attr]
+#         except KeyError:
+#             raise AttributeError(attr)
+
     def __setattr__(self, attr, value):
         # Safety check to ensure consistent behavior with __getattr__.
-#         assert attr not in ('__getstate__', '__slots__')
-        if attr.startswith('__'):
-            return super(DD, self).__setattr__(attr, value)
+        assert attr not in ('__getstate__', '__slots__')
+#         if attr.startswith('__'):
+#             return super(DD, self).__setattr__(attr, value)
         self[attr] = value
+
     def __str__(self):
         return 'DD%s' % dict(self)
+
     def __repr__(self):
         return str(self)
-#     def __deepcopy__(self, memo):
-#         z = DD()
-#         for k,kv in self.iteritems():
-#             z[k] = copy.deepcopy(kv, memo)
-#         return z
+
+    def __deepcopy__(self, memo):
+        z = DD()
+        for k,kv in self.iteritems():
+            z[k] = copy.deepcopy(kv, memo)
+        return z
 
 def defaults_merge(d, defaults):
     for k, v in defaults.iteritems():
