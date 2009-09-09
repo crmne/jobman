@@ -121,9 +121,9 @@ def insert(db, dbstring, argv, job_fn, job_dct_seq, exp_root, **kwargs):
         cmd = 'dbidispatch --repeat_jobs=%i %s' %(pos, argv[dbi_index+1])
         print 'TODO: run ', cmd, 'jobman sql', dbstring, exp_root
 
-def create_view(db, **kwargs):
+def create_view(db, tablename, **kwargs):
     """Create a view (WRITEME)"""
-    db.createView(kwargs['tablename'] + 'view')
+    db.createView(tablename + 'view')
 
 @mydriver_cmd
 def status(db, **kwargs):
