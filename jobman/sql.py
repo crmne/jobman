@@ -1,5 +1,5 @@
 
-import sys, os, copy, time
+import sys, os, copy, time, hashlib
 
 import numpy.random
 
@@ -146,6 +146,15 @@ def book_dct_non_postgres(db):
 ###########
 
 def parse_dbstring(dbstring):
+    """Unpacks a dbstring of the form postgres://username@hostname/dbname/tablename or postgres://username:password@hostname/dbname/tablename
+
+    :rtype: tuple of strings
+    :returns: username, password, hostname, dbname, tablename
+
+    :note: If the password is not given in the dbstring, this function attempts to retrieve it using
+    >>> password = get_password(hostname, dbname)
+
+    """
     postgres = 'postgres://'
     if not dbstring.startswith(postgres):
         raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
@@ -214,7 +223,15 @@ def db(dbstring):
 # Queue
 ###########
 
-def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0):
+def hash_state(state):
+    l = list((k,str(v)) for k,v in state.iteritems())
+    l.sort()
+    return hash(hashlib.sha224(repr(l)).hexdigest())
+
+def hash_state_old(state):
+    return hash(`state`)
+
+def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashalgo=hash_state):
     """Insert a new `job` dictionary into database `db`.
 
     :param force_dup: forces insertion even if an identical dictionary is already in the db
@@ -222,7 +239,7 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0):
     """
     # compute hash for the job, will be used to avoid duplicates
     job = copy.copy(jobdict)
-    jobhash = hash(`job`)
+    jobhash = hashalgo(job)
 
     if session is None:
         s = db.session()
