@@ -1,3 +1,4 @@
+""" WRITEME """
 from __future__ import with_statement
 
 import sql
@@ -28,6 +29,7 @@ class RSyncException(Exception):
     pass
 
 class RSyncChannel(StandardChannel):
+    """ WRITEME """
 
     def __init__(self, path, remote_path, experiment, state, redirect_stdout = False, redirect_stderr = False):
         super(RSyncChannel, self).__init__(path, experiment, state, redirect_stdout, redirect_stderr)
@@ -113,6 +115,7 @@ class RSyncChannel(StandardChannel):
 ################################################################################
 
 class DBRSyncChannel(RSyncChannel):
+    """ WRITEME """
 
     RESTART_PRIORITY = 2.0
 
