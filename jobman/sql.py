@@ -1,5 +1,5 @@
 
-import sys, os, copy, time
+import sys, os, copy, time, hashlib
 
 import numpy.random
 
@@ -223,7 +223,15 @@ def db(dbstring):
 # Queue
 ###########
 
-def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0):
+def hash_state(state):
+    l = list((k,str(v)) for k,v in state.iteritems())
+    l.sort()
+    return hash(hashlib.sha224(repr(l)).hexdigest())
+
+def hash_state_old(state):
+    return hash(`state`)
+
+def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashalgo=hash_state):
     """Insert a new `job` dictionary into database `db`.
 
     :param force_dup: forces insertion even if an identical dictionary is already in the db
@@ -231,7 +239,7 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0):
     """
     # compute hash for the job, will be used to avoid duplicates
     job = copy.copy(jobdict)
-    jobhash = hash(`job`)
+    jobhash = hashalgo(job)
 
     if session is None:
         s = db.session()
