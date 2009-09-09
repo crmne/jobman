@@ -146,6 +146,15 @@ def book_dct_non_postgres(db):
 ###########
 
 def parse_dbstring(dbstring):
+    """Unpacks a dbstring of the form postgres://username@hostname/dbname/tablename or postgres://username:password@hostname/dbname/tablename
+
+    :rtype: tuple of strings
+    :returns: username, password, hostname, dbname, tablename
+
+    :note: If the password is not given in the dbstring, this function attempts to retrieve it using
+    >>> password = get_password(hostname, dbname)
+
+    """
     postgres = 'postgres://'
     if not dbstring.startswith(postgres):
         raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
