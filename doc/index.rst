@@ -22,7 +22,11 @@ automatically.  This is provided as a natural way to save the results of the fun
 
 To run an experiment function, you must put that function in a module that can be 'import'ed.
 
+.. TODO: Other typical uses
 
+You can have a look at a typical use, involving the design of an
+``experiment`` function, insertion of jobs in a database, execution, and
+retrieval of results through the database in `addition_exp_sql`_.
 
 
 
