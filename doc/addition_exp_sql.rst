@@ -267,4 +267,42 @@ Querying the results
 ====================
 
 Once the first job has finished execution, new keys are added to its
-``state``. To account for them, you should recreate the view,
+``state``. To account for them, you should recreate the view, by running
+the code above (TODO: put reference).
+
+Three fields have been added: ``jobman_sql_hostname`` and
+``jobman_sql_hostworkdir``, which contain the hostname and temporary
+working directory the job has been executed on, and ``result``, as
+created by the experiment function (``addition_example``).
+
+We can then use SQL syntax to retrieve the results of finished jobs:
+
+.. code-block::
+
+    <database>=> SELECT id, jobman_status AS status, jobman_sql_priority AS priority, first, second, result FROM test_add_view WHERE jobman_status = 2;
+    id | status | priority | first | second | result 
+   ----+--------+----------+-------+--------+--------
+     1 |      2 |        1 |     0 |      1 |      1
+   (1 row)
+
+When several jobs are complete, you can filter and order the results:
+
+.. code-block::
+
+    <database>=> SELECT id, jobman_status AS status, jobman_sql_priority AS priority, first, second, result FROM test_add_view WHERE first > 4 AND second < 7 AND jobman_status = 2 ORDER BY result;
+
+     id | status | priority | first | second | result 
+    ----+--------+----------+-------+--------+--------
+     16 |      2 |        1 |     6 |      1 |      7
+     21 |      2 |        1 |     8 |      1 |      9
+     17 |      2 |        1 |     6 |      3 |      9
+     22 |      2 |        1 |     8 |      3 |     11
+     18 |      2 |        1 |     6 |      5 |     11
+     26 |      2 |        1 |    10 |      1 |     11
+     27 |      2 |        1 |    10 |      3 |     13
+     23 |      2 |        1 |     8 |      5 |     13
+     28 |      2 |        1 |    10 |      5 |     15
+    (9 rows)
+
+
+
