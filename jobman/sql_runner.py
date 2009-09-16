@@ -1,7 +1,10 @@
 """ WRITEME """
 from __future__ import with_statement
 
-import sql
+try:
+	import sql
+except:
+	pass
 import os
 import tempfile
 import shutil

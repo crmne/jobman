@@ -2,7 +2,10 @@ from __future__ import with_statement
 import sys
 import os
 import re
-import sql
+try:
+	import sql
+except:
+	pass
 import copy
 
 ################################################################################
