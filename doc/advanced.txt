@@ -1,65 +1,110 @@
 Advanced
 ========
 
+reval
+-----
+
+`reval` is an extension of Python's `eval` function which adds some
+useful syntax elements:
+
+
+- `@a.b.c` automatically imports the symbol `a.b.c`.
+- `%var` is subbed out for the variable of the same name given as a
+  keyword argument to `reval`.
+- `%%var` is evaluated as `state.var`
+
+For example:
+
+
+.. code-block:: python
+
+   from jobman import reval, DD
+   x = 12
+   state = DD(b = 3)
+   print reval("@numpy.add(%a, x) * %%b", a = 8)
+
+   
+Would print `60` and is equivalent to:
+
+
+.. code-block:: python
+
+   from jobman import reval
+   import numpy.add
+   x = 12
+   state = DD(b = 3)
+   a = 8
+   print numpy.add(a, x) * state.b
+
+
+
 make2
 -----
 
-`make2` is an alternative to jobman's `make` command which allows for a more
-advanced syntax, when passing parameters to jobman. New features include:
+`make2` is an alternative to jobman's `make` command which allows for
+a more advanced syntax, when passing parameters to jobman. The main
+difference is that the expression following the `::` syntax used for
+builders is evaluated using `reval`. As it turns out, `make2(x)` is
+roughly equivalent to `reval(x.__builder__, **x)` (though, unlike that
+simple expression, `make2` is recursive).
 
-- creation of variables using the `%` symbol. Builders now accept a new syntax
-  to account for builders.
-- dynamically resolving symbols preceded with the '@' symbol. As with jobman's
-  `resolve` function, this will automatically (and recursively) import all the
-  necessary modules.
-- automatic evaluation of expressions following the `::` symbol (syntax used for
-  builders)
+An example of use of `make2` in an experiment function is contained in
+the file `jobman/examples/def_make2.py`. We reproduce its contents for
+convenience:
 
-Below we show an example of all these new features in action. The code is
-available under `Jobman/jobman/examples/def_make2.py`.
 
 .. code-block:: python
 
     from jobman import make2
-            
-    class obja():
-        def __init__(self, param1=1, param2=None, param3=3):
-
-            self.param1 = param1
-            if param2: self.param2 = param2(param3)
-
-            print 'obja.param1 = ', self.param1
-            print 'obja.param2 = ', self.param2
-            print 'type(obja.param2) = ', type(self.param2)
+    
+    class Plumber(object):
+       def __init__(self, itsa, me, mario):
+            self.statement = itsa + me + mario
 
     def experiment(state, channel):
-
-        obj = make2(state.obja)
+        exclamation_mark = '!'
+        obj = make2(state.plumber)
+        print obj.statement
         return channel.COMPLETE
 
-Lets run the above program with the command:
 
+Let us fill in a file called `test.conf` with the following:
+      
 .. code-block:: bash
 
-    jobman cmdline jobman.examples.def_make2.experiment test.conf
+   plumber :: @jobman.examples.def_make2.Plumber(%itsa, %%me, %luigi)
+   plumber.itsa = "it's a "
+   plumber.luigi :: "luigi" + exclamation_mark
+   me = "me, "
 
-with test.conf containing the following:
 
-.. code-block:: bash
-    
-    obja::@jobman.examples.def_make2.obja(param1=%param1, param2=%param2, param3=%param3)
-    obja.param1::(3+5)
-    obja.param2::@numpy.array
-    obja.param3='[1,2,3]'
-
-This outputs the following:
+We can then test out the feature:
 
 .. code-block:: bash
 
     $ jobman cmdline jobman.examples.def_make2.experiment test.conf
-    obja.param1 =  8
-    obja.param2 =  [1,2,3]
-    type(obja.param2) =  <type 'numpy.ndarray'>
+    It's a me, luigi!
+
+
+`%itsa` and `%luigi` take the values of `make2(state.plumber.itsa)`
+and `make2(state.plumber.luigi)`, respectively (note that
+`plumber.luigi` has a builder (it uses ::), yet `plumber.itsa` has not
+(it uses =); `make2` on an object with no builder returns the object
+itself). `%%me` takes the value of `state.me` - `make2` is not
+implicitly applied to it, so it should normally not have a
+builder. Furthermore, `%%me` only works if there is a variable named
+`state` (unlike the notation with a single `%` which will work
+regardless of how the state variable is named). These kludges might be
+worked out eventually. The `exclamation_mark` variable is evaluated in
+the scope where `make2` is called.
+
+Note that due to `Plumber` and `experiment` being in the same scope,
+in this example, you may simply use `Plumber` instead of
+`@jobman.examples.def_make2.Plumber` and it will still work as
+expected. However, only the longer notation will work in all
+experiments without requiring them to contain an explicit definition
+or import of the `Plumber` symbol.
+
 
 
 Channel Parameter
