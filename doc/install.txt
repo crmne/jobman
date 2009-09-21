@@ -1,0 +1,62 @@
+Installing Jobman
+=================
+
+To install Jobman from within the LISA laboratory:
+
+.. code-block:: bash
+
+    hg clone ssh://projects@lgcm.iro.umontreal.ca/hg/Jobman
+
+To install Jobman from the outside world:
+
+.. code-block:: bash
+
+    hg clone http://lgcm.iro.umontreal.ca/hg/Jobman
+
+This will create a local "Jobman" folder which you should add to your
+``PYTHON_PATH`` environment variable. For ease of use, you should also add
+``Jobman/jobman/bin`` to your ``PATH`` variable.
+
+Optional Requirements
++++++++++++++++++++++
+
+One central feature of Jobman is to store all the information regarding
+jobs to launch, jobs currently running, and results of finished jobs, in
+one database.
+
+In order to use that feature, you'll need to have some software installed on
+the central server (mainly a PostgreSQL server).
+
+Requirements on the server side
+-------------------------------
+
+A running PostgreSQL_ server, with:
+
+* a database, let's say ``jobbase``
+* a username and password, for instance ``jobmanager`` and ``53|<r37``
+
+The user should have the right to connect to this database, and to
+connect from a remote host if the client will run on another machine.
+
+.. _PostgreSQL: http://www.postgresql.org/
+
+Requirements on the client side
+-------------------------------
+
+The ``jobman`` executable, that you will run on some client computer,
+also has some software requirements.
+
+Jobman depends on:
+
+* python (version?)
+* SQLAlchemy
+* psycopg2
+* tempfile?
+
+For Jobman to automatically connect to the database, you should also create
+the file ``~/.jobman_<dbname>`` in your home directory, which contains your
+database password in plain-text (!). For this reason, you may want to avoid
+using your normal everyday passwords ...
+
+
+.. TODO: Distribute a .tgz on pylearn.org? A .egg on PyPI?

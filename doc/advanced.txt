@@ -1,0 +1,85 @@
+Advanced
+========
+
+make2
+-----
+
+`make2` is an alternative to jobman's `make` command which allows for a more
+advanced syntax, when passing parameters to jobman. New features include:
+
+- creation of variables using the `%` symbol. Builders now accept a new syntax
+  to account for builders.
+- dynamically resolving symbols preceded with the '@' symbol. As with jobman's
+  `resolve` function, this will automatically (and recursively) import all the
+  necessary modules.
+- automatic evaluation of expressions following the `::` symbol (syntax used for
+  builders)
+
+Below we show an example of all these new features in action. The code is
+available under `Jobman/jobman/examples/def_make2.py`.
+
+.. code-block:: python
+
+    from jobman import make2
+            
+    class obja():
+        def __init__(self, param1=1, param2=None, param3=3):
+
+            self.param1 = param1
+            if param2: self.param2 = param2(param3)
+
+            print 'obja.param1 = ', self.param1
+            print 'obja.param2 = ', self.param2
+            print 'type(obja.param2) = ', type(self.param2)
+
+    def experiment(state, channel):
+
+        obj = make2(state.obja)
+        return channel.COMPLETE
+
+Lets run the above program with the command:
+
+.. code-block:: bash
+
+    jobman cmdline jobman.examples.def_make2.experiment test.conf
+
+with test.conf containing the following:
+
+.. code-block:: bash
+    
+    obja::@jobman.examples.def_make2.obja(param1=%param1, param2=%param2, param3=%param3)
+    obja.param1::(3+5)
+    obja.param2::@numpy.array
+    obja.param3='[1,2,3]'
+
+This outputs the following:
+
+.. code-block:: bash
+
+    $ jobman cmdline jobman.examples.def_make2.experiment test.conf
+    obja.param1 =  8
+    obja.param2 =  [1,2,3]
+    type(obja.param2) =  <type 'numpy.ndarray'>
+
+
+Channel Parameter
+-----------------
+
+channel is an object with the following important methods:
+
+* channel.switch() (or channel()) will give the control back to the
+  user, if it is appropriate to do so. If a call to channel.switch()
+  returns the string 'stop', it typically means that the signal
+  SIGTERM (or SIGINT) was received. Therefore, the experiment may be
+  killed soon, so it should save and return True or
+  channel.INCOMPLETE so it can be resumed later. This should be
+  checked periodically or data loss may be incurred.
+
+* channel.save() will save the current state. It is automatically
+  called when the function returns, but it is a good idea to do it
+  periodically.
+
+* channel.save_and_switch() is an useful shortcut to do both operations
+  described above.
+
+
