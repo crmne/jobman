@@ -4,19 +4,19 @@ Advanced
 make2
 -----
 
-`make2` is an alternative to jobman's `make` command which allows for a more
+``make2`` is an alternative to jobman's ``make`` command which allows for a more
 advanced syntax, when passing parameters to jobman. New features include:
 
-- creation of variables using the `%` symbol. Builders now accept a new syntax
+- creation of variables using the ``%`` symbol. Builders now accept a new syntax
   to account for builders.
 - dynamically resolving symbols preceded with the '@' symbol. As with jobman's
-  `resolve` function, this will automatically (and recursively) import all the
+  ``resolve`` function, this will automatically (and recursively) import all the
   necessary modules.
-- automatic evaluation of expressions following the `::` symbol (syntax used for
+- automatic evaluation of expressions following the ``::`` symbol (syntax used for
   builders)
 
 Below we show an example of all these new features in action. The code is
-available under `Jobman/jobman/examples/def_make2.py`.
+available under ``Jobman/jobman/examples/def_make2.py``.
 
 .. code-block:: python
 
@@ -37,24 +37,18 @@ available under `Jobman/jobman/examples/def_make2.py`.
         obj = make2(state.obja)
         return channel.COMPLETE
 
-Lets run the above program with the command:
-
-.. code-block:: bash
+Lets run the above program with the command::
 
     jobman cmdline jobman.examples.def_make2.experiment test.conf
 
-with test.conf containing the following:
+with test.conf containing the following::
 
-.. code-block:: bash
-    
     obja::@jobman.examples.def_make2.obja(param1=%param1, param2=%param2, param3=%param3)
     obja.param1::(3+5)
     obja.param2::@numpy.array
     obja.param3='[1,2,3]'
 
-This outputs the following:
-
-.. code-block:: bash
+This outputs the following::
 
     $ jobman cmdline jobman.examples.def_make2.experiment test.conf
     obja.param1 =  8

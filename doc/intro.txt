@@ -4,7 +4,7 @@ Introduction
 The DD Object
 +++++++++++++
 
-Jobman relies heavily on the use of the `DD` object. `DD` s are simple Python
+Jobman relies heavily on the use of the ``DD`` object. ``DD`` s are simple Python
 dictionaries, whose fields can be accessed using the standard bracket notation
 of dictionaries or using the more user-friendly dotted notation. This is shown
 in the example below.
@@ -18,18 +18,16 @@ in the example below.
     state.key2 = 2
     print 'Key1 is %s and key2 is %i' %(state.key1, state['key2'])
 
-DDs can also be hierarchical, i.e. a value in ``state`` can be another `DD`,
+DDs can also be hierarchical, i.e. a value in ``state`` can be another ``DD``,
 and so on.
 
 With this under our belt, let's proceed.
 
 
-`jobman` Executable
+``jobman`` Executable
 +++++++++++++++++
 
-The first (baby)step should be to become familiar with the various Jobman options:
-
-.. code-block:: bash
+The first (baby)step should be to become familiar with the various Jobman options::
 
     $ jobman help
 
@@ -48,9 +46,7 @@ The first (baby)step should be to become familiar with the various Jobman option
     using the sql command.
     sqlview              Create/drop a view of the scheduled experiments.
 
-Further exploration can be done using `jobman help <command>`.
-
-
+Further exploration can be done using ``jobman help <command>``.
 
 Jobman Experiments
 ++++++++++++++++++
@@ -65,17 +61,13 @@ module:
        # experiment code goes here
 
 To be accessible from Jobman, this function should be in a module that can be
-imported, using Python's `import` mechanism. The simplest way of running an
-experiment is thus:
-
-.. code-block:: bash
+imported, using Python's ``import`` mechanism. The simplest way of running an
+experiment is thus::
 
     jobman cmdline path.to.experiment <parameters>
     
 where <parameters> are, in the simplest case, a sequence of keyword assignments.
-For example:
-
-.. code-block:: bash
+For example::
 
     jobman cmdline path.to.experiment param1=string1 param2=3
 
@@ -90,21 +82,21 @@ parameters:
 The ``state`` parameter
 -----------------------
 
-The `state` parameter is a DD containing the parameters passed by Jobman.
+The ``state`` parameter is a DD containing the parameters passed by Jobman.
 
-In the example given above, `state.param1` will contain the string 'string1' while
-`state.param2` will contain the integer 3.
+In the example given above, ``state.param1`` will contain the string 'string1' while
+``state.param2`` will contain the integer 3.
 
 Things which the user wishes to preserve (e.g. for future analysis) should be added
-to the `state` dictionary. For example,
+to the ``state`` dictionary. For example,
 
 .. code-block:: python
 
     state.test_error = computeTestError()
     state.runtime = time.time()
 
-The contents of the `state` dictionary are stored before and after program
-execution, in the files `orig.conf` and `current.conf` respectively. These
+The contents of the ``state`` dictionary are stored before and after program
+execution, in the files ``orig.conf`` and ``current.conf`` respectively. These
 files are saved in the current working directory (see below for details).
 
 It is not recommended to store large amounts of data in the state. It
@@ -122,8 +114,11 @@ The ``channel`` parameter (basics)
 
 The return value of my_experiment may be channel.COMPLETE or
 channel.INCOMPLETE. If the latter is returned, the experiment may
-be resumed at a later point. Note that the return value `None`
+be resumed at a later point. Note that the return value ``None``
 is interpreted as channel.COMPLETE.
+
+For a more in-depth treatment of the ``channel`` parameter, we refer the reader
+to the :ref:`Advanced` section.
 
 Working Directory
 -----------------
@@ -141,8 +136,7 @@ Basic Example
 
 Let's have a look at a simple example. In this experiment, ``state``
 should have at least two keys, ``first`` and ``second``, and numbers
-associated with them. The code is available under
-`Jobman/jobman/examples/def_addition.py`.
+associated with them. The code is available under ``Jobman/jobman/examples/def_addition.py``.
 
 .. code-block:: python
 
@@ -163,16 +157,14 @@ it illustrates how to retrieve arguments from ``state``, via
 know what keys will be passed in the dictionary state. 
 
 To launch the above experiment using the command line, one can run the
-following command from a given directory:
-
-.. code-block:: bash
+following command from a given directory::
 
     jobman cmdline jobman.examples.def_addition.addition_example first=2 second=5
 
 
 which outputs,
 
-.. code-block:: bash
+::
 
     state.first = 2
     state.second = 5
@@ -181,7 +173,7 @@ which outputs,
 Additionally, this command created a temp directory. Lets have a look at its
 contents.
 
-.. code-block:: bash
+::
 
     $ ls jobman_<timestamp>/
     current.conf  orig.conf

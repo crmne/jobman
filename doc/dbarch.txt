@@ -1,11 +1,11 @@
 Database Architecture
 =====================
 
-When inserting jobs in a database with name `<tablename>`, Jobman actually
+When inserting jobs in a database with name ``<tablename>``, Jobman actually
 creates two tables. Below
 
-`<tablename>trial`
-----------------
+``<tablename>trial``
+---------------------
 
 .. code-block:: sql
 
@@ -19,18 +19,18 @@ creates two tables. Below
 This table is the top-level experiment table. It contains one row per job or
 experiment to run. The columns of interest are:
 
-* id: unique identifier for each job in table `<tablename>`
+* id: unique identifier for each job in table ``<tablename>``
 * status: status of the job. As previously mentionned: 0=ready, 1=running, 2=done
 * priority: higher priority jobs (high-numerical value) will be run sooner
-  than low-priority jobs, when launching jobs with the `jobman sql` command
+  than low-priority jobs, when launching jobs with the ``jobman sql`` command
 * hash: hash number which is meant to be unique for each job. The hash value
   is used to detect and prevent the insertion of duplicate jobs. 
   (DISCLAIMER: the hash mechanism is rather brittle and currently needs
   revisiting)
 * create/write/read: unused fields
 
-`<tablename>keyval`
------------------
+``<tablename>keyval``
+---------------------
 
 .. code-block:: sql
 
@@ -44,10 +44,10 @@ experiment to run. The columns of interest are:
 Columns have the following meaning:
 
  - id: unique identifier for each (key,value) pair (i.e. each row of the
-   `keyval` table represents one parameter)
+   ``keyval`` table represents one parameter)
  - dict_id: (foreign key) id of the trial/experiment/job this (key,value) pair is associated
-   with. Each row in the `trial` table is therefore mapped to multiple rows of
-   the `keyval` table.
+   with. Each row in the ``trial`` table is therefore mapped to multiple rows of
+   the ``keyval`` table.
  - name: string value of the key used in the parameter list
  - type: one of ['s','i','f','b']: 
 

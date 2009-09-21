@@ -35,31 +35,28 @@ and from a python script.
 From the Command Line
 .....................
 
-To insert jobs into the database from the command line, use the `jobman
-sqlschedule` command. An example is given below:
-
-.. code-block:: bash
+To insert jobs into the database from the command line, use the ``jobman
+sqlschedule`` command. An example is given below::
 
     jobman sqlschedule postgres://user:pass@host/dbname/tablename
            path.to.experiment first=1 second=3
 
-This will insert a single experiment into the table `<tablename>` of database
-`<dbname>`, with parameters `first=1` and `second=3`. If the tables in the DB
+This will insert a single experiment into the table ``<tablename>`` of database
+``<dbname>``, with parameters ``first=1`` and ``second=3``. If the tables in the DB
 do not exist, they will be created through this command. Note that by default,
 duplicate jobs are not inserted in the DB. To force insertion of a duplicate
-job, use the `-f` flag.
+job, use the ``-f`` flag.
 
-The `sqlschedules` command may be used to insert many jobs at once. The
-parameter syntax to use is then:
+The ``sqlschedules`` command may be used to insert many jobs at once. The
+parameter syntax to use is then::
 
-.. code-block:: bash
     jobman sqlschedules postgres://user:pass@host/dbname/tablename
-    first={{1,2,3,4}} second=3 third={{3,5,6}}
+           first={{1,2,3,4}} second=3 third={{3,5,6}}
 
-This will take all permutations of parameters `first`, `second` and `third`
+This will take all permutations of parameters ``first``, ``second`` and ``third``
 and insert 12 jobs in the table.
 
-For more details, see `jobman help sqlschedule` and `jobman help sqlschedules`.
+For more details, see ``jobman help sqlschedule`` and ``jobman help sqlschedules``.
 
 
 From a Python Script
@@ -79,7 +76,7 @@ You can then write the following code:
 
     from jobman.tools import DD, flatten
     from jobman import sql
-    from <somewhere> import addition_example
+    from jobman.examples.def_addition import addition_example
 
     TABLE_NAME='test_add_'
 
@@ -109,7 +106,7 @@ tables in a different format. In our case, our standard SQL tables store
 (key,value) in row format. The view will essentially take the transpose of this
 table and create a single column from each unique key in the database. This
 means that a single (query-able) column will be created for each unique key
-within the `state` variable.
+within the ``state`` variable.
 
 SQL restrictions on column names mean that:
 
@@ -122,9 +119,7 @@ SQL restrictions on column names mean that:
 Creating a View From the Command Line
 .....................................
 
-A view with name `<viewname>` can be created using the following:
-
-.. code-block:: bash
+A view with name ``<viewname>`` can be created using the following::
 
     jobman sqlview postgres://user:pass@host/dbname/tablename viewname
 
@@ -146,9 +141,7 @@ You can also simply add the last line at the end of the job-insertion script.
 Querying the View
 .................
 
-You can then log on to the database, for instance using psql command-line client :
-
-.. code-block:: bash
+You can then log on to the database, for instance using psql command-line client::
 
     psql -h <server> -U <user> -d <database>
 
@@ -270,16 +263,12 @@ executed on any machine with access to this database.
 The files that will be produced during the execution will be placed in a
 unique subdirectory of the experiment root path, provided when launching
 the job. For instance, if you want the experiment root to be the current
-directory:
-
-.. code-block:: bash
+directory::
 
     jobman sql postgres://<user>:<pass>@<server>/<database>/<table> .
 
 You can also specify a distant path, if you want to gather results from
-jobs executed on different machines:
-
-.. code-block:: bash
+jobs executed on different machines::
 
     jobman sql postgres://<user>:<pass>@<server>/<database>/<table> 
                ssh://<fileserver>:<some>/<path>
@@ -287,15 +276,13 @@ jobs executed on different machines:
 The above commands will retrieve one job description among those with
 highest priority, and that have not been started yet, and execute
 it. You can also ask for several jobs to be executed one after the
-other:
-
-.. code-block:: bash
+other::
 
     jobman sql -n3 postgres://<user>:<pass>@<server>/<database>/<table> .
 
 will execute 3 jobs, and
 
-.. code-block:: bash
+::
 
     jobman sql -n0 postgres://<user>:<pass>@<server>/<database>/<table> .
 
@@ -303,9 +290,7 @@ will keep on executing new jobs until all jobs are executed. You can
 launch this command on different computers, or several times on a
 cluster, to have jobs executed in parallel.
 
-For more information:
-
-.. code-block:: bash
+For more information::
 
     jobman sql help
 
