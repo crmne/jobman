@@ -85,6 +85,7 @@ This outputs::
     self.value =  2
     jobman rules
 
+    
 path/to/file.conf
 -----------------
 
@@ -99,3 +100,23 @@ which the user wishes to vary in the context of a single-experiment can then be
 assigned directly on the command line. Note that these parameters should appear
 later in the parameter list, so as to override the contents of the
 configuration file.
+
+
+key <- path/to/file.conf
+------------------------
+
+This notation allows one to define all the keys defined in a
+configuration file as subkeys. For instance, if a file called
+``things.conf`` contains ``a = 1`` and ``b = 2``, then ``xyz <-
+things.conf`` will define ``xyz.a = 1`` and ``xyz.b = 2``.
+
+That can be useful if you have a lot of nesting, if you make an
+experiment that launches more experiments or if you have experiments
+that depend on previous results (the syntax allows you to include
+parameters from previous experiments' current.conf file without
+clashes or clutter).
+
+If used on the command line, quotes may be needed around the
+expression to avoid interpretation of the ``<`` character by the
+shell.
+
