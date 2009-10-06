@@ -236,6 +236,8 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
 
     :param force_dup: forces insertion even if an identical dictionary is already in the db
 
+    This is a relatively primitive function.  It can be used to put just about anything into the database.  It will add STATUS, HASH, and PRIORITY fields if they are not present.
+
     """
     # compute hash for the job, will be used to avoid duplicates
     job = copy.copy(jobdict)
