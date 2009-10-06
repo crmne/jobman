@@ -1,33 +1,44 @@
+"""Define the `mydriver.main` way of controlling experiments.
+"""
 import sys, copy
 from .tools import flatten
 from .sql import db as sql_db
-from .sql import parse_dbstring, EXPERIMENT, FUCKED_UP, insert_dict, hash_state
+from .sql import HOST, HOST_WORKDIR, EXPERIMENT, FUCKED_UP
+from .sql import parse_dbstring, insert_dict, hash_state
+
+import logging
+logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
 class Cmd(object):
-    def __init__(self, f, short, long=""):
+    """ A callable object that attaches documentation strings to command functions.
+    
+    This class is a helper for the decorators `cmd` and `cmd_desc`.
+    """
+    def __init__(self, f, desc):
         self.f = f
-        self.short = short
-        self.long = long
+        self.desc = desc
 
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs)
 
-    def desc_short(self):
-        return self.short
-    
-    def desc_long(self):
-        return self.long
-
 cmd_dct = {}
-def mydriver_cmd(f):
+def cmd(f):
+    """Declare a function `f` as a `mydriver.main` command.
+
+    The docstring of `f` is taken as the description of the command.
+    """
     cmd_dct[f.__name__] = Cmd(f, f.__doc__)
     return f
+mydriver_cmd = cmd
 
-def mydriver_cmd_desc(short):
+def cmd_desc(desc):
+    """Declare a function `f` as a `mydriver.main` command, and provide an explicit description to appear to the right of your command when running the 'help' command.
+    """
     def deco(f):
-        cmd_dct[f.__name__] = Cmd(f, short)
+        cmd_dct[f.__name__] = Cmd(f, desc)
         return f
     return deco
+mydriver_cmd_desc = cmd_desc
 
 
 def help(db, **kwargs):
@@ -36,9 +47,9 @@ def help(db, **kwargs):
     #TODO
     print "Commands available:"
     for name, cmd in cmd_dct.iteritems():
-        print "%20s - %s"%(name, cmd.desc_short())
+        print "%20s - %s"%(name, cmd.desc)
 
-@mydriver_cmd
+@cmd
 def clear_db(db, **kwargs):
     """Delete all entries from the database """
     class y (object): pass
@@ -56,7 +67,7 @@ def clear_db(db, **kwargs):
             print d.id
             d.delete()
 
-@mydriver_cmd_desc('Insert the job sequence into the database')
+@cmd_desc('Insert the job sequence into the database')
 def insert(db, dbstring, argv, job_fn, job_dct_seq, exp_root, **kwargs):
     if ('-h' in argv or '' in argv):
         print """Ensure that all jobs in the job sequence have been inserted into the database.
@@ -68,22 +79,27 @@ def insert(db, dbstring, argv, job_fn, job_dct_seq, exp_root, **kwargs):
     dryrun = ('--dry' in argv)
     didsomething = True
     pos = 0
+    full_job_fn_name = job_fn.__module__ + '.' + job_fn.__name__
     S = db.session()
-    for i, experiment in enumerate(job_dct_seq):
+    for i, dct in enumerate(job_dct_seq):
         #TODO: use hashlib, not the builtin hash function.  Requires changing in .sql as well, maybe more places?  
         # Also, will break old experiment code because inserts will all work even though jobs have already run.
-        state = dict(flatten(experiment))
-        experiment_name = job_fn.__module__ + '.' + job_fn.__name__
+        state = dict(flatten(dct))
         if EXPERIMENT in state:
-            if state[EXPERIMENT] != experiment_name:
-                raise Exception('Inconsistency: state element %s does not match experiment %s' %(EXPERIMENT, experiment_name))
+            if state[EXPERIMENT] != full_job_fn_name:
+                raise Exception('Inconsistency: state element %s does not match experiment %s' %(EXPERIMENT, full_job_fn_name))
         else:
-            state[EXPERIMENT] = experiment_name
+            state[EXPERIMENT] = full_job_fn_name
+
+        if HOST in state or HOST_WORKDIR in state:
+            raise ValueError(('State dictionary has HOST/HOST_WORKDIR already set,'
+                ' use a lower-level insertion function if you really want to do this.'),
+                state)
 
         jobhash = hash_state(state)
 
         if dryrun:
-            # TODO: detect if experiment is a duplicate or not
+            # TODO: detect if dct is a duplicate or not
             if (None is S.query(db._Dict).filter(db._Dict.hash==jobhash).filter(db._Dict.status!=FUCKED_UP).first()):
                 is_dup = False
 
@@ -121,12 +137,14 @@ def insert(db, dbstring, argv, job_fn, job_dct_seq, exp_root, **kwargs):
         cmd = 'dbidispatch --repeat_jobs=%i %s' %(pos, argv[dbi_index+1])
         print 'TODO: run ', cmd, 'jobman sql', dbstring, exp_root
 
+@cmd
 def create_view(db, tablename, **kwargs):
     """Create a view (WRITEME)"""
     db.createView(tablename + 'view')
 
-@mydriver_cmd
+@cmd
 def status(db, **kwargs):
+    """List counts of jobs that are queued, running, done, etc."""
     sts = {0:0, 1:0, 2:0, 666:0}
     for d in db:
         cnt = sts.get(d['jobman.status'], 0)
