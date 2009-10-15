@@ -660,7 +660,7 @@ def db_from_engine(engine,
      - I{table_prefix + keyval_suffix}
 
     """
-    Session = sessionmaker(autoflush=True, autocommit=False)
+    Session = sessionmaker(autoflush=True)#, autocommit=False)
 
     metadata = MetaData()
 

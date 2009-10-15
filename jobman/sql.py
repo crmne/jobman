@@ -73,7 +73,10 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     s = db.session() #open a new session
 
     # NB. we need the query and attribute update to be in the same transaction
-    assert s.autocommit == False
+    try:
+        assert s.autocommit == False
+    except AttributeError:
+        pass
 
     dcts_seen = set([])
     keep_trying = True
