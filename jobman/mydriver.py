@@ -158,6 +158,11 @@ def status(db, **kwargs):
     if sts:
         print 'WARNING: other status counts:', sts
 
+@cmd
+def dbstring(dbstring, **kwargs):
+    """List what database we are using"""
+    print dbstring
+
 def main(argv, dbstring, exp_root, job_fn, job_dct_seq):
     db = sql_db(dbstring)
     username, password, hostname, dbname, tablename = parse_dbstring(dbstring)
