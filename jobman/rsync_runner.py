@@ -3,8 +3,8 @@ from runner import runner_registry
 from optparse import OptionParser
 
 _logger = logging.getLogger('jobman.rsync_runner')
-_logger.addHandler(logging.StreamHandler(sys.stderr))
-_logger.setLevel(logging.DEBUG)
+#_logger.addHandler(logging.StreamHandler(sys.stderr))
+#_logger.setLevel(logging.DEBUG)
 
 #################
 # Salted hashing
