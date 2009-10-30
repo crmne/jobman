@@ -1,3 +1,37 @@
+"""
+This runner provides a simple client-server pair for running jobs remotely.  
+
+Communication and file syncronization between client and server is handled by the client (which
+uses rsync).
+
+The server is minimal: all it does is provide names of directories on the server that contain
+jobs that need to be run.  It uses a semaphor to ensure that clients are issued unique jobs.
+
+The client uses rsync to transfer the contents of the servers directory to a /tmp folder, calls
+a function that it was provided on the cmdline, and then transfers the result back to the
+server by rsync as well.
+
+The rsync command is written to make use of some special directory structure if it is present:
+
+    - *.no_sync_to_client will not be transfered from server to client.
+
+    - *.no_sync will not be transfered either to client or to server.
+
+    - symbolic links will be copied as links, unless they point to something outside of the
+      rsync'ed folder in which case they will be copied by value.  This is the
+      'copy-unsafe-links' semantics.
+      QUESTION: What if links point into *.no_sync folder?
+
+    - 'jobman_status' is created and managed by the client-side driver. It contains messages
+      about starting and stopping of jobs... what time were they run, where, what machine.
+
+    - 'jobman_stdout' is created and managed by the client-side driver.  sys.stdout appends to
+      this file during the running of the callback.
+
+    - 'jobman_stderr' is created and managed by the client-side driver.  sys.stderr appends to
+      this file during the running of the callback.
+
+"""
 import os, random, logging, time, socket, sys, tempfile, datetime, traceback, shutil
 from runner import runner_registry
 from optparse import OptionParser
@@ -83,10 +117,6 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
             raise NotImplementedError()
 
     def handle_job_please(self):
-        # if the filename is a single '?' character, then it is taken to mean: move any file
-        # from the srcdir to the destdir.  When that happens the server will send the name of
-        # the filename it chose back to the client.  If the srcdir is empty, then the server
-        # will send back '?' to the client.
         self._lock.acquire()
         try:
             srclist = os.listdir(os.path.join(self.exproot, self.todo))
@@ -107,12 +137,12 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         _logger.debug('sending choice %s'% repr(choice))
         self.request.send(choice)
 
-parser_serve = OptionParser(usage = '%prog serve [options] <tablepath> <exproot>',
+parser_serve = OptionParser(usage = '%prog serve [options] <exproot>',
                           add_help_option=False)
 parser_serve.add_option('--port', dest = 'port', type = 'int', default = 9999,
                       help = 'Connect on given port (default 9999)')
 def runner_serve(options, path):
-    """Run a server for remote jobman rsync_any commands.
+    """Run a server for remote jobman rsync_any commands (rsync_runner server).
 
     Example usage:
 
@@ -120,10 +150,11 @@ def runner_serve(options, path):
 
     The server will watch the path/to/experiment/__todo__ directory for names, 
     and move them to path/to/experiment/__done__ as clients connect [successfully] and
-    ask for fresh jobs.
+    ask for fresh jobs.  The client assumes responsibility for fetching and sync'ing files to
+    this directory.
     """
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-    HOST, PORT = "localhost", 9999
+    HOST, PORT = "localhost", options.port
 
     _logger.info("Job server for %s listening on %s:%i" %
             (path, HOST, PORT))
@@ -217,9 +248,9 @@ def parse_server_str(fulladdr):
 
 def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback, 
         callbackname=None,
-        redirect_stdout='stdout',
-        redirect_stderr='stderr',
-        status_filename='status'):
+        redirect_stdout='jobman_stdout',
+        redirect_stderr='jobman_stderr',
+        status_filename='jobman_status'):
 
     # get a local tmpdir
     tmpdir = tempfile.mkdtemp()
@@ -250,7 +281,7 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
         try:
             callback()
         except Exception, e:
-            traceback.print_exc() # goes to sys.stderr
+            traceback.print_exc() # goes to sys.stderr, aka redirect_stderr
 
         if status_filename:
             now = str(datetime.datetime.now())
@@ -289,6 +320,11 @@ def import_cmd(cmd):
     imp = '.'.join(ftoks[:-1])
     return imp, cmd
 
+# list of dictionaries, usually of length 
+#   - 0, when runner_rsyncany is not running) or,
+#   - 1, when runner_rsyncany is running a job.
+# If runner_rsyncany were called recursively, this list would have lenght > 1.
+# But I can't think of why or how that should ever happen.
 _remote_info = []
 def remote_info():
     return _remote_info[-1]
@@ -303,7 +339,7 @@ def _rsyncany_helper(imp, cmd):
     logging.getLogger('pyrun').debug('executing: %s' % cmd)
     exec(cmd)
 def runner_rsyncany(options, addr, fullfn):
-    """Run a function in an rsynced tempdir.
+    """Run a function in an rsynced tempdir (rsync_runner client).
 
     Example usage:
 
