@@ -1,3 +1,7 @@
+"""
+This file defines class `DbHandle` and a few routines for creating instances of DbHandle.
+
+"""
 import sqlalchemy.pool
 
 from sqlalchemy import create_engine, desc
@@ -11,13 +15,27 @@ from sqlalchemy.databases import postgres
 from sqlalchemy.engine.base import Connection
 
 from sqlalchemy.sql import operators, select
-from sqlalchemy.sql.expression import column, outerjoin
+from sqlalchemy.sql.expression import column, outerjoin, not_
 
-class Todo(Exception): """Replace this with some working code!"""
+class Todo(Exception):
+    # Here 'this' refers to the code where the exception is raised,
+    # not the code of the 'Todo' exception itself!
+    """Replace this with some working code!""" 
 
 class DbHandle (object):
     """
-    This class also provides filtering shortcuts that hide the names of the
+    This class implements a persistant dictionary using an SQL database as storage.
+
+    Notes on usage
+    ==============
+
+    WRITEME
+
+    Notes on the implementation
+    ============================
+    Dictionaries are stored using two tables in a database: `dict_table` and `pair_table`.
+
+    This class provides filtering shortcuts that hide the names of the
     DbHandle internal databases.
 
     Attributes:
@@ -202,6 +220,9 @@ class DbHandle (object):
                     s.commit()
                     s.close()
 
+            def __iter__(d_self):
+                return iter(d_self.keys())
+
             def iteritems(d_self):
                 return d_self.items()
 
@@ -214,23 +235,62 @@ class DbHandle (object):
             def values(d_self):
                 return [kv.val for kv in d_self._attrs]
 
-            def update(d_self, dct, session=None, **kwargs):
-                """Like dict.update(), set keys from kwargs"""
-                if session is None:
-                    s = h_self._session_fn()
-                    commit_close = True
-                else:
-                    s = session
-                    commit_close = False
-                s.add(d_self)
-                for k, v in dct.items():
-                    d_self._set_in_session(k, v, s)
-                for k, v in kwargs.items():
-                    d_self._set_in_session(k, v, s)
+            def update_simple(d_self, dct, session, **kwargs):
+                """
+                Make an dict-like update to self in the given session.
 
-                if commit_close:
-                    s.commit()
-                    s.close()
+                :param dct: a dictionary to union with the key-value pairs in self
+                :param session: an open sqlalchemy session
+
+                :note: This function does not commit the session.
+
+                :note: This function may raise `psycopg2.OperationalError`.
+                """
+                session.add(d_self)
+                for k, v in dct.iteritems():
+                    d_self._set_in_session(k, v, session)
+                for k, v in kwargs.iteritems():
+                    d_self._set_in_session(k, v, session)
+
+            def update(d_self, dct, _recommit_times=5, _recommit_waitsecs=10, **kwargs):
+                """Like dict.update(), set keys from kwargs.
+
+                :param session: a valid SqlAlchemy session or else None.  If it
+                is None, then a session will be created and closed internally.
+                If it is a valid session, then it will not be closed by this
+                function, but will be left in an empty/clear state, with no
+                pending things to commit.
+                
+                :precondition: session is None or else it is a valid SqlAlchemy
+                session with no pending stuff to commit.  This must be so,
+                because if the update fails, this function will try a few times (`_recommit_times`)
+                to re-commit the transaction.
+                """
+                session = h_self._session_fn()
+                if ('session' in kwargs):
+                    raise Exception('"session" is no longer a kwarg to update, use update_simple instead')
+
+                while True:
+                    # now we have a fresh session, and we try to do our work
+                    try:
+                        d_self.update_simple(dct, session, **kwargs)
+                        session.commit()
+                        break
+                    except:
+                        #Commonly, an exception will come from sqlalchemy or psycopg2. 
+                        # I don't want to hard-code psycopg2 into this file
+                        # because other backends will raise different errors.
+                        # 
+                        # An exception that doesn't go away on subsequent tries
+                        # will be raised eventually in the else-clause below.
+                        _recommit_times -= 1
+                        if _recommit_times:
+                            time.sleep(random.randint(1, _recommit_waitsecs))
+                            session.rollback()
+                        else:
+                            session.close()
+                            raise
+                session.close()
 
             def get(d_self, key, default):
                 try:
@@ -339,7 +399,7 @@ class DbHandle (object):
                     q = q.filter(T._attrs.any(name=kw, sval=arg))
                 elif isinstance(arg, float):
                     q = q.filter(T._attrs.any(name=kw, fval=arg))
-                elif isinstance(val, int):
+                elif isinstance(arg, int):
                     q = q.filter(T._attrs.any(name=kw, ival=arg))
                 else:
                     q = q.filter(T._attrs.any(name=kw, bval=repr(arg)))
@@ -351,6 +411,16 @@ class DbHandle (object):
                 for key, val in dct.items():
                     rval = rval.filter_eq(key,val)
                 return rval
+
+            def filter_missing(q_self, kw):
+                """Return a Query object that restricts to dictionaries
+                NOT containing the given keyword"""
+                q = q_self._query
+                T = h_self._Dict
+
+                q = q.filter(not_(T._attrs.any(name=kw)))
+
+                return h_self._Query(q)
 
             def all(q_self):
                 """Return an iterator over all matching dictionaries.
@@ -437,15 +507,18 @@ class DbHandle (object):
         @param dct: dictionary to insert
 
         """
+        # TODO: separate insert into insert and insert_simple, as with update().
+        # The idea of passing a session or not is too confusing once this function
+        # handles commit exceptions correctly.
         if session is None:
             s = h_self.session()
             rval = h_self._Dict(s)
-            if dct: rval.update(dct, session=s)
+            if dct: rval.update_simple(dct, session=s)
             s.commit()
             s.close()
         else:
             rval = h_self._Dict(session)
-            if dct: rval.update(dct, session=session)
+            if dct: rval.update_simple(dct, session=session)
         return rval
 
     def query(h_self, session):
@@ -459,6 +532,9 @@ class DbHandle (object):
         s = h_self.session()
         kv = h_self._KeyVal
         d = h_self._Dict
+
+        # If view already exists, drop it
+        drop_view_sql = 'DROP VIEW IF EXISTS %s' % viewname
 
         # Get column names
         name_query = s.query(kv.name, kv.type).distinct()
@@ -483,6 +559,8 @@ class DbHandle (object):
             val_type_string = val_type_char + 'val'
 
             safe_name = name.replace('_','').replace('.','_')
+            if safe_name in safe_names:
+                safe_name += '_' + val_type_char
             safe_names.append(safe_name)
 
             cols.append(Column(safe_name, val_type))
@@ -516,6 +594,7 @@ class DbHandle (object):
         print 'Creating sql view with command:\n', create_view_sql
 
         # Execution
+        h_self._engine.execute(drop_view_sql);
         h_self._engine.execute(create_view_sql);
 
         s.commit()
@@ -530,6 +609,20 @@ class DbHandle (object):
 
         return MappedView
 
+    def dropView(h_self, viewname):
+
+        s = h_self.session()
+        kv = h_self._KeyVal
+        d = h_self._Dict
+
+        drop_view_sql = 'DROP VIEW %s'%(viewname)
+        print 'Deleting sql view with command:\n', drop_view_sql
+
+        # Execution
+        h_self._engine.execute(drop_view_sql);
+
+        s.commit()
+        s.close()
 
     def session(h_self):
         return h_self._session_fn()
@@ -567,7 +660,7 @@ def db_from_engine(engine,
      - I{table_prefix + keyval_suffix}
 
     """
-    Session = sessionmaker(autoflush=True, autocommit=False)
+    Session = sessionmaker(autoflush=True)#, autocommit=False)
 
     metadata = MetaData()
 

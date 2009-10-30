@@ -27,10 +27,10 @@ class Channel(object):
 
     COMPLETE = property(lambda s:None,
             doc=("Experiments should return this value to "
-                "indicate that they are done (if not done, return `Incomplete`"))
+                "indicate that they are done (if not done, return `INCOMPLETE`"))
     INCOMPLETE = property(lambda s:True,
             doc=("Experiments should return this value to indicate that "
-            "they are not done (if done return `COMPLETE`)"))
+                 "they are not done (usefull if the jobs is interrupted) (if done return `COMPLETE`)"))
 
     START = property(lambda s: 0,
             doc="jobman.status == START means a experiment is ready to run")
@@ -38,6 +38,8 @@ class Channel(object):
             doc="jobman.status == RUNNING means a experiment is running on jobman_hostname")
     DONE = property(lambda s: 2,
             doc="jobman.status == DONE means a experiment has completed (not necessarily successfully)")
+    ERR_START = property(lambda s: 3,
+            doc="jobman.status == ERR_START means can't be started for some reason(ex: can't make the destination experiment directory.")
 
     # Methods to be used by the experiment to communicate with the channel
 

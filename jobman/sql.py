@@ -1,5 +1,5 @@
 
-import sys, os, copy, time
+import sys, os, copy, time, hashlib
 
 import numpy.random
 
@@ -73,7 +73,10 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     s = db.session() #open a new session
 
     # NB. we need the query and attribute update to be in the same transaction
-    assert s.autocommit == False
+    try:
+        assert s.autocommit == False
+    except AttributeError:
+        pass
 
     dcts_seen = set([])
     keep_trying = True
@@ -146,6 +149,15 @@ def book_dct_non_postgres(db):
 ###########
 
 def parse_dbstring(dbstring):
+    """Unpacks a dbstring of the form postgres://username@hostname/dbname/tablename or postgres://username:password@hostname/dbname/tablename
+
+    :rtype: tuple of strings
+    :returns: username, password, hostname, dbname, tablename
+
+    :note: If the password is not given in the dbstring, this function attempts to retrieve it using
+    >>> password = get_password(hostname, dbname)
+
+    """
     postgres = 'postgres://'
     if not dbstring.startswith(postgres):
         raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
@@ -214,15 +226,25 @@ def db(dbstring):
 # Queue
 ###########
 
-def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0):
+def hash_state(state):
+    l = list((k,str(v)) for k,v in state.iteritems())
+    l.sort()
+    return hash(hashlib.sha224(repr(l)).hexdigest())
+
+def hash_state_old(state):
+    return hash(`state`)
+
+def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashalgo=hash_state):
     """Insert a new `job` dictionary into database `db`.
 
     :param force_dup: forces insertion even if an identical dictionary is already in the db
 
+    This is a relatively primitive function.  It can be used to put just about anything into the database.  It will add STATUS, HASH, and PRIORITY fields if they are not present.
+
     """
     # compute hash for the job, will be used to avoid duplicates
     job = copy.copy(jobdict)
-    jobhash = hash(`job`)
+    jobhash = hashalgo(job)
 
     if session is None:
         s = db.session()
@@ -261,7 +283,7 @@ def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority
 # TODO: FIXME: WARNING
 # Should use insert_dict instead of db.insert.  Need one entry point for adding jobs to
 # database, so that hashing can be done consistently
-def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, session=None):
+def add_experiments_to_db(jobs, db, verbose=0, force_dup=False, type_check=None, session=None):
     """Add experiments paramatrized by jobs[i] to database db.
 
     Default behaviour is to ignore jobs which are already in the database.
@@ -274,8 +296,8 @@ def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, 
     :param jobs: The parameters of experiments to run.
     :type jobs: an iterable object over dictionaries
     :param verbose: print which jobs are added and which are skipped
-    :param add_dups: False will ignore a job if it matches (on all items()) with a db entry.
-    :type add_dups: Bool
+    :param force_dup: forces insertion even if an identical dictionary is already in the db.
+    :type force_dup: Bool
 
     :returns: list of (Bool,job[i]) in which the flags mean the corresponding job actually was
     inserted.
@@ -308,12 +330,15 @@ def add_experiments_to_db(jobs, db, verbose=0, add_dups=False, type_check=None, 
             if verbose:
                 print 'SKIPPING', job
             rval.append((False, job))
+    return rval
 
 
-def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
+def duplicate_job(db, job_id, priority=1.0, delete_keys=[], *args, **kwargs):
     """
     In its simplest form, this function retrieves a specific job from the database, and
-    creates a duplicate in the DB, ready to be executed. 
+    creates a duplicate in the DB, ready to be executed.
+
+    :param delete_keys:
 
     :param kwargs: can be used to modify the top-level dictionary before it is 
                    reinserted in the DB.
@@ -322,7 +347,7 @@ def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
     """
 
     s = db.session()
-    
+
     jobdict = s.query(db._Dict).filter_by(id=job_id).all()
     if not jobdict:
         raise ValueError('Failed to retrieve job with ID%i' % job_id)
@@ -333,6 +358,11 @@ def duplicate_job(db, job_id, priority=1.0, *args, **kwargs):
     newjob.pop(HASH)
     newjob.pop(STATUS)
     newjob.pop(PRIORITY)
+
+    # These ones should be removed
+    for key in delete_keys:
+        if key in newjob:
+            newjob.pop(key)
 
     # modify job before reinserting (if need be)
     newjob.update(kwargs)

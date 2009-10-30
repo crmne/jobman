@@ -1,0 +1,128 @@
+Advanced
+========
+
+reval
+-----
+
+``reval`` is an extension of Python's ``eval`` function which adds some
+useful syntax elements:
+
+
+- ``@a.b.c`` automatically imports the symbol ``a.b.c``.
+- ``%var`` is subbed out for the variable of the same name given as a
+  keyword argument to ``reval``.
+- ``%%var`` is evaluated as ``state.var``
+
+For example:
+
+
+.. code-block:: python
+
+   from jobman import reval, DD
+   x = 12
+   state = DD(b = 3)
+   print reval("@numpy.add(%a, x) * %%b", a = 8)
+
+   
+Would print ``60`` and is equivalent to:
+
+
+.. code-block:: python
+
+   from jobman import reval
+   import numpy.add
+   x = 12
+   state = DD(b = 3)
+   a = 8
+   print numpy.add(a, x) * state.b
+
+
+
+make2
+-----
+
+``make2`` is an alternative to jobman's ``make`` command which allows
+for a more advanced syntax, when passing parameters to jobman. The
+main difference is that the expression following the ``::`` syntax
+used for builders is evaluated using ``reval``. As it turns out,
+``make2(x)`` is roughly equivalent to ``reval(x.__builder__, **x)``
+(though, unlike that simple expression, ``make2`` is recursive).
+
+An example of use of ``make2`` in an experiment function is contained
+in the file ``jobman/examples/def_make2.py``. We reproduce its
+contents for convenience:
+
+.. code-block:: python
+
+    from jobman import make2
+    
+    class Plumber(object):
+       def __init__(self, itsa, me, mario):
+            self.statement = itsa + me + mario
+
+    def experiment(state, channel):
+        exclamation_mark = '!'
+        obj = make2(state.plumber)
+        print obj.statement
+        return channel.COMPLETE
+
+Let us fill in a file called ``test.conf`` with the following:
+      
+.. code-block:: bash
+
+   plumber :: @jobman.examples.def_make2.Plumber(%itsa, %%me, %luigi)
+   plumber.itsa = "it's a "
+   plumber.luigi :: "luigi" + exclamation_mark
+   me = "me, "
+
+We can then test out the feature:
+
+
+.. code-block:: bash
+
+    $ jobman cmdline jobman.examples.def_make2.experiment test.conf
+    It's a me, luigi!
+
+
+``%itsa`` and ``%luigi`` take the values of
+``make2(state.plumber.itsa)`` and ``make2(state.plumber.luigi)``,
+respectively (note that ``plumber.luigi`` has a builder (it uses ::),
+yet ``plumber.itsa`` has not (it uses =); ``make2`` on an object with
+no builder returns the object itself). ``%%me`` takes the value of
+``state.me`` - ``make2`` is not implicitly applied to it, so it should
+normally not have a builder. Furthermore, ``%%me`` only works if there
+is a variable named ``state`` (unlike the notation with a single ``%``
+which will work regardless of how the state variable is named). These
+kludges might be worked out eventually. The ``exclamation_mark``
+variable is evaluated in the scope where ``make2`` is called.
+
+Note that due to ``Plumber`` and ``experiment`` being in the same
+scope, in this example, you may simply use ``Plumber`` instead of
+``@jobman.examples.def_make2.Plumber`` and it will still work as
+expected. However, only the longer notation will work in all
+experiments without requiring them to contain an explicit definition
+or import of the ``Plumber`` symbol.
+
+
+
+Channel Parameter
+-----------------
+
+channel is an object with the following important methods:
+
+* channel.switch() (or channel()) will give the control back to the
+  user, if it is appropriate to do so. If a call to channel.switch()
+  returns the string 'stop', it typically means that the signal
+  SIGTERM (or SIGINT) was received. Therefore, the experiment may be
+  killed soon, so it should save and return True or
+  channel.INCOMPLETE so it can be resumed later. This should be
+  checked periodically or data loss may be incurred.
+
+* channel.save() will save the current state. It is automatically
+  called when the function returns, but it is a good idea to do it
+  periodically.
+
+* channel.save_and_switch() is an useful shortcut to do both operations
+  described above.
+
+

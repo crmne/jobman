@@ -1,0 +1,59 @@
+Database Architecture
+=====================
+
+When inserting jobs in a database with name ``<tablename>``, Jobman actually
+creates two tables. Below
+
+``<tablename>trial``
+---------------------
+
+.. code-block:: sql
+
+    dbname=> select * from tablenametrial LIMIT 3;
+     id  | create | write | read | status | priority |         hash
+    -----+--------+-------+------+--------+----------+----------------------
+     568 |        |       |      |      2 |        1 |   645013771111222343
+     576 |        |       |      |      2 |        1 |   151531654272445486
+     249 |        |       |      |      2 |        1 | -4362188346468559166
+
+This table is the top-level experiment table. It contains one row per job or
+experiment to run. The columns of interest are:
+
+* id: unique identifier for each job in table ``<tablename>``
+* status: status of the job. As previously mentionned: 0=ready, 1=running, 2=done
+* priority: higher priority jobs (high-numerical value) will be run sooner
+  than low-priority jobs, when launching jobs with the ``jobman sql`` command
+* hash: hash number which is meant to be unique for each job. The hash value
+  is used to detect and prevent the insertion of duplicate jobs. 
+  (DISCLAIMER: the hash mechanism is rather brittle and currently needs
+  revisiting)
+* create/write/read: unused fields
+
+``<tablename>keyval``
+---------------------
+
+.. code-block:: sql
+
+    dbname=> select * from tablenamekeyval LIMIT 3;
+      id   | dict_id |         name          | type | ival | fval |    sval    | bval
+    -------+---------+-----------------------+------+------+------+------------+------
+     10811 |     206 | minimizer.__builder__ | s    |      |      | somestring |
+     10812 |     206 | stopper.i_wait        | i    |   10 |      |            |
+     10813 |     206 | verbose               | i    |    1 |      |            |
+
+Columns have the following meaning:
+
+ - id: unique identifier for each (key,value) pair (i.e. each row of the
+   ``keyval`` table represents one parameter)
+ - dict_id: (foreign key) id of the trial/experiment/job this (key,value) pair is associated
+   with. Each row in the ``trial`` table is therefore mapped to multiple rows of
+   the ``keyval`` table.
+ - name: string value of the key used in the parameter list
+ - type: one of ['s','i','f','b']: 
+
+    - 's' means that the value of the key is a string and is stored in the 'sval' column. '
+    - 'i' means that the value of the key is an integer and is stored in the 'ival' column. '
+    - 'f' means that the value of the key is a float and is stored in the 'fval' column. '
+    - 'b' means that the value of the key is a blob (binary) and is stored in the 'bval' column. '
+ - ival/fval/sval/bval: one of these contains the value of the (key,value) pair
+

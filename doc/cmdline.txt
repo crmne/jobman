@@ -1,0 +1,122 @@
+Passing Parameters to Jobman
+============================
+
+We have seen that the basic command line syntax is:
+
+.. code-block:: python
+
+    jobman cmdline path.to.experiment <parameters>.
+    
+In this section, we cover the syntax of the <parameters> list in more detail.
+
+Basic Syntax
+++++++++++++
+
+``key=value``
+--------------
+
+This is the typical (key,value) pair which we covered in the introduction.
+
+Set a parameter with name ``key`` to ``value``. The value will be casted
+to an appropriate type automatically and it will be accessible to
+the experiment using ``state.key``.
+
+If ``key`` is a dotted name, the value will be set in nested
+dictionaries corresponding to each part.
+
+Examples:
+
++------------+----------------------+
+|a=1         | state.a <- 1         |
++------------+----------------------+
+|b=2.3       | state.b <- 2.3       |
++------------+----------------------+
+|c.d="hello" | state.c.d <- "hello" |
++------------+----------------------+
+
+
+``key::<builder>``
+-------------------
+
+Builders can be used to automate the instantiation of Python objects.
+
+The ``key::<builder>`` syntax is equivalent to ``key.__builder__=<builder>`` and will
+thus appear in ``state`` as the dictionary entry ``state.key.__builder__`` which
+will take the value ``<builder>``. 
+
+``<builder>`` should be a symbol that can be used with import or __import__ and
+it should be callable.
+
+If a key has a builder defined, the experiment code may easily make an object
+out of it using the ``make`` function. ``obj = make(state.key)``.  This will call
+the builder on the substate corresponding to state.key, as will be made clear
+in the following example.
+
+
+.. code-block:: python
+
+    from jobman import make
+
+    class MakeExample():
+
+        def __init__(self, param1=2, param2='message'):
+            self.value = param1
+            self.msg = param2
+            print 'Created MakeExample object successfully.'
+
+        def test(self):
+            print 'self.value = ', self.value
+            print self.msg
+
+    def experiment(state, channel):
+
+        obj = make(state.obj)
+        obj.test()
+        return channel.COMPLETE
+
+This can be launched using the command::
+
+    jobman cmdline jobman.examples.def_make.experiment
+       obj::jobman.examples.def_make.MakeExample obj.param1=2 obj.param2='jobman rules'
+
+This outputs::
+
+    Created MakeExample object successfully.
+    self.value =  2
+    jobman rules
+
+    
+path/to/file.conf
+-----------------
+
+Additionally, paths to configuration files may be passed in the ``<parameters>`` list.
+
+These files contain ``key=value`` and/or ``key::builder`` pairs, with one
+such statement per line. They may also contain relative paths to other
+configuration files to load.
+
+Flat files are particularly useful for storing default parameters. Parameters
+which the user wishes to vary in the context of a single-experiment can then be
+assigned directly on the command line. Note that these parameters should appear
+later in the parameter list, so as to override the contents of the
+configuration file.
+
+
+key <- path/to/file.conf
+------------------------
+
+This notation allows one to define all the keys defined in a
+configuration file as subkeys. For instance, if a file called
+``things.conf`` contains ``a = 1`` and ``b = 2``, then ``xyz <-
+things.conf`` will define ``xyz.a = 1`` and ``xyz.b = 2``.
+
+That can be useful if you have a lot of nesting, if you make an
+experiment that launches more experiments or if you have experiments
+that depend on previous results (the syntax allows you to include
+parameters from previous experiments' current.conf file without
+clashes or clutter).
+
+If used on the command line, quotes may be needed around the
+expression to avoid interpretation of the ``<`` character by the
+shell.
+
