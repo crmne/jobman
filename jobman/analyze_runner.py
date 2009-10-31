@@ -1,10 +1,12 @@
+"""Provides analyze command.
+"""
 import os
 from .runner import runner_registry
 from optparse import OptionParser
 import logging
 _logger = logging.getLogger('jobman.analyze_runner')
 
-parser_analyze = OptionParser(usage = '%prog rsync_any [options] <tablepath> <exproot>',
+parser_analyze = OptionParser(usage = '%prog analyze [options] <cmdname>',
         add_help_option=False)
 parser_analyze.add_option('--extra', dest = 'extra', 
         type = 'str', default = '',
@@ -13,8 +15,8 @@ parser_analyze.add_option('--addr', dest = 'addr',
         type = 'str', default = 'pkl://'+os.getcwd(),
         help = 'Address of experiment root (starting with format prefix such'
         ' as postgres:// or pkl:// or dd://')
-def runner_analyze(options, cmdname):
-    """Analyze the state/results of the experiment
+def runner_analyze(options, cmdname, *other_args):
+    """Analyze the state/results of an experiment
 
     Example usage:
 
@@ -95,3 +97,44 @@ def help(**kwargs):
     print "Commands available:"
     for name, cmd in cmd_dct.iteritems():
         print "%20s - %s"%(name, cmd.desc)
+
+@cmd
+def extra_help(**kwargs):
+    """Print mini-tutorial about the --extra option to jobman analyze"""
+    print """
+The argument to --extra should be a python file that adds commands to jobman's analyze
+command.
+
+For example: 
+
+-------------------------------------------------------------------------------
+
+from jobman.analyze_runner import cmd
+
+@cmd
+def mycmd(**kwargs):
+    '''Silly command, doesn't do much.'''
+
+    print 'My command has access to the keyword args, and can do whatever it likes'
+    print kwargs
+
+-------------------------------------------------------------------------------
+
+Put this in a file in the current working directory called 'foo.py' (for compatibility with
+this documentation only... when you get the hang of things you can call this file whatever you
+like.  It can be anywhere in the PYTHONPATH.)
+
+Then run
+
+    $ jobman analyze --extra=foo list
+
+You should see your 'mycmd' listed. Now run
+
+    $ jobman analyze --extra=foo mycmd
+    $ jobman analyze --extra=foo mycmd  hello
+    $ jobman analyze --extra=foo mycmd  hello hello=5
+
+You will see how these arguments have been passed to your function, and you can write custom
+functions in this way to analyze the results of your experiment.
+
+    """
