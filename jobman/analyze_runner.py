@@ -137,4 +137,7 @@ You should see your 'mycmd' listed. Now run
 You will see how these arguments have been passed to your function, and you can write custom
 functions in this way to analyze the results of your experiment.
 
+For documentation on how to insert new jobs, iterate over jobs, etc. refer to the file(s) in
+`jobman.expdir` corresponding to the type of experiment you have.
+
     """
