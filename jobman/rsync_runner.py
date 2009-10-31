@@ -11,7 +11,7 @@ The client uses rsync to transfer the contents of the servers directory to a /tm
 a function that it was provided on the cmdline, and then transfers the result back to the
 server by rsync as well.
 
-The rsync command is written to make use of some special directory structure if it is present:
+These rsync command is written to make use of some special directory structure:
 
     - *.no_sync_to_client will not be transfered from server to client.
 
@@ -30,6 +30,9 @@ The rsync command is written to make use of some special directory structure if 
 
     - 'jobman_stderr' is created and managed by the client-side driver.  sys.stderr appends to
       this file during the running of the callback.
+
+    - directories beginning with PYTHONPATH will be prepended to sys.path before running the
+      callback, and removed afterward.
 
 """
 import os, random, logging, time, socket, sys, tempfile, datetime, traceback, shutil
@@ -264,6 +267,10 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
     # redirect stdout, stderr
     stdout = sys.stdout
     stderr = sys.stderr
+    
+    # TODO: Add PYTHONPATH dirs in cwd to sys.path
+    # TODO: Then del these entries from sys.path after running callback
+
     try:
         if redirect_stdout:
             sys.stdout = open(redirect_stdout, 'a+')
