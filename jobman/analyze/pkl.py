@@ -1,3 +1,5 @@
+"""analyze subcommands for manipulating jobs in a 'pkl' expdir
+"""
 import os
 from ..expdir.pkl import load_all, args_filename, results_filename
 from ..analyze_runner import cmd
