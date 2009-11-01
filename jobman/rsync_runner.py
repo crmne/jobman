@@ -140,10 +140,13 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         _logger.debug('sending choice %s'% repr(choice))
         self.request.send(choice)
 
-parser_serve = OptionParser(usage = '%prog serve [options] <exproot>',
-                          add_help_option=False)
+parser_serve = OptionParser(usage = '%prog serve [options] </path/to/experiment>',
+        description=("Run a server for 'jobman rsync_any ...' commands.  "
+            "The server will dequeue jobdirs from </path/to/experiment>/__todo__ and move them"
+            " to </path/to/experiment>/__done__ as 'jobman rsync_any ...' processes ask for jobs."),
+                          add_help_option=True)
 parser_serve.add_option('--port', dest = 'port', type = 'int', default = 9999,
-                      help = 'Connect on given port (default 9999)')
+                      help = 'Serve on given port (default 9999)')
 def runner_serve(options, path):
     """Run a server for remote jobman rsync_any commands (rsync_runner server).
 
@@ -158,6 +161,17 @@ def runner_serve(options, path):
     """
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
     HOST, PORT = "localhost", options.port
+
+    if not path.startswith('/'):
+        # this is not strictly necessary, but done out of a desire for a simple interface.
+        # The client connection string has user@host:port/path which suggests that the client
+        # connection string path is fully-qualified.  The authentication is done by matching
+        # experiment paths, so the server must have fully-qualified path as well.  We could
+        # figure out fully-qualified path here automatically, but it is better that the user
+        # can see plain as day on the screen that the paths of client and server match or don't
+        # match.
+        _logging.fatal("Error: Path must be fully-qualified")
+        return -1
 
     _logger.info("Job server for %s listening on %s:%i" %
             (path, HOST, PORT))
@@ -250,10 +264,11 @@ def parse_server_str(fulladdr):
     return user, host, port, expdir
 
 def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback, 
-        callbackname=None,
+        callbackname,
         redirect_stdout='jobman_stdout',
         redirect_stderr='jobman_stderr',
-        status_filename='jobman_status'):
+        status_filename='jobman_status',
+        logger=None):
 
     # get a local tmpdir
     tmpdir = tempfile.mkdtemp()
@@ -267,15 +282,25 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
     # redirect stdout, stderr
     stdout = sys.stdout
     stderr = sys.stderr
-    
-    # TODO: Add PYTHONPATH dirs in cwd to sys.path
-    # TODO: Then del these entries from sys.path after running callback
 
     try:
-        if redirect_stdout:
-            sys.stdout = open(redirect_stdout, 'a+')
+        stderr_handler = None
         if redirect_stderr:
             sys.stderr = open(redirect_stderr, 'a+')
+        if logger is None:
+            logger = logging.getLogger('jobman.rsync_callback_runner')
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        logger.addHandler(stderr_handler)
+        if redirect_stdout:
+            sys.stdout = open(redirect_stdout, 'a+')
+
+        # Add PYTHONPATH dirs in cwd to sys.path
+        new_pythonpaths = [os.path.join(tmpdir, f) 
+                for f in os.listdir(tmpdir) 
+                if os.path.isdir(os.path.join(tmpdir, f))]
+        logger.info('Prepending to sys.path: %s'% str(new_pythonpaths))
+        sys.path[0:0] = new_pythonpaths
+
 
         # rsync back to the remote directory
         if status_filename:
@@ -289,6 +314,17 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
             callback()
         except Exception, e:
             traceback.print_exc() # goes to sys.stderr, aka redirect_stderr
+            if status_filename:
+                print >> statusfile, "%(now)s Failure in %(callbackname)s, see stderr for details." % locals()
+                statusfile.flush()
+
+        # Del the sys.path entries from sys.path after running callback
+        if sys.path[0:len(new_pythonpaths)] == new_pythonpaths:
+            logger.info('Removing from sys.path: %s'% str(new_pythonpaths))
+            del sys.path[0:len(new_pythonpaths)]
+        else:
+            logger.warning('sys.path has been modified by callback, not removing %s' %
+                    str(new_pythonpaths))
 
         if status_filename:
             now = str(datetime.datetime.now())
@@ -311,13 +347,24 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
         # return stdout, stderr
         sys.stdout = stdout
         sys.stderr = stderr
+        if stderr_handler:
+            logger.removeHandler(stderr_handler)
     # return None
 
-parser_rsyncany = OptionParser(usage = '%prog rsync_any [options] <server> <function>',
-                          add_help_option=False)
-#parser_rsyncany.add_option('--port', dest = 'port', type = 'int', default = 9999,
-                      #help = 'Connect on given port (default 9999)')
-
+parser_rsyncany = OptionParser(
+        usage='%prog rsync_any [options] <user@server:port/fullpath/to/experiment> <module.function()>',
+        description=("Run <module.function()> in a local tmpdir that is rsync'd with any one of the jobs"
+            " waiting on the server.  This will dequeue the job on the server, so no "
+            "other process will do the same job.\n\n"
+            "The same function should be used for all the jobs"
+            " on the server at any given time because you cannot always control which job will be dequeued."),
+        add_help_option=True)
+parser_rsyncany.add_option('--stderr', dest='stderr', type='str', metavar='FILE', default='jobman_stderr',
+                      help = 'direct sys.stderr to FILE (Default "jobman_stderr")')
+parser_rsyncany.add_option('--stdout', dest='stdout', type='str', metavar='FILE', default='jobman_stdout',
+                      help = 'direct sys.stdout to FILE (Default "jobman_stdout")')
+parser_rsyncany.add_option('--status', dest='status', type='str', metavar='FILE', default='jobman_status',
+                      help = 'direct status messages to FILE (Default "jobman_status")')
 def import_cmd(cmd):
     """Return the full module name of a fully-quallified function call
     """
@@ -346,15 +393,18 @@ def _rsyncany_helper(imp, cmd):
     logging.getLogger('pyrun').debug('executing: %s' % cmd)
     exec(cmd)
 def runner_rsyncany(options, addr, fullfn):
-    """Run a function in an rsynced tempdir (rsync_runner client).
+    """Run a function (on any job) in an rsynced tempdir (rsync_runner client).
 
     Example usage:
 
         jobman rsync_any bergstra@gershwin:9999/fullpath/to/experiment 'mymodule.function()'
 
     """
+
+    _logger.setLevel(logging.DEBUG)
     #parse the server address
     user, host, port, expdir = parse_server_str(addr)
+    _logger.debug('server addr: %s %s %s %s' % (user, host, port, expdir))
 
     # book a job from the server (get a remote directory)
     # by moving any job from the todo subdir to the done subdir
@@ -369,8 +419,11 @@ def runner_rsyncany(options, addr, fullfn):
         # run that job
         run_callback_in_rsynced_tempdir(
                 remote_rsync_loc(),
-                lambda : _rsync_helper(*import_cmd(fullfn)),
+                lambda : _rsyncany_helper(*import_cmd(fullfn)),
                 callbackname=fullfn,
+                redirect_stdout=options.stdout,
+                redirect_stderr=options.stderr,
+                status_filename=options.status,
                 )
     finally:
         _remote_info.pop()

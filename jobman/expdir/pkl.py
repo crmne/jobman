@@ -6,6 +6,7 @@ args_filename = 'args.pkl'
 results_filename = 'results.pkl'
 new_jobname_format = 'job%06i'
 modulepack_dir='modulepack'
+no_sync_to_server = 'no_sync_to_server'
 
 
 #########################
@@ -70,7 +71,7 @@ def add_named_jobs(exproot, name_list, args_list,
         os.mkdir(jobroot)
         for modpack in modpacks:
             os.symlink('../%s/%s'%(modulepack_dir,modpack), 
-                    os.path.join(jobroot, 'PYTHONPATH.%s' % modpack))
+                    os.path.join(jobroot, 'PYTHONPATH.%s.%s'%(modpack, no_sync_to_server)))
         if args is not None:
             cPickle.dump(args, 
                     open(os.path.join(exproot, name, args_filename), 'w'),
