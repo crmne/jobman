@@ -298,6 +298,9 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
         new_pythonpaths = [os.path.join(tmpdir, f) 
                 for f in os.listdir(tmpdir) 
                 if os.path.isdir(os.path.join(tmpdir, f))]
+        # it is important to impose an order, since listdir() doesn't guarantee anything
+        new_pythonpaths.sort()
+        new_pythonpaths.reverse() #largest elements (by string cmp) are placed first
         logger.info('Prepending to sys.path: %s'% str(new_pythonpaths))
         sys.path[0:0] = new_pythonpaths
 

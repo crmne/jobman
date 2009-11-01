@@ -5,8 +5,12 @@ import os, cPickle, shutil
 args_filename = 'args.pkl'
 results_filename = 'results.pkl'
 new_jobname_format = 'job%06i'
-modulepack_dir='modulepack'
+modulepack_dir='__modulepack__'
+todo_dir = '__todo__'
+done_dir = '__done__'
 no_sync_to_server = 'no_sync_to_server'
+
+default_protocol=cPickle.HIGHEST_PROTOCOL
 
 
 #########################
@@ -14,6 +18,7 @@ no_sync_to_server = 'no_sync_to_server'
 #########################
 
 def jobs_iter(exproot):
+    """yields all pairs (jobdir, exproot/jobdir) """
     jobs = os.listdir(exproot)
     jobs.sort()
     for job in jobs:
@@ -61,7 +66,7 @@ def new_name(exproot, format=new_jobname_format):
     return new_names(exproot, 1, format=format)[0]
 
 def add_named_jobs(exproot, name_list, args_list, 
-        protocol=cPickle.HIGHEST_PROTOCOL,
+        protocol=default_protocol,
         modpacks=[]):
     """
     """
@@ -79,27 +84,70 @@ def add_named_jobs(exproot, name_list, args_list,
         rval.append((jobroot, args))
     return rval
 
-def add_anon_jobs(exproot, args_list, protocol=cPickle.HIGHEST_PROTOCOL, modpacks=[]):
+def add_anon_jobs(exproot, args_list, protocol=default_protocol, modpacks=[]):
     """
     """
     return add_named_jobs(exproot, new_names(exproot, len(args_list)), args_list,
             protocol=protocol,
             modpacks=modpacks)
 
-def add_unique_jobs(exproot, args_list, protocol=cPickle.HIGHEST_PROTOCOL, modpacks=[]):
-    """
+def add_unique_jobs(exproot, args_list, protocol=default_protocol, modpacks=[]):
+    """Create jobdirs in exproot for each object in args_list
+
+    :param exproot: path of the experiment root directory
+    :param args_list: a list of objects to be picked as the args.pkl of each job.
+    :param protocol: the cPickle protocol to be used for pickling
+    :param modpacks: a list of names of module packages (see `add_module_to_modulepack`)
+
     """
     # load existing jobs from db
     existing_args = [args for args in [load_args(path) for (name,path) in jobs_iter(exproot)]
             if args is not None]
     try:
         # this will make the next step much faster if all the args are hashable
-        existing_args = set(existing_args)
+        set_args_list = set(args_list) # will raise if not all args hashable
+        set_existing_args = set(existing_args)
+        args_list = [a for a in args_list 
+            if a not in set_existing_args # no dups with old args
+            and a in set_args_list #no dups in new args
+            ]
     except:
-        pass
-    args_list = [a for a in args_list if a not in existing_args]
+        args_list = [a for (i, a) in enumerate(args_list) 
+            if a not in existing_args # no dups with old args
+            and args_list.index(a) == i #no dups in new args
+            ]
     return add_anon_jobs(exproot, args_list, protocol=protocol, modpacks=modpacks)
 
+class Multi(list):
+    """Object to represent a grid element that takes multiple values
+    """
+    def __init__(self, *args):
+        list.__init__(self, args)
+
+    def __str__(self):
+        return "Multi{%s}" % list.__str__(self)
+
+    def __repr__(self):
+        return "Multi{%s}" % list.__repr__(self)
+
+def add_unique_grid(exproot, grid_kwargs, protocol=default_protocol, modpacks=[]):
+    """Add unique jobs filling out a grid.
+
+    :param exproot:
+    :param grid_kwargs: a dictionary of key-value pairs and key-Multi pairs.  The Multi values
+    define the grid.
+    :param protocol:
+    :param modpacks:
+    """
+    jobs = [{}]
+    for key, val in grid_kwargs.iteritems():
+        if isinstance(val, Multi):
+            jobs = sum(([dict(j, **{key:vv}) for j in jobs] for vv in val),
+                    [])
+        else:
+            jobs = [dict(j, **{key:val}) for j in jobs]
+
+    return add_unique_jobs(exproot, jobs, modpacks=modpacks)
 
 ######################################
 # Utilities for adding module versions
@@ -142,10 +190,10 @@ def add_module_to_modulepack(module, exproot, name):
         if len(module.__path__) != 1:
             raise RuntimeError('Multiple paths in path... what does this mean?', module.__path__)
         curpath = module.__path__[0]
-        cmd = 'rsync -ac --copy-unsafe-links %s %s/' % (curpath, modulepack)
+        cmd = 'rsync -ac --copy-unsafe-links %s/ %s/%s' % (curpath, modulepack, module.__name__)
     else:
         pyc = module.__file__
-        cmd = 'rsync -ac --copy-unsafe-links %s %s/' % (pyc, modulepack)
+        cmd = 'rsync -ac --copy-unsafe-links %s/ %s/%s' % (pyc, modulepack, module.__name__)
 
     sts = os.system(cmd)
     if sts != 0:

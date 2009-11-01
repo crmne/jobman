@@ -7,7 +7,9 @@ import logging
 _logger = logging.getLogger('jobman.analyze_runner')
 
 parser_analyze = OptionParser(usage = '%prog analyze [options] <cmdname>',
-        add_help_option=False)
+        description = "Analyze/modify the jobs in an experiment.  Try <cmdname> 'help' to see"
+        " a list of commands",
+        add_help_option=True)
 parser_analyze.add_option('--extra', dest = 'extra', 
         type = 'str', default = '',
         help = 'comma-delimited list of extra imports for additional commands')
