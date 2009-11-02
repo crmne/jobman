@@ -35,7 +35,7 @@ These rsync command is written to make use of some special directory structure:
       callback, and removed afterward.
 
 """
-import os, random, logging, time, socket, sys, tempfile, datetime, traceback, shutil
+import os, random, logging, time, socket, sys, tempfile, datetime, traceback, shutil, subprocess
 from runner import runner_registry
 from optparse import OptionParser
 
@@ -241,6 +241,7 @@ def rsync(srcdir, dstdir, num_retries=3,
         raise RSyncException(rsync_cmd, rsync_rval)
 
 def server_getjob_socket(user, host, port, expdir):
+    """Connect to local server via socket """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
     salt = s.recv(512)
@@ -259,10 +260,17 @@ def server_getjob_socket(user, host, port, expdir):
     return jobname
 
 def server_getjob_ssh(user, host, port, expdir):
-    return subprocess.Popen(
-            ['ssh', '%s@%s'%(user,host), 'bash', '-l', '-c', 
-            'jobman rsync_book --port=%i %s'%(port, expdir)], 
-            stdout=subprocess.PIPE).communicated()[0]
+    """Connect to remote server via ssh tunnel """
+    cmd = ['ssh', '%s@%s'%(user,host), 'bash', '-l', '-c', 
+            '"jobman rsync_book --port=%i %s"'%(port, expdir)]
+    _logger.debug('ssh cmd: ' + str(cmd))
+    rval = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]
+    if rval[-1] == '\n': # cut off trailing \n
+        rval = rval[:-1]
+    for c in rval:
+        if c in ' \n\t<>"\'{}[]()@!&;^%#|`?*/~':
+            raise ValueError(rval)
+    return rval
 
 def parse_server_str(fulladdr):
     # user@host:port/full/path/to/expdir
