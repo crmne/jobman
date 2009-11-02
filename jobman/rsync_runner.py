@@ -88,7 +88,10 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
     lock = None  # set externally
 
     def handle(self):
-        _logger.info('handling connection with %s' % str(self))
+        _logger.info('handling connection with %s' % str(self.client_address))
+        if self.client_address[0] != '127.0.0.1':
+            _logger.warn('ignoring connection from %s' % str(self.client_address))
+            return # ignore external connection attempts
         # self.request is the TCP socket connected to the client
 
         # this is supposed to be some kind of basic security to prevent 
@@ -237,7 +240,7 @@ def rsync(srcdir, dstdir, num_retries=3,
     if rsync_rval != 0:
         raise RSyncException(rsync_cmd, rsync_rval)
 
-def server_getjob(user, host, port, expdir):
+def server_getjob_socket(user, host, port, expdir):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
     salt = s.recv(512)
@@ -254,6 +257,12 @@ def server_getjob(user, host, port, expdir):
         s.close()
         raise Exception("failed to authenticate")
     return jobname
+
+def server_getjob_ssh(user, host, port, expdir):
+    return subprocess.Popen(
+            ['ssh', '%s@%s'%(user,host), 'bash', '-l', '-c', 
+            'jobman rsync_book --port=%i %s'%(port, expdir)], 
+            stdout=subprocess.PIPE).communicated()[0]
 
 def parse_server_str(fulladdr):
     # user@host:port/full/path/to/expdir
@@ -354,6 +363,23 @@ def run_callback_in_rsynced_tempdir(remote_rsync_loc, callback,
             logger.removeHandler(stderr_handler)
     # return None
 
+
+#################
+# Book Job runner
+#################
+parser_rsync_book = OptionParser(
+        usage='%prog rsync_book [options] </fullpath/to/experiment>',
+        description=("This will dequeue one job on the server and print it to stdout"),
+        add_help_option=True)
+parser_rsync_book.add_option('--port', dest='port', type='int', metavar='PORT', default=9999,
+                      help = 'connect to server on port PORT (Default 9999)')
+
+def runner_rsync_book(options, expdir):
+    """Connect to a local server and book a job"""
+    # N.B. os.getlogin() failed when i did it from mammouth over ssh
+    print server_getjob_socket(os.getenv('USER'), 'localhost', options.port, expdir)
+runner_registry['rsync_book'] = (parser_rsync_book, runner_rsync_book)
+
 parser_rsyncany = OptionParser(
         usage='%prog rsync_any [options] <user@server:port/fullpath/to/experiment> <module.function()>',
         description=("Run <module.function()> in a local tmpdir that is rsync'd with any one of the jobs"
@@ -411,7 +437,7 @@ def runner_rsyncany(options, addr, fullfn):
 
     # book a job from the server (get a remote directory)
     # by moving any job from the todo subdir to the done subdir
-    jobname = server_getjob(user, host, port, expdir)
+    jobname = server_getjob_ssh(user, host, port, expdir)
     if jobname == '':
         print "No more jobs"
         return
