@@ -82,6 +82,10 @@ def resolve(name, try_import=True):
 ### reval
 ################################################################################
 
+def eval_in_parent(expr, depth = 2):
+    caller = sys._getframe(depth)
+    return eval(expr, caller.f_globals, caller.f_locals)
+
 _reval_resolve_pattern = re.compile('@([a-zA-Z0-9_\\.]+)')
 _reval_varfetch_pattern = re.compile('(?:^|[^%])%([a-zA-Z0-9_]+)')
 _reval_vareval_pattern1 = re.compile('!!([a-zA-Z0-9_]+)')
