@@ -163,7 +163,7 @@ def runner_serve(options, path):
     this directory.
     """
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-    HOST, PORT = "localhost", options.port
+    HOST, PORT = "127.0.0.1", options.port
 
     if not path.startswith('/'):
         # this is not strictly necessary, but done out of a desire for a simple interface.
