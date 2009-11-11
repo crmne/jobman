@@ -1,4 +1,7 @@
-"""Provide a python-friendly API for the jobman"""
+"""provides JobSet: a python-friendly API for JobMan
+
+warning: EXPERIMENTAL
+"""
 
 class JobSet(object):
     """Class representing an set of jobs, each represented by their DD "state" variables.
@@ -95,7 +98,7 @@ def generic_dd_fn(state, channel):
     state.rval = fn(*args, **kwargs)
 
 
-def pmap(fn, arg_seq, method=JobSet, path=None):
+def jobset_map(fn, arg_seq, method=JobSet, path=None, cleanup=True):
     """Perform a map operation using JobMan"""
     def to_jobstate(fn, arg):
         """Return a DD that will compute"""
@@ -114,7 +117,7 @@ def pmap(fn, arg_seq, method=JobSet, path=None):
         path = random_tmp_folder
 
     #create a temporary path to sychronize jobs, which will be cleaned up automatically
-    jobset = method(path, erase_and_forget_on_delete=True) 
+    jobset = method(path, erase_and_forget_on_delete=cleanup) 
 
     states = [to_jobstate(fn, arg) for arg in arg_seq]
     jobset.update(states)
