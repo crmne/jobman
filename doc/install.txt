@@ -54,7 +54,7 @@ also has some software requirements.
 
 Jobman depends on:
 
-* python (version?)
+* python >= 2.5 and < 3
 * SQLAlchemy
 * psycopg2
 
