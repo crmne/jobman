@@ -39,7 +39,7 @@ templates_path = ['.templates']
 source_suffix = '.txt'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
 
 # General substitutions.
 project = 'Jobman'
@@ -90,8 +90,7 @@ pygments_style = 'sphinx'
 # The style sheet to use for HTML and HTML Help pages. A file of that name
 # must exist either in Sphinx' static/ path, or in one of the custom paths
 # given in html_static_path.
-# html_style = 'default.css'
-html_theme = 'sphinxdoc'
+html_style = 'default.css'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -165,7 +164,7 @@ latex_font_size = '11pt'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('index', 'jobman.tex', 'jobman Documentation',
+  ('contents', 'jobman.tex', 'jobman Documentation',
    'LISA lab, University of Montreal', 'manual'),
 ]
 
