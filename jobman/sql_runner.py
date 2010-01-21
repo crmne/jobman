@@ -263,7 +263,7 @@ parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'f
 parser_sqlschedules.add_option('-r', '--repeat',
                                dest = 'repeat', default = 1, type='int',
                                help = 'repeat each jobs N times')
-parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                                help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
 def generate_combination(repl):
