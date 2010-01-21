@@ -1,3 +1,5 @@
+.. _addition_exp_sql:
+
 Use Case: using PostgreSQL
 =========================
 
