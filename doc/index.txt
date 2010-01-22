@@ -22,6 +22,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`intro` -- The basics of Jobman.
 * :ref:`cmdline` -- Learn how to use Jobman on the command line.
 * :ref:`addition_exp_sql` -- Become familiar with PostgreSQL queries.
+* :ref:`mlp_jobman` -- A complete example, from start to end.
 * :ref:`dbarch` -- Quick tour of the database architecture underlying Jobman.
 * :ref:`advanced` -- Advanced topics.
 
@@ -36,6 +37,7 @@ You can download the latest `PDF documentation <http://deeplearning.net/jobmando
    cmdline
    addition_exp_sql
    dbarch
-   advanced              
+   advanced
+   mlp_jobman
    LICENSE
 
