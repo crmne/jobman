@@ -98,9 +98,16 @@ The output of this function is
     'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate':
     0.01, 'n_hidden': 100, 'batch_size': 20, 'L2_reg': 0.0001}
 
-basically giving us a detailed overview of the job that was just added to the table.
+basically giving us a detailed overview of the job that was just added to the table. 
+You will notice that jobman inserted a couple of different fields:
 
-TODO: what does 'jobman.experiment' hyper-parameter mean?
+ * jobman.experiment: the name of the module.method that took the (state,
+   channel) as input
+ * jobman.status: the status of the job (0 - not started, 1 - incomplete, 2 -
+   complete)
+ * jobman.sql.priority: the priority at which the job will be scheduled.
+   Higher number == higher priority.
+
 
 Scheduling more than one job
 +++++++++++++++++++++++++++++
@@ -116,13 +123,26 @@ will populate the mlp_dumi table with values inferred from mlp_jobman.conf **and
 
 .. code-block:: bash
 
-    [['mlp_jobman.conf', 'n_hidden=11'], ['mlp_jobman.conf', 'n_hidden=12']] [['n_hidden=11'], ['n_hidden=12']]
-    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 11, 'batch_size': 20, 'L2_reg': 0.0001}
-    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 12, 'batch_size': 20, 'L2_reg': 0.0001}
+    [['mlp_jobman.conf', 'n_hidden=20'], ['mlp_jobman.conf', 'n_hidden=30']] [['n_hidden=20'], ['n_hidden=30']]
+    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 20, 'batch_size': 20, 'L2_reg': 0.0001}
+    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 30, 'batch_size': 20, 'L2_reg': 0.0001}
 
 This shows how to keep default values for the parameters in a .conf file and add jobs corresponding to multiple values of a given (set of) hyperparameter(s).
 
-Launching the jobs using dbidispatch:
+If you simply execute
+
+.. code-block:: bash
+
+    jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+
+at the command line, jobman connects to the database and retrieves a job that:
+
+    * has not been executed yet
+    * has the highest priority (or lowest job ID)
+      
+and then actually runs it locally. The question is now how to run jobs using dbidispatch, our lab's meta-script
+that schedules jobs on a variety of back-ends, including condor at DIRO. In
+fact, it is quite simple:
 
 .. code-block:: bash
 
@@ -131,18 +151,36 @@ Launching the jobs using dbidispatch:
 The different options mean:
 
  * --condor: will launch on the condor system (clusters and workstations seen as compute servers) at DIRO
- * --repeat_jobs=3: how many copies of "jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' ." should it launch
+ * --repeat_jobs=3: how many copies of "jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' ." it should launch
  * "jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' ." - the command to launch
 
-TODO: what does it mean to repeat a job 3 times in our context? what does the jobman calls do?
+This is perhaps slightly confusing. What should be understood is that
+dbidispatch has no knowledge of the job that should be executed. So, without
+the --repeat_jobs=3 parameter, it would simply launch **1** jobman command on a
+condor machine. When --repeat_jobs is 3, dbidispatch launches the jobman
+command **3** times (on 3 different machines). Each of these jobman commands
+will try to fetch a task from the database and each will get a different task,
+even if the requests are sent at the same time (because of the atomicity of
+database transactions).
 
-If you simply executed
+To add to the confusion, jobman has itself a mechanism for running more than
+one job, but in **sequential** manner. For instance, the following command
+will launch 3 tasks on the condor cluster. Each of them will execute jobman
+with the given parameters. These parameters say that each task will fetch up to 5
+jobs from the database and run them sequentially. 
 
 .. code-block:: bash
 
-    jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+    dbidispatch --condor --repeat_jobs=3 jobman sql -n 5 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
 
-at the command line, jobman would have connected to the database and would have retrieved a job that (1) has not been executed yet (2) has the highest priority (or lowest job ID), and then actually run it locally (whereas when called with the above dbidispatch command, it would run it on one of the condor machines).
+Assuming that there are at least 15 tasks in the database, they will all be
+executed after a while. Note that if n<=0 then each task will run as many jobs
+as possible (i.e. it will keep trying to fetch jobs from the database as long
+as there are some left).
+
+The reason these two options exist separately is to allow a certain degree of
+trade-off between the number of machines used to execute jobs vs. the number
+of jobs per machine.
 
 Create a view
 ++++++++++++++++
