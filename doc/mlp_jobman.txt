@@ -37,7 +37,9 @@ Adding the experiment method
 +++++++++++++++++++++++++++++
 
 We need a method that takes as inputs a state and a channel variable. The simplest
-way to do that with our existing code is to simply add a method that reads in the.
+way to do that with our existing code is to simply add a method that reads in the 
+hyper-parameters from the state variable and passes them to the method that
+does the optimization:
 
 .. code-block:: python
 
@@ -86,7 +88,7 @@ will
  * read in the configuration stored in mlp_jobman.conf
  * create the table mlp_dumi in database ift6266h10_sandbox_db on gershwin (using the account ift6266h10 and the password stored in ~/.jobman_ift6266h10_sandbox_db)
  * populate the table with the values inferred from mlp_jobman.conf
- * "schedules" mlp_jobman.experiment to run with these values
+ * "schedule" mlp_jobman.experiment to run with these values
 
 The output of this function is
 
