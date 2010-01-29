@@ -26,7 +26,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`dbarch` -- Quick tour of the database architecture underlying Jobman.
 * :ref:`advanced` -- Advanced topics.
 
-You can download the latest `PDF documentation <http://deeplearning.net/jobmandoc/jobman.pdf>`_, rather than reading it online.
+You can download the latest `PDF documentation <http://deeplearning.net/software/jobman/jobman.pdf>`_, rather than reading it online.
 
 .. toctree::
    :maxdepth: 2
