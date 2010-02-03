@@ -16,8 +16,8 @@ To install Jobman from the outside world:
     hg clone http://lgcm.iro.umontreal.ca/hg/Jobman
 
 This will create a local ``Jobman/`` folder which you should add to your
-``PYTHON_PATH`` environment variable. For ease of use, you should also add
-``Jobman/jobman/bin`` to your ``PATH`` variable.
+``PYTHONPATH`` environment variable. For ease of use, you should also add
+``Jobman/bin`` to your ``PATH`` variable.
 
 Installation of PostgreSQL Support (optional)
 +++++++++++++++++++++++++++++++++++++++++++++
