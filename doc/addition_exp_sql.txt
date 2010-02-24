@@ -296,6 +296,17 @@ For more information::
 
     jobman sql help
 
+Storing the mercurial/other repository version of python module
+---------------------------------------------------------------
+
+In pylearn(TODO: LINK) their is a function that allow you to store into
+the state of an experiment the version of the repository of some module.
+It will also print on the stdout(jobman will forward it to a file in
+some case) the files that are not tracked or modified. This help to
+reproduce some experiments result in case the code base change. Jobman
+tables provide the parameter tester and the result and this provide the
+code version that produced those result.
+
 
 Querying the results
 --------------------
