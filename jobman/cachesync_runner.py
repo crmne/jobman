@@ -67,6 +67,10 @@ def cachesync_runner(options, dir):
 
     Usage: cachesync [options] <path_to_job(s)_workingdir(s)>
 
+    (For this to work, though, you need to do a channel.save() at least
+    once in your job before calling cachesync, otherwise the host_name
+    and host_workdir won't be set in current.conf)
+
     It can either sync a single directory, which must contain "current.conf"
     file which specifies the remote host and directory. Example for a single
     directory:
