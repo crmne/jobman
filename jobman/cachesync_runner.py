@@ -63,8 +63,7 @@ def sync_all_directories(base_dir, force=False):
 
 def cachesync_runner(options, dir):
     """
-    Syncs the temporary directory created for jobs remotely with the
-    local one.
+    Syncs the working directory of jobs with remote cache.
 
     Usage: cachesync [options] <path_to_job(s)_workingdir(s)>
 
