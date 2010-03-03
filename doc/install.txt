@@ -7,13 +7,13 @@ To install Jobman from within the LISA laboratory:
 
 .. code-block:: bash
 
-    hg clone ssh://projects@lgcm.iro.umontreal.ca/hg/Jobman
+    hg clone http://hg.assembla.com/jobman
 
 To install Jobman from the outside world:
 
 .. code-block:: bash
 
-    hg clone http://lgcm.iro.umontreal.ca/hg/Jobman
+    hg clone http://hg.assembla.com/jobman
 
 This will create a local ``Jobman/`` folder which you should add to your
 ``PYTHONPATH`` environment variable. For ease of use, you should also add
