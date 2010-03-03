@@ -25,6 +25,7 @@ def sync_single_directory(dir_path, force=False):
             print "sync forced for complete job", dir_path
         else:
             print "won't sync", dir_path, "as job is not running (no sync to do)"
+            return
 
     perform_sync(dir_path, conf)
 
