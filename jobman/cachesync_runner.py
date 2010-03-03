@@ -41,8 +41,11 @@ def perform_sync(dir_path, conf):
     host_string = remote_host + ":" + remote_dir
 
     rsync_command = 'rsync -ac "%s" "%s"' % (host_string, dir_path)
+    print rsync_command
 
-    os.system(rsync_command)
+    return_code = os.system(rsync_command)
+
+    print "return code was for last command was", return_code
 
 def sync_all_directories(base_dir, force=False):
     oldcwd = os.getcwd()
