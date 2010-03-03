@@ -232,9 +232,8 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
-
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
     db = sql.postgres_serial(
         user = username,
         password = password,
@@ -333,8 +332,8 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr', e)
 
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
@@ -391,8 +390,8 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 #     try:
 #         username, password, hostname, dbname, tablename \
 #             = sql.parse_dbstring(dbdescr)
-#     except:
-#         raise UsageError('Wrong syntax for dbdescr')
+#     except Exception, e:
+#         raise UsageError('Wrong syntax for dbdescr',e)
 
 #     db = sql.postgres_serial(
 #         user = username,
@@ -467,8 +466,8 @@ def runner_sql(options, dbdescr, exproot):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
 
     n = options.n if options.n else -1
     nrun = 0
@@ -532,8 +531,8 @@ def runner_sqlview(options, dbdescr, viewname):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
 
     db = sql.postgres_serial(
         user = username,
