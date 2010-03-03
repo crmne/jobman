@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 import os
 import re
@@ -82,6 +81,10 @@ def resolve(name, try_import=True):
 ### reval
 ################################################################################
 
+def eval_in_parent(expr, depth = 2):
+    caller = sys._getframe(depth)
+    return eval(expr, caller.f_globals, caller.f_locals)
+
 _reval_resolve_pattern = re.compile('@([a-zA-Z0-9_\\.]+)')
 _reval_varfetch_pattern = re.compile('(?:^|[^%])%([a-zA-Z0-9_]+)')
 _reval_vareval_pattern1 = re.compile('!!([a-zA-Z0-9_]+)')
@@ -126,7 +129,10 @@ def flatten(obj):
                 subd = obj.state()
                 subd['__builder__'] = '%s.%s' % (obj.__module__, obj.__class__.__name__)
             for k, v in subd.iteritems():
-                pfx = '.'.join([prefix, k]) if prefix else k
+	        if prefix:
+		    pfx = '.'.join([prefix, k])
+	        else:
+		    pfx = k
                 helper(d, pfx, v)
     helper(d, '', obj)
     return d
@@ -190,7 +196,10 @@ class UsageError(Exception):
 
 def format_d(d, sep = '\n', space = True):
     d = flatten(d)
-    pattern = "%s = %r" if space else "%s=%r"
+    if space:
+        pattern = "%s = %r"
+    else:
+        pattern = "%s=%r"
     return sep.join(pattern % (k, v) for k, v in d.iteritems())
 
 def format_help(topic):

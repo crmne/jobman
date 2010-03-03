@@ -1,0 +1,43 @@
+
+Welcome
+=======
+
+The goal of Jobman is to facilitate the process of launching many concurrent
+jobs, by automatically handling how parameters are passed to your programs and
+how results are stored for further analysis. While Jobman is
+application-agnostic, it is particularly well suited for machine learning when
+performing model selection (handling of hyperparameters, storing and analyzing
+results).
+
+Jobman has two basic modes. It can be used directly from the command line
+(which will rely mostly on flat-files for data storage) or it can be combined
+with a PostgreSQL database for more intensive applications.
+
+Documentation
+=============
+
+Roughly in order of what you'll want to check out:
+
+* :ref:`install` -- Installation instructions.
+* :ref:`intro` -- The basics of Jobman.
+* :ref:`cmdline` -- Learn how to use Jobman on the command line.
+* :ref:`addition_exp_sql` -- Become familiar with PostgreSQL queries.
+* :ref:`mlp_jobman` -- A complete example, from start to end.
+* :ref:`dbarch` -- Quick tour of the database architecture underlying Jobman.
+* :ref:`advanced` -- Advanced topics.
+
+You can download the latest `PDF documentation <http://deeplearning.net/software/jobman/jobman.pdf>`_, rather than reading it online.
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   install
+   intro
+   cmdline
+   addition_exp_sql
+   dbarch
+   advanced
+   mlp_jobman
+   LICENSE
+

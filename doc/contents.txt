@@ -14,5 +14,6 @@ Contents
    intro
    cmdline
    addition_exp_sql
+   mlp_jobman
    dbarch
    advanced

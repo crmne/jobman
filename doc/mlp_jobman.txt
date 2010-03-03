@@ -1,0 +1,219 @@
+
+.. index:: Multilayer Perceptron with Jobman
+
+.. _mlp_jobman:
+
+Multilayer Perceptron with Jobman
+=================================
+
+.. note::
+    This section assumes the reader has already read through the
+    `MLP tutorial <http://www.iro.umontreal.ca/~lisa/deep/tutorial/mlp.html>`_ and
+    through the documentation of `Jobman`_. You should be familiar with the 
+    state/channel variable notions, the sql/sqlschedule(s) commands. You 
+    should also be able to connect to the PostgreSQL database.
+
+.. note::
+    The code for this section is available for download in the examples
+    directory, under mlp_jobman.py
+
+.. _Jobman: http://www.iro.umontreal.ca/~lisa/deep/jobmandoc
+
+
+In this part of the tutorial, we will explore the way Jobman can be used for
+exploring the hyper-parameters of an MLP. As we saw, these hyper-parameters are (in
+decreasing order of importance):
+
+ * learning rate
+ * number of hidden units
+ * minibatch size
+ * number of training epochs
+ * L1/L2 penalty
+
+This tutorial was written as a self-containing, complete example of performing 
+hyper-parameter exploration with Jobman.
+
+Adding the experiment method
++++++++++++++++++++++++++++++
+
+We need a method that takes as inputs a state and a channel variable. The simplest
+way to do that with our existing code is to simply add a method that reads in the 
+hyper-parameters from the state variable and passes them to the method that
+does the optimization:
+
+.. code-block:: python
+
+    def experiment(state,channel):
+
+        (best_validation_loss, test_score, minutes_trained, iter) = \
+            sgd_optimization_mnist(state.learning_rate, state.n_hidden, state.L1_reg,
+                state.L2_reg, state.batch_size, state.n_iter)
+
+        state.best_validation_loss = best_validation_loss
+        state.test_score = test_score
+        state.minutes_trained = minutes_trained
+        state.iter = iter
+
+        return channel.COMPLETE
+
+
+Note that we have modified the sgd_optimization_mnist method to return a tuple containing
+the best validation loss, the corresponding test score, the number of minutes that
+training took and the iteration at which we obtained the best validation score. This
+tuple is then added to the state variable.
+
+Creating the configuration file
+++++++++++++++++++++++++++++++++
+
+A good practice is to keep a flat file with the default values for the hyperparameters. 
+For example, mlp_jobman.conf contains:
+
+.. literalinclude:: ../jobman/examples/mlp_jobman.conf
+
+The reason this is good practice is because in many cases we will be exploring only a few 
+of the hyper-parameters at a time, rather than changing them all at the same time.
+
+Scheduling one job
++++++++++++++++++++
+
+The following command
+
+.. code-block:: bash
+
+    jobman sqlschedule  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi \
+                    mlp_jobman.experiment mlp_jobman.conf
+
+will 
+
+ * read in the configuration stored in mlp_jobman.conf
+ * create the table mlp_dumi in database ift6266h10_sandbox_db on gershwin (using the account ift6266h10 and the password stored in ~/.jobman_ift6266h10_sandbox_db)
+ * populate the table with the values inferred from mlp_jobman.conf
+ * "schedule" mlp_jobman.experiment to run with these values
+
+The output of this function is
+
+.. code-block:: bash
+
+   ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment',
+    'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate':
+    0.01, 'n_hidden': 100, 'batch_size': 20, 'L2_reg': 0.0001}
+
+basically giving us a detailed overview of the job that was just added to the table. 
+You will notice that jobman inserted a couple of different fields:
+
+ * jobman.experiment: the name of the module.method that took the (state,
+   channel) as input
+ * jobman.status: the status of the job (0 - not started, 1 - incomplete, 2 -
+   complete)
+ * jobman.sql.priority: the priority at which the job will be scheduled.
+   Higher number == higher priority.
+
+
+Scheduling more than one job
++++++++++++++++++++++++++++++
+
+The following command
+
+.. code-block:: bash
+
+    jobman sqlschedules  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi mlp_jobman.experiment\
+          mlp_jobman.conf 'n_hidden={{20,30}}'
+
+will populate the mlp_dumi table with values inferred from mlp_jobman.conf **and** the ones given on the command line. The n_hidden variable values are expanded, so the output is:
+
+.. code-block:: bash
+
+    [['mlp_jobman.conf', 'n_hidden=20'], ['mlp_jobman.conf', 'n_hidden=30']] [['n_hidden=20'], ['n_hidden=30']]
+    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 20, 'batch_size': 20, 'L2_reg': 0.0001}
+    ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 30, 'batch_size': 20, 'L2_reg': 0.0001}
+
+This shows how to keep default values for the parameters in a .conf file and add jobs corresponding to multiple values of a given (set of) hyperparameter(s).
+
+If you simply execute
+
+.. code-block:: bash
+
+    jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+
+at the command line, jobman connects to the database and retrieves a job that:
+
+    * has not been executed yet
+    * has the highest priority (or lowest job ID)
+      
+and then actually runs it locally. The question is now how to run jobs using dbidispatch, our lab's meta-script
+that schedules jobs on a variety of back-ends, including condor at DIRO. In
+fact, it is quite simple:
+
+.. code-block:: bash
+
+    dbidispatch --condor --repeat_jobs=3 jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+
+The different options mean:
+
+ * --condor: will launch on the condor system (clusters and workstations seen as compute servers) at DIRO
+ * --repeat_jobs=3: how many copies of "jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' ." it should launch
+ * "jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' ." - the command to launch
+
+This is perhaps slightly confusing. What should be understood is that
+dbidispatch has no knowledge of the job that should be executed. So, without
+the --repeat_jobs=3 parameter, it would simply launch **1** jobman command on a
+condor machine. When --repeat_jobs is 3, dbidispatch launches the jobman
+command **3** times (on 3 different machines). Each of these jobman commands
+will try to fetch a task from the database and each will get a different task,
+even if the requests are sent at the same time (because of the atomicity of
+database transactions).
+
+To add to the confusion, jobman has itself a mechanism for running more than
+one job, but in **sequential** manner. For instance, the following command
+will launch 3 tasks on the condor cluster. Each of them will execute jobman
+with the given parameters. These parameters say that each task will fetch up to 5
+jobs from the database and run them sequentially. 
+
+.. code-block:: bash
+
+    dbidispatch --condor --repeat_jobs=3 jobman sql -n 5 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+
+Assuming that there are at least 15 tasks in the database, they will all be
+executed after a while. Note that if n<=0 then each task will run as many jobs
+as possible (i.e. it will keep trying to fetch jobs from the database as long
+as there are some left).
+
+The reason these two options exist separately is to allow a certain degree of
+trade-off between the number of machines used to execute jobs vs. the number
+of jobs per machine.
+
+Create a view
+++++++++++++++++
+
+.. code-block:: bash
+
+    jobman sqlview postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi dumi_mlp_view
+
+This creates a virtual table called dumi_mlp_view for later viewing and interpreting results (see below).
+
+Connect to the database, view the results
+++++++++++++++++++++++++++++++++++++++++++++
+
+.. code-block:: bash
+
+    psql -h gershwin -U ift6266h10 -d ift6266h10_sandbox_db
+    ift6266h10_sandbox_db=> select batchsize,bestvalidationloss,learningrate,minutestrained,nhidden,niter,testscore from dumi_mlp_view where jobman_status=2 order by bestvalidationloss;
+
+     batchsize | bestvalidationloss | learningrate | minutestrained | nhidden | niter | testscore 
+    -----------+--------------------+--------------+----------------+---------+-------+-----------
+            20 |             0.0202 |         0.05 |  22.0346666667 |     100 |    50 |    0.0216
+            20 |             0.0204 |         0.05 |        28.1765 |     150 |    50 |     0.019
+            20 |             0.0208 |          0.1 |  25.8041666667 |     150 |    50 |    0.0214
+            20 |             0.0226 |          0.1 |        26.4415 |     100 |    50 |    0.0227
+            20 |             0.0255 |         0.02 |  9.53816666667 |      50 |    50 |    0.0276
+            20 |             0.0265 |         0.05 |         19.237 |      50 |    50 |    0.0284
+            20 |             0.0267 |          0.1 |  10.2448333333 |      50 |    50 |     0.028
+            20 |             0.0267 |         0.01 |  23.9046666667 |     100 |    50 |    0.0272
+            20 |             0.0288 |         0.01 |  19.6711666667 |      50 |    50 |    0.0303
+            20 |             0.1173 |         0.01 |          0.135 |      30 |     1 |    0.1187
+            20 |             0.1266 |         0.01 | 0.101833333333 |      20 |     1 |    0.1352
+            20 |             0.1491 |         0.01 |         0.0655 |      10 |     1 |    0.1563
+    (12 rows)
+
+
+Note that jobman_status=2 means that only finished jobs will be selected.
