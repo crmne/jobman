@@ -250,6 +250,8 @@ def cachesync_runner(options, dir):
     once in your job before calling cachesync, otherwise the host_name
     and host_workdir won't be set in current.conf)
 
+    For the purpose of this command, see below.
+
     It can either sync a single directory, which must contain "current.conf"
     file which specifies the remote host and directory. Example for a single
     directory:
@@ -272,6 +274,34 @@ def cachesync_runner(options, dir):
     Normally completed jobs (status = DONE) won't be synced based on
     the "status" set in current.conf. Yet you can force sync by using
     the -f or --force option.
+
+    Purpose of this command
+    -----------------------
+
+    To clarify the purpose of the cachesync command: when launching jobs, 
+    working directories are created for each job. For example, when launching:
+
+    dbidispatch jobman sql 'postgres://user@gershwin/mydatabase/mytable' .
+
+    A directory ``mydatabase`` with subdirectory ``mytable``.
+
+    will be created, containing further subdirectories numbered 1, 2 and 3 
+    (based on job id's in the DB). These directories are the working 
+    directories of each job. They contain a copy of the stdout and stderr of 
+    the job, along with copies of the jobman state (dictionaries in .conf 
+    files) and further files created by the job.
+
+    Yet the content of those directories is not updated live during the job. 
+    The job runs on a cluster node, and those files are first written to a 
+    temporary directory on the node itself. Then, when calling channel.save() 
+    or when the job finishes, they're rsync'ed over to the working directory 
+    where they should be.
+
+    This is annoying since one can't see how the jobs are doing unless he 
+    SSH'es into the cluster node and finds the temporary directory. To 
+    alleviate this problem, the cachesync commands copies over the files to 
+    the working directory whenever asked to, so it's easier to probe the 
+    running jobs state. 
     """
     force = options.force
     multiple = options.multiple
