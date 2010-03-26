@@ -17,7 +17,7 @@ from sqlalchemy.engine.base import Connection
 from sqlalchemy.sql import operators, select
 from sqlalchemy.sql.expression import column, outerjoin, not_
 
-import time
+import time, random
 
 class Todo(Exception):
     # Here 'this' refers to the code where the exception is raised,
@@ -107,7 +107,10 @@ class DbHandle (object):
                 if k_self.type == 'i':
                     val = int(k_self.ival)
                 elif k_self.type == 'f':
-                    val = float(k_self.fval)
+                    if k_self.fval is None:
+                        val = float('nan')
+                    else:
+                        val = float(k_self.fval)
                 elif k_self.type == 'b':
                     val = eval(str(k_self.bval))
                 elif k_self.type == 's':
@@ -128,7 +131,13 @@ class DbHandle (object):
                     k_self.sval = val
                 elif isinstance(val, float):
                     k_self.type = 'f'
-                    k_self.fval = float(val)
+                    # special cases
+                    if str(val) in ('nan', 'inf', '-inf'):
+                        # Special cases not handled by SQLAlchemy.
+                        # To avoid crashes, setting value to None
+                        k_self.fval = None
+                    else:
+                        k_self.fval = float(val)
                 elif isinstance(val, int):
                     k_self.type = 'i'
                     k_self.ival = int(val)
