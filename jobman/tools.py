@@ -1,4 +1,3 @@
-from __future__ import with_statement
 import sys
 import os
 import re
@@ -130,7 +129,10 @@ def flatten(obj):
                 subd = obj.state()
                 subd['__builder__'] = '%s.%s' % (obj.__module__, obj.__class__.__name__)
             for k, v in subd.iteritems():
-                pfx = '.'.join([prefix, k]) if prefix else k
+	        if prefix:
+		    pfx = '.'.join([prefix, k])
+	        else:
+		    pfx = k
                 helper(d, pfx, v)
     helper(d, '', obj)
     return d
@@ -194,7 +196,10 @@ class UsageError(Exception):
 
 def format_d(d, sep = '\n', space = True):
     d = flatten(d)
-    pattern = "%s = %r" if space else "%s=%r"
+    if space:
+        pattern = "%s = %r"
+    else:
+        pattern = "%s=%r"
     return sep.join(pattern % (k, v) for k, v in d.iteritems())
 
 def format_help(topic):

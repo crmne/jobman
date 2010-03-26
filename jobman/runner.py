@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 import sys
 import time
 import tempfile
@@ -37,7 +35,9 @@ def parse_and_run(command, arguments):
 
 def run(runner, arguments):
     argspec = inspect.getargspec(runner)
-    minargs = len(argspec[0])-(len(argspec[3]) if argspec[3] else 0)
+    minargs = len(argspec[0])
+    if argspec[3]:
+        minargs-=len(argspec[3])
     maxargs = len(argspec[0])
     if minargs > len(arguments) or maxargs < len(arguments) and not argspec[1]:
         s = format_help(runner)

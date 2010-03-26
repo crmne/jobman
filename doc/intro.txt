@@ -1,3 +1,5 @@
+.. _intro:
+
 Introduction
 ============
 
@@ -25,7 +27,7 @@ With this under our belt, let's proceed.
 
 
 ``jobman`` Executable
-+++++++++++++++++
++++++++++++++++++++++
 
 The first (baby)step should be to become familiar with the various Jobman options::
 

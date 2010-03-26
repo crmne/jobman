@@ -19,6 +19,8 @@ from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
 
+from cachesync_runner import cachesync_lock
+import cachesync_runner
 
 ################################################################################
 ### Channels
@@ -50,7 +52,6 @@ class RSyncChannel(StandardChannel):
     def rsync(self, direction, num_retries=3):
         """The directory at which experiment-related files are stored.
         """
-
         path = self.path
 
         remote_path = self.remote_path
@@ -68,19 +69,24 @@ class RSyncChannel(StandardChannel):
         keep_trying = True
         rsync_rval = 1 # some non-null value
 
-        # allow n-number of retries, with random hold-off between retries
-        attempt = 0
-        while rsync_rval!=0 and keep_trying:
-            rsync_rval = os.system(rsync_cmd)
+        with cachesync_lock(None, self.path):
+            # Useful for manual tests; leave this there, just commented.
+            #cachesync_runner.manualtest_will_save()
 
-            if rsync_rval != 0:
-                attempt += 1
-                keep_trying = attempt < num_retries
-                # wait anywhere from 30s to [2,4,6] mins before retrying
-                if keep_trying: 
-                    r = random.randint(30,attempt*120)
-                    print >> os.sys.stderr, 'RSync Error at attempt %i/%i: sleeping %is' %(attempt,num_retries,r)
-                    time.sleep(r)
+            # allow n-number of retries, with random hold-off between retries
+            attempt = 0
+            while rsync_rval!=0 and keep_trying:
+                rsync_rval = os.system(rsync_cmd)
+
+                if rsync_rval != 0:
+                    attempt += 1
+                    keep_trying = attempt < num_retries
+                    # wait anywhere from 30s to [2,4,6] mins before retrying
+                    if keep_trying: 
+                        r = random.randint(30,attempt*120)
+                        print >> os.sys.stderr, ('RSync Error at attempt %i/%i:'\
+                                +' sleeping %is') %(attempt,num_retries,r)
+                        time.sleep(r)
 
         if rsync_rval!=0:
             raise RSyncException('rsync failure', (rsync_rval, rsync_cmd))
@@ -104,6 +110,9 @@ class RSyncChannel(StandardChannel):
         return self.rsync('push')
 
     def save(self):
+        # Useful for manual tests; leave this there, just commented.
+        #cachesync_runner.manualtest_inc_save_count()
+
         super(RSyncChannel, self).save()
         self.push()
 
@@ -232,9 +241,8 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
-
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
     db = sql.postgres_serial(
         user = username,
         password = password,
@@ -263,7 +271,7 @@ parser_sqlschedules.add_option('-f', '--force', action = 'store_true', dest = 'f
 parser_sqlschedules.add_option('-r', '--repeat',
                                dest = 'repeat', default = 1, type='int',
                                help = 'repeat each jobs N times')
-parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'parse.filemerge',
+parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                                help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
 
 def generate_combination(repl):
@@ -333,8 +341,8 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr', e)
 
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
@@ -391,8 +399,8 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 #     try:
 #         username, password, hostname, dbname, tablename \
 #             = sql.parse_dbstring(dbdescr)
-#     except:
-#         raise UsageError('Wrong syntax for dbdescr')
+#     except Exception, e:
+#         raise UsageError('Wrong syntax for dbdescr',e)
 
 #     db = sql.postgres_serial(
 #         user = username,
@@ -467,8 +475,8 @@ def runner_sql(options, dbdescr, exproot):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
 
     n = options.n if options.n else -1
     nrun = 0
@@ -483,7 +491,17 @@ def runner_sql(options, dbdescr, exproot):
                                      redirect_stdout = True,
                                      redirect_stderr = True)
             channel.run()
-            shutil.rmtree(workdir, ignore_errors=True)
+
+
+            # Useful for manual tests; leave this there, just commented.
+            #cachesync_runner.manualtest_before_delete()
+
+            with cachesync_lock(None, workdir):
+                # Useful for manual tests; leave this there, just commented.
+                #cachesync_runner.manualtest_will_delete()
+
+                shutil.rmtree(workdir, ignore_errors=True)
+
             n -= 1
             nrun += 1
     except JobError, e:
@@ -532,8 +550,8 @@ def runner_sqlview(options, dbdescr, viewname):
     try:
         username, password, hostname, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
-    except:
-        raise UsageError('Wrong syntax for dbdescr')
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
 
     db = sql.postgres_serial(
         user = username,
