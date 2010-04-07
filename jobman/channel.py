@@ -105,6 +105,7 @@ class SingleChannel(Channel):
         #TODO: make this a property and disallow changing it during a with block
         self.catch_sigterm = True
         self.catch_sigint = True
+        self.catch_sigusr2 = True
 
     def switch(self, message = None):
         feedback = self.feedback
@@ -147,6 +148,9 @@ class SingleChannel(Channel):
         if self.catch_sigint:
             self.prev_sigint = signal.getsignal(signal.SIGINT)
             signal.signal(signal.SIGINT, self.on_sigterm)
+        if self.catch_sigusr2:
+            self.prev_sigusr2 = signal.getsignal(signal.SIGUSR2)
+            signal.signal(signal.SIGUSR2, self.on_sigterm)
         return self
 
     def __exit__(self, type, value, tb_traceback, save = True):
@@ -161,6 +165,9 @@ class SingleChannel(Channel):
         if self.catch_sigint:
             signal.signal(signal.SIGINT, self.prev_sigint)
             self.prev_sigint = None
+        if self.catch_sigusr2:
+            signal.signal(signal.SIGUSR2, self.prev_sigusr2)
+            self.prev_sigusr2 = None
         if save:
             self.save()
         return True
