@@ -3,6 +3,8 @@ from __future__ import with_statement
 
 try:
 	import sql
+	from cachesync_runner import cachesync_lock
+	import cachesync_runner
 except:
 	pass
 import os
@@ -19,8 +21,6 @@ from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
 
-from cachesync_runner import cachesync_lock
-import cachesync_runner
 
 ################################################################################
 ### Channels
