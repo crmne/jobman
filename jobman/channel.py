@@ -105,7 +105,13 @@ class SingleChannel(Channel):
         #TODO: make this a property and disallow changing it during a with block
         self.catch_sigterm = True
         self.catch_sigint = True
-        self.catch_sigusr2 = True
+        try:
+            signal.SIGUSR2
+            self.catch_sigusr2 = True
+        except:
+            print 'SingleChannel - warning, cannot use signal.SIGUSR2.'
+            self.catch_sigusr2 = False
+
 
     def switch(self, message = None):
         feedback = self.feedback
