@@ -240,5 +240,5 @@ class StandardChannel(SingleChannel):
             currentf = os.path.join(self.path, 'current.conf')
             if os.path.isfile(currentf):
                 with open(currentf, 'r') as current:
-                    state = expand(parse(*map(str.strip, current.readlines())))
+                    state = expand(parse.filemerge(*map(str.strip, current.readlines())))
                     defaults_merge(self.state, state)
