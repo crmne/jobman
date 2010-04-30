@@ -1,6 +1,10 @@
 from __future__ import with_statement
 
-from functools import partial
+try:
+    from functools import partial
+except ImportError:
+    from theano.gof.python25 import partial
+        
 import re
 import os
 from tools import UsageError
@@ -42,7 +46,10 @@ def filemerge(*strings, **kwargs):
             state.update(d)
         elif '<-' in s:
             next_prefix, s = map(str.strip, s.split('<-', 1))
-            process(s, cwd, '%s.%s' % (prefix, next_prefix) if prefix else next_prefix)
+            param = '%s.%s' % (prefix, next_prefix)
+            if not prefix:
+                param = next_prefix
+            process(s, cwd, param)
         else:
             if cwd:
                 s = os.path.realpath(os.path.join(cwd, s))
