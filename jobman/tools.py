@@ -2,9 +2,9 @@ import sys
 import os
 import re
 try:
-	import sql
+    import sql
 except:
-	pass
+    pass
 import copy
 
 ################################################################################
@@ -129,10 +129,10 @@ def flatten(obj):
                 subd = obj.state()
                 subd['__builder__'] = '%s.%s' % (obj.__module__, obj.__class__.__name__)
             for k, v in subd.iteritems():
-	        if prefix:
-		    pfx = '.'.join([prefix, k])
-	        else:
-		    pfx = k
+                if prefix:
+                    pfx = '.'.join([prefix, k])
+                else:
+                    pfx = k
                 helper(d, pfx, v)
     helper(d, '', obj)
     return d
@@ -246,7 +246,7 @@ def find_conf_files(cwd, fname='current.conf', recurse=True):
 
         if os.path.isdir(e) and recurse:
             find_conf_files(e, fname)
-                
+
 #         try:
 #             e_config = open(os.path.join(e, fname),'r')
 #         except:
