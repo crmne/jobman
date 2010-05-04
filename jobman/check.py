@@ -92,7 +92,7 @@ def check_condor_serve(options, dbdescr):
                     assert sp[0]=="slot%s@%s"%(info[2],info[3])
                     if sp[3]!=sp[4]:
                         print "W: Job %d condor_status return not understood: ",lines
-                    if sp[1]=="Claimed" and sp[2]=="Busy":
+                    if sp[1]=="Claimed" and sp[2] in ["Busy","Retiring"]:
                         if sp[4].split('@')[0]==os.getenv("USER"):
                             print "W: Job %d is running on a condor host that is running a job of the same user. running time: %s"%(r.id,run_time)
                         else:
