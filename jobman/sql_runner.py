@@ -167,6 +167,8 @@ class DBRSyncChannel(RSyncChannel):
         # set self.experiment and self.state
         super(DBRSyncChannel, self).setup()
         self.state.jobman.sql.host_name = socket.gethostname()
+        self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
+        self.state.jobman.sql.start_time = time.time()
         self.state.jobman.sql.host_workdir = self.path
         self.dbstate.update(flatten(self.state))
 

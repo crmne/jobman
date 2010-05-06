@@ -1,6 +1,6 @@
 
 import runner
-import sql_runner, raw_runner, rsync_runner, analyze_runner
+import sql_runner, raw_runner, rsync_runner, analyze_runner, check
 try:
     import cachesync_runner
 except:
