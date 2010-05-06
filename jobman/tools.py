@@ -125,9 +125,11 @@ def flatten(obj):
         else:
             if isinstance(obj, dict):
                 subd = obj
-            else:
+            elif hasattr(obj, 'state'):
                 subd = obj.state()
                 subd['__builder__'] = '%s.%s' % (obj.__module__, obj.__class__.__name__)
+            else:
+                raise TypeError('Cannot flatten object %s, of type %s', str(obj), str(type(obj)))
             for k, v in subd.iteritems():
                 if prefix:
                     pfx = '.'.join([prefix, k])
