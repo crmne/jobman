@@ -96,7 +96,7 @@ def check_condor_serve(options, dbdescr):
                         if sp[4].split('@')[0]==os.getenv("USER"):
                             print "W: Job %d is running on a condor host that is running a job of the same user. running time: %s"%(r.id,run_time)
                         else:
-                            print "E: Job %d is running on a condor host that is running a job of another user. running time: %s"%(r.id,run_time)
+                            print "E: Job %d is running on a condor host that is running a job for user %s. running time: %s"%(r.id,sp[4].split('@')[0],run_time)
                     else:
                         print "W: Job %d condor state of host not understood"%r.id,sp
                 else:
