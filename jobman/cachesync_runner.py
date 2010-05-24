@@ -9,7 +9,7 @@ import copy
 
 from tools import DD, flatten
 import parse
-from sql import RUNNING, DONE
+from sql import RUNNING, DONE, START
 
 from optparse import OptionParser
 from runner import runner_registry
@@ -182,14 +182,20 @@ class DistributedLock(object):
     def __str__(self):
         return "DistributedLock(" + str(self.host_string) + ", " + str(self.lock_path) + ")"
      
-def sync_single_directory(dir_path, force=False):
-    conf = DD(parse.filemerge(os.path.join(dir_path, 'current.conf')))
+def sync_single_directory(dir_path, all_jobs=None, force=False):
+    if not all_jobs:
+        conf = DD(parse.filemerge(os.path.join(dir_path, 'current.conf')))
+    else:
+        conf = [i for i in all_jobs if str(i.id) == os.path.split(dir_path)[-1]]
+        assert len(conf)==1
+        conf = conf[0]
 
-    if not conf.has_key('jobman.status') \
-       or not conf.has_key('jobman.sql.host_workdir') \
-       or not conf.has_key('jobman.sql.host_name'):
+    if 'jobman.status' not in conf\
+       or 'jobman.sql.host_workdir' not in conf \
+       or 'jobman.sql.host_name' not in conf:
         print "abort for", dir_path, " because at least one of jobman.status,", \
                 "jobman.sql.host_workdir or jobman.sql.host_name is not specified."
+        print "Try giving the --sql option if possible"
         return
 
     if conf['jobman.status'] != RUNNING:
@@ -222,7 +228,7 @@ def perform_sync(dir_path, conf):
 
         print "return code was for last command was", return_code
 
-def sync_all_directories(base_dir, force=False):
+def sync_all_directories(base_dir, all_jobs=None, force=False):
     oldcwd = os.getcwd()
     os.chdir(base_dir)
 
@@ -238,7 +244,7 @@ def sync_all_directories(base_dir, force=False):
 
         full_path = os.path.join(base_dir, dir)
 
-        sync_single_directory(full_path, force)
+        sync_single_directory(full_path, all_jobs, force)
 
 def cachesync_runner(options, dir):
     """
@@ -275,6 +281,9 @@ def cachesync_runner(options, dir):
     the "status" set in current.conf. Yet you can force sync by using
     the -f or --force option.
 
+    --sql=dbdesc is an option that allow to get from the db missing info from
+    the current.conf file. Same syntax as the sql command.
+
     Purpose of this command
     -----------------------
 
@@ -305,11 +314,36 @@ def cachesync_runner(options, dir):
     """
     force = options.force
     multiple = options.multiple
+    dbdesc = options.sql
+    all_jobs = None
+    if dbdesc:
+        import sql
+        try:
+            username, password, hostname, dbname, tablename \
+                = sql.parse_dbstring(dbdesc)
+        except Exception, e:
+            raise UsageError('Wrong syntax for dbdescr',e)
+        db = sql.postgres_serial(
+            user = username,
+            password = password,
+            host = hostname,
+            database = dbname,
+            table_prefix = tablename)
+        try:
+            session = db.session()
+            q = db.query(session)
+            all_jobs = q.all()
+        finally:
+            try:
+                session.close()
+            except:
+                pass
+
 
     if multiple:
-        sync_all_directories(dir, force)
+        sync_all_directories(dir, all_jobs, force)
     else:
-        sync_single_directory(dir, force)
+        sync_single_directory(dir, all_jobs, force)
 
 ################################################################################
 ### register the command
@@ -322,6 +356,8 @@ cachesync_parser.add_option('-f', '--force', dest = 'force', default = False, ac
                               help = 'force rsync even if the job is complete')
 cachesync_parser.add_option('-m', '--multiple', dest = 'multiple', default = False, action='store_true',
                                help = 'sync multiple jobs (in that case, "path_to_job" must be the directory that contains all the jobs, i.e. its subdirectories are 1, 2, 3...)')
+cachesync_parser.add_option('', '--sql', dest = 'sql', default = "", action='store',
+                               help = 'The db to witch we want to sync with.')
 
 runner_registry['cachesync'] = (cachesync_parser, cachesync_runner)
 
