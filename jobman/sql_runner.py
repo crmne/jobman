@@ -147,6 +147,8 @@ class DBRSyncChannel(RSyncChannel):
             raise JobError(JobError.NOJOB,
                            'No job was found to run.')
 
+	print "Selected job id=%d in table=%s in db=%s on host=%s"%(self.dbstate.id,self.tablename, self.dbname, self.hostname)
+
         try:
             state = expand(self.dbstate)
             if state.has_key("dbdict"):
