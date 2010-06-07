@@ -3,6 +3,7 @@ from __future__ import with_statement
 import signal
 import sys
 import os
+import time
 import traceback
 
 from tools import *
@@ -157,6 +158,9 @@ class SingleChannel(Channel):
         if self.catch_sigusr2:
             self.prev_sigusr2 = signal.getsignal(signal.SIGUSR2)
             signal.signal(signal.SIGUSR2, self.on_sigterm)
+
+        self.state.jobman.start_time = time.time()
+        self.save()
         return self
 
     def __exit__(self, type, value, tb_traceback, save = True):
@@ -174,6 +178,10 @@ class SingleChannel(Channel):
         if self.catch_sigusr2:
             signal.signal(signal.SIGUSR2, self.prev_sigusr2)
             self.prev_sigusr2 = None
+        #This fct is called multiple time. We want to record the time only when the jobs finish.
+        if hasattr(self.state.jobman,'status') and self.state.jobman.status == 2:
+            self.state.jobman.end_time = time.time()
+            self.state.jobman.run_time = self.state.jobman.end_time - self.state.jobman.start_time
         if save:
             self.save()
         return True
