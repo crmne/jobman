@@ -60,9 +60,7 @@ Jobman depends on:
 
 For Jobman to automatically connect to the database, you should also create
 the file ``~/.jobman_<dbname>`` in your home directory, which contains your
-database password in plain-text [1]_ (!)  Note that
-``open(<file>).read()`` should return the password string, so be
-mindful of whitespace and line-break characters.
+database password in plain-text [1]_ (!)  Note that their must be only 1 line in that file and it must end with a new line.
 
 .. [1] For this reason, you may want to avoid using your normal everyday passwords...
 
