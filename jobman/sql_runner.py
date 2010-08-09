@@ -36,8 +36,11 @@ class RSyncException(Exception):
 class RSyncChannel(StandardChannel):
     """ WRITEME """
 
-    def __init__(self, path, remote_path, experiment, state, redirect_stdout = False, redirect_stderr = False):
-        super(RSyncChannel, self).__init__(path, experiment, state, redirect_stdout, redirect_stderr)
+    def __init__(self, path, remote_path, experiment, state,
+            redirect_stdout = False, redirect_stderr = False,
+            finish_up_after = None, save_interval = None):
+        super(RSyncChannel, self).__init__(path, experiment, state, redirect_stdout, redirect_stderr,
+                finish_up_after, save_interval)
 
         ssh_prefix='ssh://'
         if remote_path.startswith(ssh_prefix):
@@ -131,7 +134,9 @@ class DBRSyncChannel(RSyncChannel):
 
     RESTART_PRIORITY = 2.0
 
-    def __init__(self, username, password, hostname, dbname, tablename, path, remote_root, redirect_stdout = False, redirect_stderr = False):
+    def __init__(self, username, password, hostname, dbname, tablename, path, remote_root,
+            redirect_stdout = False, redirect_stderr = False,
+            finish_up_after = None, save_interval = None):
         self.username, self.password, self.hostname, self.dbname, self.tablename \
             = username, password, hostname, dbname, tablename
 
@@ -155,7 +160,10 @@ class DBRSyncChannel(RSyncChannel):
                 state.jobman=state.dbdict
             experiment = resolve(state.jobman.experiment)
             remote_path = os.path.join(remote_root, self.dbname, self.tablename, str(self.dbstate.id))
-            super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state, redirect_stdout, redirect_stderr)
+            super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state,
+                    redirect_stdout, redirect_stderr, finish_up_after, save_interval)
+            print 'self.finish_up_after =', self.finish_up_after
+            print 'self.save_interval =', self.save_interval
         except:
             self.dbstate['jobman.status'] = self.DONE
             raise
@@ -442,6 +450,12 @@ parser_sql = OptionParser(usage = '%prog sql [options] <tablepath> <exproot>',
 parser_sql.add_option('-n', dest = 'n', type = 'int', default = 1,
                       help = 'Run N experiments sequentially (default 1) '
                       '(if N is <= 0, runs as many experiments as possible).')
+parser_sql.add_option('--finish-up-after', action = 'store', dest = 'finish_up_after',
+                          default = None,
+                          help = 'Duration (in seconds) after which the experiment will be told to "finish up", i.e., to reach the next checkpoint, save, and exit')
+parser_sql.add_option('--save-every', action = 'store', dest = 'save_every',
+                          default = None,
+                          help = 'Interval (in seconds) between checkpoints. --save-every=3600 will tell the experiment to reach the next checkpoint and save (and go on) every hour')
 
 def runner_sql(options, dbdescr, exproot):
     """
@@ -493,7 +507,10 @@ def runner_sql(options, dbdescr, exproot):
                                      workdir,
                                      exproot,
                                      redirect_stdout = True,
-                                     redirect_stderr = True)
+                                     redirect_stderr = True,
+                                     finish_up_after = options.finish_up_after or None,
+                                     save_interval = options.save_every or None
+                                     )
             channel.run()
 
 

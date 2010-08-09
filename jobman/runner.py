@@ -96,6 +96,13 @@ parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', d
 parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workdir_gen', default = 'date',
                           help = 'function serving to generate the relative path of the workdir')
 
+parser_cmdline.add_option('--finish-up-after', action = 'store', dest = 'finish_up_after',
+                          default = None,
+                          help = 'Duration (in seconds) after which the experiment will be told to "finish up", i.e., to reach the next checkpoint, save, and exit')
+parser_cmdline.add_option('--save-every', action = 'store', dest = 'save_every',
+                          default = None,
+                          help = 'Interval (in seconds) between checkpoints. --save-every=3600 will tell the experiment to reach the next checkpoint and save (and go on) every hour')
+
 def runner_cmdline(options, experiment, *strings):
     """
     Start an experiment with parameters given on the command line.
@@ -133,7 +140,10 @@ def runner_cmdline(options, experiment, *strings):
     channel = StandardChannel(workdir,
                               experiment, state,
                               redirect_stdout = options.redirect or options.redirect_stdout,
-                              redirect_stderr = options.redirect or options.redirect_stderr)
+                              redirect_stderr = options.redirect or options.redirect_stderr,
+                              finish_up_after = options.finish_up_after or None,
+                              save_interval = options.save_every or None
+                              )
     channel.catch_sigint = not options.allow_sigint
     channel.run(force = options.force)
     if options.dry_run:

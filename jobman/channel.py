@@ -58,6 +58,11 @@ class Channel(object):
           * 'stop' -> the experiment must stop as soon as possible. It may save what
             it needs to save. This occurs when SIGTERM or SIGINT are sent (or in
             user-defined circumstances).
+          * 'finish-up' -> the experiment should continue until it reaches a point
+            where it can be restarted from (check-point), then save and exit.
+          * 'save' -> the experiment should contiune until it reaches a check-point,
+            then save and continue.
+
         switch() may give the control to the user. In this case, the user may
         resume the experiment by calling switch() again. If an argument is given
         by the user, it will be relayed to the experiment.
@@ -98,10 +103,11 @@ class EmptyChannel(Channel):
 
 class SingleChannel(Channel):
 
-    def __init__(self, experiment, state):
+    def __init__(self, experiment, state, finish_up_after=None, save_interval=None):
         self.experiment = experiment
         self.state = state
         self.feedback = None
+        self.finish_up_notified = False
 
         #TODO: make this a property and disallow changing it during a with block
         self.catch_sigterm = True
@@ -113,11 +119,31 @@ class SingleChannel(Channel):
             print 'SingleChannel - warning, cannot use signal.SIGUSR2.'
             self.catch_sigusr2 = False
 
+        #TODO: parse more advanced strings, like [[[dd:]hh:]mm:]ss, <n>d, <n>h, <n>m, ...
+        if finish_up_after is not None:
+            self.finish_up_after = int(finish_up_after)
+        else:
+            self.finish_up_after = None
+        if save_interval is not None:
+            self.save_interval = int(save_interval)
+        else:
+            self.save_interval = None
 
     def switch(self, message = None):
-        feedback = self.feedback
-        self.feedback = None
-        return feedback
+        now = time.time()
+        if self.feedback is None and not self.finish_up_notified:
+            if self.finish_up_after is not None and\
+                    now - self.start_time > self.finish_up_after:
+                self.finish_up_notified = True
+                return 'finish-up'
+            if self.save_interval is not None and\
+                    now - self.last_saved_time > self.save_interval:
+                self.last_saved_time = now
+                return 'save'
+        else:
+            feedback = self.feedback
+            self.feedback = None
+            return feedback
 
     def run(self, force = False):
         self.setup()
@@ -159,7 +185,9 @@ class SingleChannel(Channel):
             self.prev_sigusr2 = signal.getsignal(signal.SIGUSR2)
             signal.signal(signal.SIGUSR2, self.on_sigterm)
 
-        self.state.jobman.start_time = time.time()
+        self.start_time = time.time()
+        self.last_saved_time = self.start_time
+        self.state.jobman.start_time = self.start_time
         self.save()
         return self
 
@@ -193,8 +221,9 @@ class SingleChannel(Channel):
 
 class StandardChannel(SingleChannel):
 
-    def __init__(self, path, experiment, state, redirect_stdout = False, redirect_stderr = False):
-        super(StandardChannel, self).__init__(experiment, state)
+    def __init__(self, path, experiment, state, redirect_stdout = False, redirect_stderr = False,
+            finish_up_after = None, save_interval = None):
+        super(StandardChannel, self).__init__(experiment, state, finish_up_after, save_interval)
         self.path = os.path.realpath(path)
         self.redirect_stdout = redirect_stdout
         self.redirect_stderr = redirect_stderr
