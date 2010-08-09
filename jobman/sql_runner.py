@@ -2,11 +2,11 @@
 from __future__ import with_statement
 
 try:
-	import sql
-	from cachesync_runner import cachesync_lock
-	import cachesync_runner
+    import sql
+    from cachesync_runner import cachesync_lock
+    import cachesync_runner
 except:
-	pass
+    pass
 import os
 import tempfile
 import shutil
@@ -152,7 +152,7 @@ class DBRSyncChannel(RSyncChannel):
             raise JobError(JobError.NOJOB,
                            'No job was found to run.')
 
-	print "Selected job id=%d in table=%s in db=%s on host=%s"%(self.dbstate.id,self.tablename, self.dbname, self.hostname)
+        print "Selected job id=%d in table=%s in db=%s on host=%s"%(self.dbstate.id,self.tablename, self.dbname, self.hostname)
 
         try:
             state = expand(self.dbstate)
@@ -167,6 +167,7 @@ class DBRSyncChannel(RSyncChannel):
         except:
             self.dbstate['jobman.status'] = self.DONE
             raise
+
 
     def save(self):
         super(DBRSyncChannel, self).save()
@@ -188,7 +189,7 @@ class DBRSyncChannel(RSyncChannel):
         except:
             self.dbstate['jobman.status'] = self.ERR_START
             raise
-        
+
     def run(self):
         # We pass the force flag as True because the status flag is
         # already set to RUNNING by book_dct in __init__
@@ -540,7 +541,7 @@ def runner_sqlview(options, dbdescr, viewname):
     """
     Create/drop a view of the scheduled experiments.
 
-    Usage: sqlsview <tablepath> <viewname>
+    Usage: jobman sqlview <tablepath> <viewname>
 
     The jobs should be scheduled first with the sqlschedule command.
     Also, it is more interesting to execute it after some experiment have 

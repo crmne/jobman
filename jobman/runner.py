@@ -137,6 +137,7 @@ def runner_cmdline(options, experiment, *strings):
     else:
         workdir_gen = getattr(workdirgen, options.workdir_gen, None) or resolve(options.workdir_gen)
         workdir = workdir_gen(state)
+
     channel = StandardChannel(workdir,
                               experiment, state,
                               redirect_stdout = options.redirect or options.redirect_stdout,
