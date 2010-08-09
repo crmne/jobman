@@ -162,8 +162,6 @@ class DBRSyncChannel(RSyncChannel):
             remote_path = os.path.join(remote_root, self.dbname, self.tablename, str(self.dbstate.id))
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state,
                     redirect_stdout, redirect_stderr, finish_up_after, save_interval)
-            print 'self.finish_up_after =', self.finish_up_after
-            print 'self.save_interval =', self.save_interval
         except:
             self.dbstate['jobman.status'] = self.DONE
             raise
