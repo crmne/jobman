@@ -1,3 +1,8 @@
+==============================================================================
+IMPORTANT: the following README addresses non-standard Jobman usage (ask
+James Bergstra for details). For canonical usage, please refer to the OFFICIAL
+Jobman documentation (http://deeplearning.net/software/jobman/).
+==============================================================================
 
 Database usage from Python
 ==========================
@@ -14,7 +19,6 @@ This command will create a few tables in the database called <dbname>.
 Those tables will all have a name that startswith '<tableset>', the handle
 'db' returned by the command uses those tables to implement a
 list-of-dictionaries sort of data structure.
-
 
 
 2. Populate the database with jobs.
@@ -142,5 +146,4 @@ Adding custom commands to mydriver
             , job_fn=hpu.kording.driver3.mnist_finetune_in_subdir_dbversion
             , job_dct_seq=jobs_for_mnist_finetune_in_subdir_dbversion()
             )
-
 
