@@ -41,6 +41,8 @@ class Channel(object):
             doc="jobman.status == DONE means a experiment has completed (not necessarily successfully)")
     ERR_START = property(lambda s: 3,
             doc="jobman.status == ERR_START means can't be started for some reason(ex: can't make the destination experiment directory.")
+    ERR_SYNC = property(lambda s: 4,
+            doc="jobman.status == ERR_SYNC means that the experiment was unable to synchronize the experiment directory.")
 
     # Methods to be used by the experiment to communicate with the channel
 
