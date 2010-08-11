@@ -163,7 +163,7 @@ class DBRSyncChannel(RSyncChannel):
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state,
                     redirect_stdout, redirect_stderr, finish_up_after, save_interval)
         except:
-            self.dbstate['jobman.status'] = self.DONE
+            self.dbstate['jobman.status'] = self.ERR_START
             raise
 
 
