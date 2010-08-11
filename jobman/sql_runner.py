@@ -192,7 +192,7 @@ class DBRSyncChannel(RSyncChannel):
         # We pass the force flag as True because the status flag is
         # already set to RUNNING by book_dct in __init__
         v = super(DBRSyncChannel, self).run(force = True)
-        if v is self.INCOMPLETE and self.state.jobman.sql.priority != self.RESTART_PRIORITY:
+        if v is self.INCOMPLETE and self.state.jobman.sql.priority < self.RESTART_PRIORITY:
             self.state.jobman.sql.priority = self.RESTART_PRIORITY
             self.save()
         return v
