@@ -264,23 +264,42 @@ class DbHandle (object):
                 for k, v in kwargs.iteritems():
                     d_self._set_in_session(k, v, session)
 
-            def update(d_self, dct, _recommit_times=5, _recommit_waitsecs=10, **kwargs):
-                """Like dict.update(), set keys from kwargs.
+            def update_in_session(d_self, dct, session, _recommit_times=5, _recommit_waitsecs=10, **kwargs):
+                """Make a dict-like update in the given session.
+
+                More robust than update_simple, it will try to recommit
+                if something bad happens.
 
                 :param session: a valid SqlAlchemy session or else None.  If it
                 is None, then a session will be created and closed internally.
                 If it is a valid session, then it will not be closed by this
                 function, but will be left in an empty/clear state, with no
                 pending things to commit.
-                
+
                 :precondition: session is None or else it is a valid SqlAlchemy
                 session with no pending stuff to commit.  This must be so,
                 because if the update fails, this function will try a few times (`_recommit_times`)
                 to re-commit the transaction.
                 """
+                while True:
+                    try:
+                        d_self.update_simple(dct, session, **kwargs)
+                        session.commit()
+                        break
+                    except:
+                        _recommit_times -= 1
+                        if _recommit_times:
+                            time.sleep(random.randint(1, _recommit_waitsecs))
+                            session.rollback()
+                        else:
+                            raise
+
+            def update(d_self, dct, _recommit_times=5, _recommit_waitsecs=10, **kwargs):
+                """Like dict.update(), set keys from kwargs.
+                """
                 session = h_self._session_fn()
                 if ('session' in kwargs):
-                    raise Exception('"session" is no longer a kwarg to update, use update_simple instead')
+                    raise Exception('"session" is no longer a kwarg to update, use update_in_session or update_simple instead')
 
                 while True:
                     # now we have a fresh session, and we try to do our work
