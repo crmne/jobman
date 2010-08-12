@@ -240,6 +240,8 @@ class StandardChannel(SingleChannel):
             return os.path.realpath(path)
 
     def save(self):
+        sys.stdout.flush()
+        sys.stderr.flush()
         with open(os.path.join(self.path, 'current.conf'), 'w') as current:
             current.write(format_d(self.state))
             current.write('\n')
