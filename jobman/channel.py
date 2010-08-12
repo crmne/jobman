@@ -62,12 +62,8 @@ class Channel(object):
             user-defined circumstances).
           * 'finish-up' -> the experiment should continue until it reaches a point
             where it can be restarted from (check-point), then save and exit.
-          * 'save' -> the experiment should contiune until it reaches a check-point,
-            then save and continue.
-
-        switch() may give the control to the user. In this case, the user may
-        resume the experiment by calling switch() again. If an argument is given
-        by the user, it will be relayed to the experiment.
+          * 'save' -> the experiment should continue until it reaches a check-point,
+            then save(by calling channel.save()) and continue.
         """
         pass
 
