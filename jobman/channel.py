@@ -260,11 +260,13 @@ class StandardChannel(SingleChannel):
     def __exit__(self, type, value, traceback):
         rval = super(StandardChannel, self).__exit__(type, value, traceback, save = False)
         if self.redirect_stdout:
-            sys.stdout.close()
+            new_stdout = sys.stdout
             sys.stdout = self.old_stdout
+            new_stdout.close()
         if self.redirect_stderr:
-            sys.stderr.close()
+            new_stderr = sys.stderr
             sys.stderr = self.old_stderr
+            new_stderr.close()
         os.chdir(self.old_cwd)
         self.save()
         return rval
