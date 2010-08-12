@@ -165,7 +165,7 @@ def dbstring(dbstring, **kwargs):
 
 def main(argv, dbstring, exp_root, job_fn, job_dct_seq):
     db = sql_db(dbstring)
-    username, password, hostname, dbname, tablename = parse_dbstring(dbstring)
+    username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
 
     job_dct_seq = tuple(job_dct_seq)
 

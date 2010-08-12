@@ -319,7 +319,7 @@ def cachesync_runner(options, dir):
     if dbdesc:
         import sql
         try:
-            username, password, hostname, dbname, tablename \
+            username, password, hostname, port, dbname, tablename \
                 = sql.parse_dbstring(dbdesc)
         except Exception, e:
             raise UsageError('Wrong syntax for dbdescr',e)
@@ -327,6 +327,7 @@ def cachesync_runner(options, dir):
             user = username,
             password = password,
             host = hostname,
+            port = port,
             database = dbname,
             table_prefix = tablename)
         try:

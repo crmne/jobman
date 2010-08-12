@@ -29,13 +29,14 @@ FUCKED_UP = 666
 
 _TEST_CONCURRENCY = False
 
-def postgres_serial(user, password, host, database, poolclass=sqlalchemy.pool.NullPool, **kwargs):
+def postgres_serial(user, password, host, port, database, poolclass=sqlalchemy.pool.NullPool, **kwargs):
     """Return a DbHandle instance that communicates with a postgres database at transaction
     isolation_level 'SERIALIZABLE'.
 
     :param user: a username in the database
     :param password: the password for the username
     :param host: the network address of the host on which the postgres server is running
+    :param port: the port on which to connect to host
     :param database: a database served by the postgres server
 
     """
@@ -43,7 +44,7 @@ def postgres_serial(user, password, host, database, poolclass=sqlalchemy.pool.Nu
 
     if not hasattr(this,'engine'):
         def connect():
-            c = psycopg2.connect(user=user, password=password, database=database, host=host)
+            c = psycopg2.connect(user=user, password=password, database=database, host=host, port=port)
             c.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
             return c
         this.engine = create_engine('postgres://'
@@ -149,13 +150,15 @@ def book_dct_non_postgres(db):
 ###########
 
 def parse_dbstring(dbstring):
-    """Unpacks a dbstring of the form postgres://username@hostname/dbname/tablename or postgres://username:password@hostname/dbname/tablename
+    """Unpacks a dbstring of the form postgres://username[:password]@hostname[:port]/dbname/tablename
 
     :rtype: tuple of strings
-    :returns: username, password, hostname, dbname, tablename
+    :returns: username, password, hostname, port, dbname, tablename
 
     :note: If the password is not given in the dbstring, this function attempts to retrieve it using
     >>> password = get_password(hostname, dbname)
+
+    :note: port defaults to 5432 (postgres default).
 
     """
     postgres = 'postgres://'
@@ -176,10 +179,18 @@ def parse_dbstring(dbstring):
         username = username_and_password[:colon_pos]
         password = username_and_password[colon_pos+1:]
 
-    #hostname
+    #hostname/port
     colon_pos = dbstring.find('/')
-    hostname = dbstring[:colon_pos]
+    hostname_and_port = dbstring[:colon_pos]
     dbstring = dbstring[colon_pos+1:]
+
+    colon_pos = hostname_and_port.find(':')
+    if -1 == colon_pos:
+        hostname = hostname_and_port
+        port = 5432
+    else:
+        hostname = hostname_and_port[:colon_pos]
+        port = int(hostname_and_port[colon_pos+1:])
 
     #dbname
     colon_pos = dbstring.find('/')
@@ -196,10 +207,11 @@ def parse_dbstring(dbstring):
         print 'USERNAME', username
         print 'PASS', password
         print 'HOST', hostname
+        print 'PORT', port
         print 'DB', dbname
         print 'TABLE', tablename
 
-    return username, password, hostname, dbname, tablename
+    return username, password, hostname, port, dbname, tablename
 
 def get_password(hostname, dbname):
     """Return the current user's password for a given database
@@ -214,9 +226,9 @@ def get_password(hostname, dbname):
     return password
 
 def db(dbstring):
-    username, password, hostname, dbname, tablename = parse_dbstring(dbstring)
+    username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
     try:
-        return postgres_db(username, password, hostname, dbname, table_prefix=tablename)
+        return postgres_db(username, password, hostname, port, dbname, table_prefix=tablename)
     except:
         print 'Error connecting with password', password
         raise

@@ -32,7 +32,7 @@ def runner_analyze(options, cmdname):
         import analyze.pg
         dbstring = options.addr
         db = sql_db(dbstring)
-        username, password, hostname, dbname, tablename = parse_dbstring(dbstring)
+        username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
     elif options.addr.startswith('dd://'):
         raise NotImplementedError()
         import analyze.dd

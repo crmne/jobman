@@ -734,10 +734,10 @@ def sqlite_file_db(filename, echo=False, **kwargs):
     engine = create_engine('sqlite:///%s' % filename, echo=False)
     return db_from_engine(engine, **kwargs)
 
-def postgres_db(user, password, host, database, echo=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
+def postgres_db(user, password, host, port, database, echo=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
     """Create an engine to access a postgres_dbhandle
     """
-    db_str ='postgres://%(user)s:%(password)s@%(host)s/%(database)s' % locals()
+    db_str ='postgres://%(user)s:%(password)s@%(host)s:%(port)i/%(database)s' % locals()
 
     engine = create_engine(db_str, echo=echo, poolclass=poolclass)
 

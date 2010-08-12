@@ -26,7 +26,7 @@ def check_condor_serve(options, dbdescr):
     """
 
     try:
-        username, password, hostname, dbname, tablename \
+        username, password, hostname, port, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
@@ -34,6 +34,7 @@ def check_condor_serve(options, dbdescr):
         user = username,
         password = password,
         host = hostname,
+        port = port,
         database = dbname,
         table_prefix = tablename)
     try:

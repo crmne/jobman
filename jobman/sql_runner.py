@@ -140,16 +140,17 @@ class DBRSyncChannel(RSyncChannel):
 
     RESTART_PRIORITY = 2.0
 
-    def __init__(self, username, password, hostname, dbname, tablename, path, remote_root,
+    def __init__(self, username, password, hostname, port, dbname, tablename, path, remote_root,
             redirect_stdout = False, redirect_stderr = False,
             finish_up_after = None, save_interval = None):
-        self.username, self.password, self.hostname, self.dbname, self.tablename \
-            = username, password, hostname, dbname, tablename
+        self.username, self.password, self.hostname, self.port, self.dbname, self.tablename \
+            = username, password, hostname, port, dbname, tablename
 
         self.db = sql.postgres_serial(
             user = self.username,
             password = self.password,
             host = self.hostname,
+            port = self.port,
             database = self.dbname,
             table_prefix = self.tablename)
 
@@ -158,7 +159,7 @@ class DBRSyncChannel(RSyncChannel):
             raise JobError(JobError.NOJOB,
                            'No job was found to run.')
 
-        print "Selected job id=%d in table=%s in db=%s on host=%s"%(self.dbstate.id,self.tablename, self.dbname, self.hostname)
+        print "Selected job id=%d in table=%s in db=%s on host=%s:%i" % (self.dbstate.id,self.tablename, self.dbname, self.hostname, self.port)
 
         try:
             state = expand(self.dbstate)
@@ -248,11 +249,12 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     See the experiment and parameters topics for more information about
     these parameters.
 
-    Assuming that a postgres database is running on `host`, contains a
-    database called `dbname` and that `user` has the permissions to
-    create, read and modify tables on that database, tablepath should
-    be of the following form:
-        postgres://user:pass@host/dbname/tablename
+    Assuming that a postgres database is running on port `port` of
+    `host`, contains a database called `dbname` and that `user` has the
+    permissions to create, read and modify tables on that database,
+    tablepath should be of the following form:
+
+        postgres://user:pass@host[:port]/dbname/tablename
 
     If no table is named `tablename`, one will be created
     automatically. The state corresponding to the experiment and
@@ -263,7 +265,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     command.
 
     Example use:
-        jobman sqlschedule postgres://user:pass@host/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename \\
             mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
@@ -274,7 +276,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     """
 
     try:
-        username, password, hostname, dbname, tablename \
+        username, password, hostname, port, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
@@ -282,6 +284,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
         user = username,
         password = password,
         host = hostname,
+        port = port,
         database = dbname,
         table_prefix = tablename)
 
@@ -374,7 +377,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
     """
 
     try:
-        username, password, hostname, dbname, tablename \
+        username, password, hostname, port, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr', e)
@@ -385,6 +388,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
         user = username,
         password = password,
         host = hostname,
+        port = port,
         database = dbname,
         table_prefix = tablename)
 
@@ -432,7 +436,7 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 #     """
 
 #     try:
-#         username, password, hostname, dbname, tablename \
+#         username, password, hostname, port, dbname, tablename \
 #             = sql.parse_dbstring(dbdescr)
 #     except Exception, e:
 #         raise UsageError('Wrong syntax for dbdescr',e)
@@ -441,6 +445,7 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 #         user = username,
 #         password = password,
 #         host = hostname,
+#         port = port,
 #         database = dbname,
 #         table_prefix = tablename)
 
@@ -488,11 +493,12 @@ def runner_sql(options, dbdescr, exproot):
 
     The jobs should be scheduled first with the sqlschedule command.
 
-    Assuming that a postgres database is running on `host`, contains a
-    database called `dbname` and that `user` has the permissions to
-    create, read and modify tables on that database, tablepath should
-    be of the following form:
-        postgres://user:pass@host/dbname/tablename
+    Assuming that a postgres database is running on port `port` of
+    `host`, contains a database called `dbname` and that `user` has the
+    permissions to create, read and modify tables on that database,
+    tablepath should be of the following form:
+
+        postgres://user:pass@host[:port]/dbname/tablename
 
     exproot can be a local path or a remote path. Examples of exproots:
         /some/local/path
@@ -510,11 +516,11 @@ def runner_sql(options, dbdescr, exproot):
 
     Example use:
         jobman sql \\
-            postgres://user:pass@host/dbname/tablename \\
+            postgres://user:pass@host[:port]/dbname/tablename \\
             ssh://central_host:myexperiments
     """
     try:
-        username, password, hostname, dbname, tablename \
+        username, password, hostname, port, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
@@ -525,7 +531,7 @@ def runner_sql(options, dbdescr, exproot):
         while n != 0:
             workdir = tempfile.mkdtemp()
             #print 'wdir', workdir
-            channel = DBRSyncChannel(username, password, hostname, dbname,
+            channel = DBRSyncChannel(username, password, hostname, port, dbname,
                                      tablename,
                                      workdir,
                                      exproot,
@@ -569,30 +575,30 @@ def runner_sqlview(options, dbdescr, viewname):
     Also, it is more interesting to execute it after some experiment have 
     finished.
 
-    Assuming that a postgres database is running on `host`, contains a
-    database called `dbname` and that `user` has the permissions to
-    create, read and modify tables on that database, tablepath should
-    be of the following form:
-        postgres://user:pass@host/dbname/tablename
+    Assuming that a postgres database is running on port `port` of
+    `host`, contains a database called `dbname` and that `user` has the
+    permissions to create, read and modify tables on that database,
+    tablepath should be of the following form:
 
+        postgres://user:pass@host[:port]/dbname/tablename
 
 
     Example use:
         That was executed and at least one exeperiment was finished.
-        jobman sqlschedule postgres://user:pass@host/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename \\
             mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
         Now this will create a view with a columns for each parameter and 
         key=value set in the state by the jobs.
-        jobman sqlview postgres://user:pass@host/dbname/tablename viewname
+        jobman sqlview postgres://user:pass@host[:port]/dbname/tablename viewname
 
         you can use the jobman.experiments.example1 as a working 
         mymodule.my_experiment
     """
     try:
-        username, password, hostname, dbname, tablename \
+        username, password, hostname, port, dbname, tablename \
             = sql.parse_dbstring(dbdescr)
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
@@ -601,6 +607,7 @@ def runner_sqlview(options, dbdescr, viewname):
         user = username,
         password = password,
         host = hostname,
+        port = port,
         database = dbname,
         table_prefix = tablename)
 
