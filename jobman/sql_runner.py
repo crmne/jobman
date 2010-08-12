@@ -52,6 +52,10 @@ class RSyncChannel(StandardChannel):
             self.host = ''
             self.remote_path = os.path.realpath(remote_path)
 
+        # If False, do not rsync during save.
+        # This is useful if we have to halt with short notice.
+        self.sync_in_save = True
+
     def rsync(self, direction, num_retries=3):
         """The directory at which experiment-related files are stored.
         """
@@ -116,8 +120,10 @@ class RSyncChannel(StandardChannel):
         # Useful for manual tests; leave this there, just commented.
         #cachesync_runner.manualtest_inc_save_count()
 
-        super(RSyncChannel, self).save()
-        self.push()
+        if self.sync_in_save:
+            super(RSyncChannel, self).save()
+            self.push()
+        #TODO: else: update current.conf with only state.jobman, push current.conf
 
     def setup(self):
         self.touch()
@@ -168,8 +174,26 @@ class DBRSyncChannel(RSyncChannel):
 
 
     def save(self):
-        super(DBRSyncChannel, self).save()
-        self.dbstate.update(flatten(self.state))
+        # If the DB is not writable, the rsync won't happen
+        # If the DB is up, but rsync fails, the status will be ERR_SYNC,
+        # but self.state will not be updated in the database.
+        session = self.db.session()
+        try:
+            # Test write access to DB
+            self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
+
+            # save self.state in file current.state, and rsync
+            super(DBRSyncChannel, self).save()
+
+            if self.sync_in_save:
+                # update DB
+                self.dbstate.update_in_session(flatten(self.state), session)
+            else:
+                # update only jobman.*
+                state_jobman = flatten({'jobman':self.state.jobman})
+                self.dbstate.update_in_session(state_jobman, session)
+        finally:
+            session.close()
 
     def setup(self):
         # Extract a single experiment from the table that is not already running.
