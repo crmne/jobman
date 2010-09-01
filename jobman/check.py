@@ -7,6 +7,7 @@ import os, time
 import sql
 from optparse import OptionParser
 from runner import runner_registry
+from tools import UsageError
 
 parse_check_condor = OptionParser(usage = '%prog check_condor <tablepath> ',
                             add_help_option=False)
