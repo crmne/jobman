@@ -405,6 +405,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
                                       db, verbose = 1, force_dup = True)
     else:
         #if the first insert fail, we won't force the other as the force option was not gived.
+        failed = 0
         for cmd in commands:
             state = parser(*cmd)
             state['jobman.experiment'] = experiment
@@ -413,8 +414,9 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
                 sql.add_experiments_to_db([state]*(options.repeat-1), db, 
                                           verbose = 1, force_dup = True)
             else:
+                failed+=1
                 print "The last cmd failed to insert, we won't repeat it. use --force to force the duplicate of job in the db."
-
+        print "Added",len(commands)-failed,"on",len(commands)
 runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
 # ################################################################################
