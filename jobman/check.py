@@ -55,11 +55,22 @@ def check_condor_serve(options, dbdescr):
             run_time = "%dd %dh%dm%ds"%(run_time/(24*3600),run_time%(24*3600)/3600,run_time%3600/60,run_time%60)
             return run_time
         for idx,r in enumerate(running):
-            h = r["jobman.sql.host_name"]
-            s = r["jobman.sql.condor_slot"]
+            try:
+                h = r["jobman.sql.host_name"]
+                s = r["jobman.sql.condor_slot"]
+            except KeyError, e:
+                print "E: Job %d don't have a 'jobman.sql.host_name' or 'jobman.sql.condor_slot' field"%(r.id)
             st = s+'@'+h
             if host_slot.has_key(st):
-                print 'E: Job %d and Job %d are running on the same condor slot/host combination. running time: %s and %s'%(running[host_slot[st]].id,r.id,str_time(running[host_slot[st]]["jobman.sql.start_time"]),str_time(r["jobman.sql.start_time"]))
+                try:
+                    t0=str_time(running[host_slot[st]]["jobman.sql.start_time"])
+                except KeyError:
+                    t0='NO_START_TIME'
+                try:
+                    t1=str_time(r["jobman.sql.start_time"])
+                except KeyError:
+                    t1='NO_START_TIME'
+                print 'E: Job %d and Job %d are running on the same condor slot/host combination. running time: %s and %s'%(running[host_slot[st]].id,r.id,t0,t1)
             else: host_slot[st]=idx
             
         #check job still running on condor
