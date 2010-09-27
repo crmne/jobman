@@ -41,9 +41,11 @@ def check_condor_serve(options, dbdescr):
     try:
         session = db.session()
         q = db.query(session)
+        idle = q.filter_eq('jobman.status',0).all()
         running = q.filter_eq('jobman.status',1).all()
+        finished = q.filter_eq('jobman.status',2).all()
         info = []
-        print "I: Their is %d jobs marked as running in the db"%len(running)
+        print "I: Their is %d jobs marked as running, %d as idle and %d as finished in the db"%(len(running),len(idle),len(finished))
         print
         #check not 2 jobs in same slot+host
         host_slot={}
@@ -81,7 +83,7 @@ def check_condor_serve(options, dbdescr):
                 #return when running: slot1@brams0b.iro.umontreal.ca Claimed Busy bastienf bastienf
                 #return when don't exist: empty
                 if len(lines)==0:
-                    print "W: Job %d is running on a host that condor lost connection with. The job run for: %s"%(r.id,run_time)
+                    print "W: Job %d is running on a host(%s) that condor lost connection with. The job run for: %s"%(r.id, info[3], run_time)
                     continue
                 elif len(lines)!=1 and not (len(lines)==2 and lines[-1]=='\n'):
                     print "W: Job %d condor_status return not understood: ",lines
