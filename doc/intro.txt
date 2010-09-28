@@ -40,13 +40,15 @@ The first (baby)step should be to become familiar with the various Jobman option
 
     Available commands: (use help <command> for more info)
     cmdline              Start an experiment with parameters given on the
-    command line.
+     			 command line.
+    condor_check         Check that all jobs marked as running in the db are 
+    			 marked as running in condor
     help                 Get help for a topic.
     sql                  Run jobs from a sql table.
     sqlrestart           Set the status of jobs to START.
     sqlschedule          Schedule a job to run using the sql command.
     sqlschedules         Schedule multiple jobs from the command line to run
-    using the sql command.
+    			 using the sql command.
     sqlview              Create/drop a view of the scheduled experiments.
 
 Further exploration can be done using ``jobman help <command>``.
