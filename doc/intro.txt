@@ -43,6 +43,7 @@ The first (baby)step should be to become familiar with the various Jobman option
     command line.
     help                 Get help for a topic.
     sql                  Run jobs from a sql table.
+    sqlrestart           Set the status of jobs to START.
     sqlschedule          Schedule a job to run using the sql command.
     sqlschedules         Schedule multiple jobs from the command line to run
     using the sql command.

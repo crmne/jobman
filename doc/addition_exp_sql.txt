@@ -296,6 +296,26 @@ For more information::
 
     jobman sql help
 
+Restarting jobs
+---------------
+
+.. code-block:: bash
+
+   jobman sqlrestart [--force] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+
+This allow to reset the status of jobs to the START status. This mean that 
+`jobman sql` will start it again. Without the `--force` option it only print the 
+current status of the listed jobs. With the `--force` option, it change their status 
+in addtion to print their current status.
+
+.. code-block:: bash
+
+   jobman sqlrestart --status=JOB_STATUS [--force] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+
+The option `--status=JOB_STATUS` append to the job of jobs to restart jobs in the 
+table that have the status JOB_STATUS.
+
+
 Storing the mercurial/other repository version of python module
 ---------------------------------------------------------------
 
