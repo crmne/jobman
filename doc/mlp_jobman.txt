@@ -198,12 +198,12 @@ Restarting jobs
 
    jobman sqlrestart [--force] [--status=JOB_STATUS] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
 
-This allow to reset the status of jobs to the START status. This mean that 
-`jobman sql` will start it again. Without the `--force` option it only print the 
-current status of the listed jobs. With the `--force` option, it change their status 
+This resets the status of jobs to the START status. This means that 
+`jobman sql` will start those jobs again. Without the `--force` option it only prints the 
+current status of the listed jobs. With the `--force` option, it changes their status 
 in addtion to print their current status.
-The option `--status=JOB_STATUS` append to the job of jobs to restart jobs in the 
-table that have the status JOB_STATUS.
+
+The option `--status=JOB_STATUS` appends jobs with the status JOB_STATUS to the jobs to restart.
 
 
 Connect to the database, view the results
