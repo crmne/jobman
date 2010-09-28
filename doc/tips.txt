@@ -1,6 +1,9 @@
+.. index:: Tips
+
+.. _tips:
 
 Tips
------
+====
 
 To learn about general options, type
 
