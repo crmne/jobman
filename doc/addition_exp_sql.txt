@@ -1,7 +1,7 @@
 .. _addition_exp_sql:
 
 Use Case: using PostgreSQL
-=========================
+==========================
 
 This chapter outlines how to use Jobman in conjunction with a PostgreSQL
 database, for storing both hyperparameters and results.
