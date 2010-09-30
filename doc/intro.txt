@@ -45,7 +45,7 @@ The first (baby)step should be to become familiar with the various Jobman option
     			 marked as running in condor
     help                 Get help for a topic.
     sql                  Run jobs from a sql table.
-    sqlrestart           Set the status of jobs to START.
+    sqlstatus            Print/Change the status of jobs.
     sqlschedule          Schedule a job to run using the sql command.
     sqlschedules         Schedule multiple jobs from the command line to run
     			 using the sql command.

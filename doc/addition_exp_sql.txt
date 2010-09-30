@@ -301,12 +301,11 @@ Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlrestart [--force] [--status=JOB_STATUS] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--restart] [--status=JOB_STATUS] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
 
-This resets the status of jobs to the START status. This means that 
-`jobman sql` will start those jobs again. Without the `--force` option it only prints the 
-current status of the listed jobs. With the `--force` option, it changes their status 
-in addtion to print their current status.
+Without `--restart`, print the current status of those jobs. With `--restart`,
+print and change the status to START. This means that `jobman sql` will start
+those jobs again.
 
 The option `--status=JOB_STATUS` appends jobs with the status JOB_STATUS to the jobs to restart.
 

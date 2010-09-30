@@ -621,25 +621,26 @@ def runner_sqlview(options, dbdescr, viewname):
 runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 
 
-parser_sqlrestart = OptionParser(usage = '%prog sqlrestart <tablepath> <id>...',
+parser_sqlstatus = OptionParser(usage = '%prog sqlstatus <tablepath> <id>...',
                               add_help_option=False)
-parser_sqlrestart.add_option('-f', '--force',action="store_true", dest="force",
-                          help = 'If true, will change the status of jobs. (default false)')
-parser_sqlrestart.add_option('--status',action="store", dest="status", default='',
+parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
+                          help = 'If true, will change the status of jobs to START. (default false)')
+parser_sqlstatus.add_option('--status',action="store", dest="status", default='',
                           help = 'append list of jobs to restart jobs that have the gived status.')
 
-def runner_sqlrestart(options, dbdescr, *ids):
+def runner_sqlstatus(options, dbdescr, *ids):
     """
     Set the status of jobs to START.
 
-    Usage: jobman sqlrestart <tablepath> <id>...
+    Usage: jobman sqlstatus [--restart] [--status=JOB_STATUS] <tablepath> <id>...
+    Without the --restart option, print the current status of those jobs
+    With --restart, print and change the status to START
 
-    Without the --force option we print what we will do. 
-    With --force, we print and change the status.
+    With `--status=JOB_STATUS`, appends jobs with the status JOB_STATUS to the jobs to restart.
 
     Example use:
-        That was executed and at least one exeperiment was finished.
-        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename 10 11
+
+        jobman sqlstatus postgres://user:pass@host[:port]/dbname/tablename 10 11
 
     """
     try:
@@ -664,13 +665,15 @@ def runner_sqlrestart(options, dbdescr, *ids):
             jobs = q.filter_eq('jobman.status',int(options.status)).all()
             for job in jobs:
                 print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
-                if options.force:
+                if options.restart:
                     job.__setitem__('jobman.status',0,session)
                     job.update_in_session({},session)
-            if options.force:
+            if options.restart:
                 print "Changed the status to 0 for %d jobs with status %s"%(
                     len(jobs),options.status)
                        
+        ids = list(set(ids))
+        ids.sort()
         for id in ids:
             if isinstance(id,str):
                 job = db.get(id)
@@ -678,15 +681,15 @@ def runner_sqlrestart(options, dbdescr, *ids):
                 job = id
                 id = job.id
             print "Job id %s currently have status %d"%(id,job['jobman.status'])
-            if options.force:
+            if options.restart:
                 job.__setitem__('jobman.status',0,session)
                 job.update_in_session({},session)
-        if options.force:
+        if options.restart:
             session.commit()
             print "Changed the status to 0 for %d jobs"%len(ids)
     finally:
         session.close()
 
 
-runner_registry['sqlrestart'] = (parser_sqlrestart, runner_sqlrestart)
+runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)
 

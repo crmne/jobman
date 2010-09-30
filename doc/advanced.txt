@@ -10,7 +10,7 @@ There is the `jobman condor_check <tablepath>` command which checks that all job
 marked as running in the db are marked as running in condor.
 
 It prints warnings and errors about jobs that may have crashed or have crashed. It 
-is useful with `jobman sqlrestart` to restart jobs that have crashed.
+is useful with `jobman sqlstatus` to restart jobs that have crashed.
 
 
 reval
