@@ -6,7 +6,7 @@ import numpy.random
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import eagerload
-import psycopg2
+import psycopg2, psycopg2.extensions
 
 from api0 import db_from_engine, postgres_db
 
