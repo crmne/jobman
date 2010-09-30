@@ -24,6 +24,9 @@ PUSH_ERROR = 'jobman.sql.push_error'
 START = 0
 RUNNING = 1
 DONE = 2
+ERR_START = 3
+ERR_SYNC = 4
+CANCELED = 5
 FUCKED_UP = 666
 
 _TEST_CONCURRENCY = False

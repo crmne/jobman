@@ -43,6 +43,8 @@ class Channel(object):
             doc="jobman.status == ERR_START means can't be started for some reason(ex: can't make the destination experiment directory.")
     ERR_SYNC = property(lambda s: 4,
             doc="jobman.status == ERR_SYNC means that the experiment was unable to synchronize the experiment directory.")
+    CANCELED = property(lambda s: 5,
+            doc="jobman.status == CANCELED means that user set the job to that mode and don't want to start it. If the jobs is already started and finish, it will change its status to DONE or START depending of the return value. It the started job crash, the status won't change autamatically.")
 
     # Methods to be used by the experiment to communicate with the channel
 

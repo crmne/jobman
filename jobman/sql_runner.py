@@ -7,6 +7,7 @@ try:
     import cachesync_runner
 except:
     pass
+
 import os
 import tempfile
 import shutil
@@ -20,7 +21,7 @@ from tools import *
 from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
-
+from sql import START, RUNNING, CANCELED
 
 ################################################################################
 ### Channels
@@ -623,6 +624,8 @@ runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 
 parser_sqlstatus = OptionParser(usage = '%prog sqlstatus <tablepath> <id>...',
                               add_help_option=False)
+parser_sqlstatus.add_option('--cancel', action="store_true", dest="cancel",
+                          help = 'If true, will change the status of jobs to CANCELED. (default false)')
 parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
                           help = 'If true, will change the status of jobs to START. (default false)')
 parser_sqlstatus.add_option('--status',action="store", dest="status", default='',
@@ -632,9 +635,12 @@ def runner_sqlstatus(options, dbdescr, *ids):
     """
     Set the status of jobs to START.
 
-    Usage: jobman sqlstatus [--restart] [--status=JOB_STATUS] <tablepath> <id>...
+    Usage: jobman sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] <tablepath> <id>...
     Without the --restart option, print the current status of those jobs
+    With --cancel, print and change the status to CANCELED
     With --restart, print and change the status to START
+
+    --restart and --cancel are mutually exclusive
 
     With `--status=JOB_STATUS`, appends jobs with the status JOB_STATUS to the jobs to restart.
 
@@ -649,6 +655,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
 
+    if options.restart and options.cancel:
+        raise UsageError("The option --restart and --cancel are mutually exclusive.")
+
     db = sql.postgres_serial(
         user = username,
         password = password,
@@ -656,6 +665,15 @@ def runner_sqlstatus(options, dbdescr, *ids):
         port = port,
         database = dbname,
         table_prefix = tablename)
+
+    modif = options.restart or options.cancel
+
+    if options.restart:
+        new_status = START
+    elif options.cancel:
+        new_status = CANCELED
+
+    have_running_jobs = False
 
     try:
         session = db.session()
@@ -665,11 +683,13 @@ def runner_sqlstatus(options, dbdescr, *ids):
             jobs = q.filter_eq('jobman.status',int(options.status)).all()
             for job in jobs:
                 print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
-                if options.restart:
-                    job.__setitem__('jobman.status',0,session)
+                if job['jobman.status'] == RUNNING:
+                    have_running_jobs = True
+                if modif:
+                    job.__setitem__('jobman.status',new_status,session)
                     job.update_in_session({},session)
-            if options.restart:
-                print "Changed the status to 0 for %d jobs with status %s"%(
+            if modif:
+                print "Changed the status to %d for %d jobs with previous status of %s"%(new_status,
                     len(jobs),options.status)
                        
         ids = list(set(ids))
@@ -681,12 +701,17 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 job = id
                 id = job.id
             print "Job id %s currently have status %d"%(id,job['jobman.status'])
-            if options.restart:
-                job.__setitem__('jobman.status',0,session)
+            if job['jobman.status'] == RUNNING:
+                have_running_jobs = True
+            if modif:
+                job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
-        if options.restart:
+        if modif:
             session.commit()
-            print "Changed the status to 0 for %d jobs"%len(ids)
+            print "Changed the status to %d for %d jobs"%(new_status,len(ids))
+        if options.cancel and have_running_jobs:
+            print "WARNING: Canceled jobs only change the status in the db. Jobs that are already running, will change its status to DONE or START depending of the return value when they finish. It the started job crash, the status won't change."
+
     finally:
         session.close()
 

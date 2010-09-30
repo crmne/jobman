@@ -296,18 +296,23 @@ For more information::
 
     jobman sql help
 
-Restarting jobs
----------------
+Canceling/Restarting jobs
+-------------------------
 
 .. code-block:: bash
 
-   jobman sqlstatus [--restart] [--status=JOB_STATUS] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
 
-Without `--restart`, print the current status of those jobs. With `--restart`,
-print and change the status to START. This means that `jobman sql` will start
-those jobs again.
+* Default: only print the current status of those jobs.
+* `--cancel`: print and change the status to CANCELED. 
+    * This means that  `jobman sql` won't start those jobs. If the jobs are 
+      already running, when the jobs finish it will change the status to START 
+      or DONE depending of what it return. If the already running jobs crash,
+      it won't change the status.
+* `--restart`: print and change the status to START.
+    *  This means that `jobman sql` will start those jobs again.
+* `--status=JOB_STATUS`: appends jobs with the status JOB_STATUS to the list jobs to act on.
 
-The option `--status=JOB_STATUS` appends jobs with the status JOB_STATUS to the jobs to restart.
 
 Storing the mercurial/other repository version of python module
 ---------------------------------------------------------------

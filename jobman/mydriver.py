@@ -151,10 +151,13 @@ def status(db, **kwargs):
         cnt = sts.get(d['jobman.status'], 0)
         sts[d['jobman.status']] = cnt + 1
 
-    print 'QUEUED  :', sts[0]; del sts[0]
-    print 'RUNNING :', sts[1]; del sts[1]
-    print 'DONE    :', sts[2]; del sts[2]
-    print 'MESSED  :', sts[666]; del sts[666]
+    print 'QUEUED   :', sts[0]; del sts[0]
+    print 'RUNNING  :', sts[1]; del sts[1]
+    print 'DONE     :', sts[2]; del sts[2]
+    print 'ERR_START:', sts[3]; del sts[3]
+    print 'ERR_SYNC :', sts[4]; del sts[4]
+    print 'CANCELED :', sts[5]; del sts[5]
+    print 'MESSED   :', sts[666]; del sts[666]
 
     if sts:
         print 'WARNING: other status counts:', sts
