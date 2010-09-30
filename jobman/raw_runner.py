@@ -1,6 +1,7 @@
+import logging, time, os
+
 from runner import runner_registry
 from optparse import OptionParser
-import sys, logging, time, os
 
 parser_raw = OptionParser(usage = '%prog raw [options] <expr>',
                           add_help_option=False)

@@ -4,18 +4,18 @@ This file defines class `DbHandle` and a few routines for creating instances of 
 """
 import sqlalchemy.pool
 
-from sqlalchemy import create_engine, desc
-from sqlalchemy import Table, Column, MetaData, ForeignKey, ForeignKeyConstraint
-from sqlalchemy import Integer, String, Float, Boolean, DateTime, Text, Binary
+from sqlalchemy import create_engine#, desc
+from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
+from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
 
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import mapper, relation, backref, eagerload
+from sqlalchemy.orm import mapper, relation, eagerload#backref
 
 from sqlalchemy.databases import postgres
-from sqlalchemy.engine.base import Connection
+#from sqlalchemy.engine.base import Connection
 
-from sqlalchemy.sql import operators, select
-from sqlalchemy.sql.expression import column, outerjoin, not_
+from sqlalchemy.sql import select #operators
+from sqlalchemy.sql.expression import column, not_ #outerjoin
 
 import time
 import random

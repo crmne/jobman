@@ -6,7 +6,7 @@ import shutil
 import optparse
 from optparse import OptionParser
 
-from tools import *
+from tools import DD, expand, format_help, resolve, UsageError
 from channel import StandardChannel
 
 import parse

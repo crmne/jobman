@@ -1,7 +1,9 @@
 import os
+import logging
+
 from .runner import runner_registry
 from optparse import OptionParser
-import logging
+
 _logger = logging.getLogger('jobman.analyze_runner')
 
 parser_analyze = OptionParser(usage = '%prog rsync_any [options] <tablepath> <exproot>',

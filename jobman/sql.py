@@ -4,12 +4,11 @@ import sys, os, copy, time, hashlib
 import numpy.random
 
 import sqlalchemy
-import sqlalchemy.pool
-from sqlalchemy import create_engine, desc
+from sqlalchemy import create_engine
 from sqlalchemy.orm import eagerload
-import psycopg2, psycopg2.extensions
+import psycopg2
 
-from api0 import db_from_engine, postgres_db, DbHandle
+from api0 import db_from_engine, postgres_db
 
 JOBID = 'jobman.id'
 EXPERIMENT = 'jobman.experiment'

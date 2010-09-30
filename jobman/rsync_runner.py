@@ -1,4 +1,9 @@
-import os, random, logging, time, socket, sys, tempfile, datetime, traceback, shutil
+import datetime, logging, os, random, shutil, socket, sys
+import tempfile, time, traceback
+
+import SocketServer
+import threading
+
 from runner import runner_registry
 from optparse import OptionParser
 
@@ -34,8 +39,6 @@ def saltedhash_hex(string, salt):
 # Serving
 ###############
 
-import SocketServer, time, logging, sys, os
-import threading
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     """

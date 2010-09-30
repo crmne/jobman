@@ -1,12 +1,13 @@
 """Define the `mydriver.main` way of controlling experiments.
 """
-import sys, copy
+import sys
+import logging
+
 from .tools import flatten
 from .sql import db as sql_db
 from .sql import HOST, HOST_WORKDIR, EXPERIMENT, FUCKED_UP
 from .sql import parse_dbstring, insert_dict, hash_state
 
-import logging
 logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
 class Cmd(object):
