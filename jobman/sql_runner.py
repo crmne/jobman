@@ -706,7 +706,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
             session.commit()
             print "Changed the status to %d for %d jobs"%(new_status,len(ids))
         if options.cancel and have_running_jobs:
-            print "WARNING: Canceled jobs only change the status in the db. Jobs that are already running, will change its status to DONE or START depending of the return value when they finish. It the started job crash, the status won't change."
+            print "WARNING: Canceled jobs only change the status in the db. Jobs that are already running, will continue to run. If the job finish with status COMPLETE, it will change the status to DONE. Otherwise the status won't be changed"
 
     finally:
         session.close()

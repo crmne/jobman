@@ -165,7 +165,12 @@ class SingleChannel(Channel):
             try:
                 v = self.experiment(self.state, self)
             finally:
-                if v is self.COMPLETE:
+                print "The experiment returned value is",v
+                if self.state.jobman.status is self.CANCELED:
+                    if v is self.COMPLETE:
+                        self.state.jobman.status = self.DONE
+                    #else we don't change the status
+                elif v is self.COMPLETE:
                     self.state.jobman.status = self.DONE
                 elif v is self.INCOMPLETE:
                     self.state.jobman.status = self.START
