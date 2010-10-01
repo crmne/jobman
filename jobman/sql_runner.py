@@ -700,6 +700,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
             else: 
                 job = id
                 id = job.id
+            if job is None:
+                print "Job id %s don't exit in the db"%(id)
+                continue
             print "Job id %s currently have status %d"%(id,job['jobman.status'])
             if job['jobman.status'] == RUNNING:
                 have_running_jobs = True
