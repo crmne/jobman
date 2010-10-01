@@ -101,7 +101,7 @@ def check_condor_serve(options, dbdescr):
                     continue
                 sp = lines[0].split()
                 if len(sp)>=3 and sp[1] in ["Unclaimed","Owner"] and sp[2]=="Idle":
-                        print "E: Job %d db tell that this job is running a job. condor tell that this host don't run a job. running time %s"%(r.id,run_time)
+                        print "E: Job %d db tell that this job is running on %s. condor tell that this host don't run a job. running time %s"%(r.id,info[3],run_time)
                 elif len(sp)==5:
                     assert sp[0]=="slot%s@%s"%(info[2],info[3])
                     if sp[3]!=sp[4]:
