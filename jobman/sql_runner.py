@@ -630,6 +630,8 @@ parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
                           help = 'If true, will change the status of jobs to START. (default false)')
 parser_sqlstatus.add_option('--status',action="store", dest="status", default='',
                           help = 'append list of jobs to restart jobs that have the gived status.')
+parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio", default='',
+                          help = 'Reset the priority to the default.')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -681,6 +683,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 if modif:
                     job.__setitem__('jobman.status',new_status,session)
                     job.update_in_session({},session)
+                if options.reset_prio:
+                    job.__setitem__('jobman.sql.priority',1.0,session)
+                    job.update_in_session({},session)
             if modif:
                 print "Changed the status to %d for %d jobs with previous status of %s"%(new_status,
                     len(jobs),options.status)
@@ -696,15 +701,26 @@ def runner_sqlstatus(options, dbdescr, *ids):
             if job is None:
                 print "Job id %s don't exit in the db"%(id)
                 continue
-            print "Job id %s currently have status %d"%(id,job['jobman.status'])
+            prio = None
+            try:
+                prio = job['jobman.sql.priority']
+            except:
+                pass
+            print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
             if job['jobman.status'] == RUNNING:
                 have_running_jobs = True
             if modif:
                 job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
+            if options.reset_prio:
+                job.__setitem__('jobman.sql.priority',1.0,session)
+                job.update_in_session({},session)
+
         if modif:
             session.commit()
             print "Changed the status to %d for %d jobs"%(new_status,len(ids))
+        if options.reset_prio:
+            print "Reseted the priority to the default value"
         if options.cancel and have_running_jobs:
             print "WARNING: Canceled jobs only change the status in the db. Jobs that are already running, will continue to run. If the job finish with status COMPLETE, it will change the status to DONE. Otherwise the status won't be changed"
 
