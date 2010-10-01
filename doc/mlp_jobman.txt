@@ -103,8 +103,8 @@ You will notice that jobman inserted a couple of different fields:
 
  * jobman.experiment: the name of the module.method that took the (state,
    channel) as input
- * jobman.status: the status of the job (0 - not started, 1 - incomplete, 2 -
-   complete)
+ * jobman.status: the status of the job (0 = not started, 1 = incomplete, 2 =
+   complete, 3 = err while starting, 4 = err while syncing, 5 = job error, -1 = canceled)
  * jobman.sql.priority: the priority at which the job will be scheduled.
    Higher number == higher priority.
 

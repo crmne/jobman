@@ -253,7 +253,10 @@ same for all experiments.
 The ``priority`` decides the order in which the jobs will be executed, higher means first.
 
 The ``status`` is the execution status. 0 means ready to execute, 1
-means that the execution has started, and 2 that it's completed.
+means that the execution has started, 2 that it's completed, 3 that there was an
+error while starting the job, 4 that there was en error while doing the rsync of
+the job working directory, 5 that the job did not return COMPLETE or INCOMPLETE
+(it can have raised an error) and -1 that the job have been canceled.
 
 Executing the jobs
 ------------------

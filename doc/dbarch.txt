@@ -22,7 +22,14 @@ This table is the top-level experiment table. It contains one row per job or
 experiment to run. The columns of interest are:
 
 * id: unique identifier for each job in table ``<tablename>``
-* status: status of the job. As previously mentionned: 0=ready, 1=running, 2=done
+* status: status of the job. As previously mentionned: 
+    * 0=ready
+    * 1=running
+    * 2=done
+    * 3=error while starting
+    * 4=error while doing an rsync(sql backend)
+    * 5=error in the job(it did not return COMPLETE or INCOMPLETE)
+    * -1=canceled
 * priority: higher priority jobs (high-numerical value) will be run sooner
   than low-priority jobs, when launching jobs with the ``jobman sql`` command
 * hash: hash number which is meant to be unique for each job. The hash value

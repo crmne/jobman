@@ -43,7 +43,9 @@ class Channel(object):
             doc="jobman.status == ERR_START means can't be started for some reason(ex: can't make the destination experiment directory.")
     ERR_SYNC = property(lambda s: 4,
             doc="jobman.status == ERR_SYNC means that the experiment was unable to synchronize the experiment directory.")
-    CANCELED = property(lambda s: 5,
+    ERR_RUN = property(lambda s: 5,
+            doc="jobman.status == ERR_RUN means that the experiment did not return `COMPLETE` or `INCOMPLETE`. As COMPLETE is None, it you did not return, but default it return None and this means `COMPLETE`")
+    CANCELED = property(lambda s: -1,
             doc="jobman.status == CANCELED means that user set the job to that mode and don't want to start it. If the jobs is already started and finish, it will change its status to DONE or START depending of the return value. It the started job crash, the status won't change autamatically.")
 
     # Methods to be used by the experiment to communicate with the channel
@@ -158,12 +160,17 @@ class SingleChannel(Channel):
                            'The job is already running.')
         self.state.jobman.status = self.RUNNING
 
-        v = self.COMPLETE
+        v = self.ERR_RUN
         with self: #calls __enter__ and then __exit__
             try:
                 v = self.experiment(self.state, self)
             finally:
-                self.state.jobman.status = self.DONE if v is self.COMPLETE else self.START
+                if v is self.COMPLETE:
+                    self.state.jobman.status = self.DONE
+                elif v is self.INCOMPLETE:
+                    self.state.jobman.status = self.START
+                else: 
+                    self.state.jobman.status = self.ERR_RUN
 
         return v
 
