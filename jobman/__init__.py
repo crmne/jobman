@@ -1,6 +1,7 @@
 
 import runner
-import sql_runner, raw_runner, rsync_runner, analyze_runner, check
+import analyze_runner, check, findjob, raw_runner, rsync_runner, sql_runner
+
 try:
     import cachesync_runner
 except:

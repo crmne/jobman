@@ -4,23 +4,75 @@ __license__   = "3-clause BSD License"
 __contact__   = "Xavier Muller <xav.muller@gmail.com>"
 
 
-import numpy, os, shutil, sys, pickle
-import pdb
+import os
+from optparse import OptionParser
+
 from jobman.parse import filemerge
 from jobman.parse import standard as jparse
+from jobman.runner import runner_registry
 
 
 
+parser_findjob = OptionParser(usage = '%prog findjob [--sort_by_key_name] <table experiment directory> ... <key=value> ...', add_help_option=False)
+parser_findjob.add_option('--sort_by_key_name', action = 'store_true', dest = 'sort_by_key_name', default = False,
+                          help = 'group the output directory by this key name and sort them identically inside each group')
 
+def runner_findjob(options, *strings):
+    """
+    Print the directory containing experiment that match some constrain
 
+    Usage: findjob [options] <table experiment directory> ... <key=value> ...
 
-def get_dir_by_key_name(dirs=['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0050'],key='nb_groups'):
+    """
+    
+    dirs=[]
+    keys=[]
+    
+    for id in range(len(strings)):
+        if os.path.exists(strings[id]):
+            dirs.append(strings[id])
+        else:
+            if not options.sort_by_key_name:
+                assert all(['=' in s for s in strings[id:]])
+            else:
+                assert not any(['=' in s for s in strings[id:]])
+            keys=strings[id:]
+            break
+
+    if options.sort_by_key_name:
+        assert len(keys)==1
+        exp_dirs = get_dir_by_key_name(dirs, keys[0])
+        for group_id in range(exp_dirs[0]):
+            print keys[0],'=',exp_dirs[1][group_id]
+            for exp_dir in exp_dirs[2][group_id]:
+                print exp_dir[0]
+    else:
+        exp_dirs = get_dir_by_key_value(dirs, keys)
+        for d,id in exp_dirs:
+            print d
+    
+
+runner_registry['findjob'] = (parser_findjob, runner_findjob)
+
+def get_dir_by_key_name(dirs,key):
     '''
     Returns a 3-tuple
     The first is the number of key values that where found in the directory
     The second is a list of all the key values found
     The third is a list of list of directories. It contains nb_key_value lists
     Each list contains the folder names 
+
+    Parameters
+    ----------
+    dirs : str or list of str
+        Directories that correspond to the table path directory inside the experiment root directory.
+    key : str
+        Experiment parameter used to group the jobs
+
+    Examples
+    --------
+    
+        get_dir_by_key_name(['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0050'],'nb_groups')
     '''
 
     nb_key_values=0
@@ -102,12 +154,26 @@ def get_dir_by_key_name(dirs=['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0050
 
     
 
-def get_dir_by_key_value(dirs=['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0043'],keys=['seed=0']):
+def get_dir_by_key_value(dirs, keys=['seed=0']):
     '''
     Returns a list containing the name of the folders. Each element in the list is a list
     containing the full path and the id of the experiment as a string
+
+    Parameters
+    ----------
+    dirs : str or list of str
+        Directories that correspond to the table path directory inside the experiment root directory.
+    keys : str or list of str
+        str of format key=value that represent the experiments that we want to select.
+
+    Examples
+    --------
+
+       get_dir_by_key_value(['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0050'],['seed=0'])
     '''
- 
+    if isinstance(dirs,str):
+        dirs = (dirs,)
+
     good_dir = []
 
    
