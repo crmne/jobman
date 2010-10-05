@@ -730,3 +730,68 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
 runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)
 
+
+parser_sqlreload = OptionParser(usage = '%prog sqlreload <tablepath> <exproot>/dbname/tablename <id>...',
+                              add_help_option=False)
+parser_sqlreload.add_option('--all', action="store_true", dest="all",
+                          help = 'If true, will reload all jobs that are in the directory. (default false)')
+
+def runner_sqlreload(options, dbdescr, table_dir, *ids):
+    """
+    Put data in the experiment directory back in the the sql db.
+
+    Usefull in case you delete the db or part of it.
+
+    Example use:
+
+        jobman sqlreload [--all] postgres://user:pass@host[:port]/dbname/tablename ~/expdir/dbname/tablename 10 11
+
+    """
+    try:
+        username, password, hostname, port, dbname, tablename \
+            = sql.parse_dbstring(dbdescr)
+    except Exception, e:
+        raise UsageError('Wrong syntax for dbdescr',e)
+
+    if table_dir[-1]==os.path.sep:
+        table_dir=table_dir[:-1]
+
+    assert os.path.split(table_dir)[-1]==tablename
+    assert os.path.split(os.path.split(table_dir)[0])[-1]==dbname
+    expdir = os.path.split(os.path.split(table_dir)[0])[0]
+
+    db = sql.postgres_serial(
+        user = username,
+        password = password,
+        host = hostname,
+        port = port,
+        database = dbname,
+        table_prefix = tablename)
+
+    if options.all:
+        assert len(ids)==0
+        ids = os.listdir(table_dir)
+
+    #make sure they are ints
+    ids = [int(d) for d in ids]
+    
+    try:
+        session = db.session()
+        for id in ids:
+            # Get state dict from the file
+            file_name = '%s/%i/current.conf' % (table_dir, id)
+            file_state = parse.filemerge(file_name)
+            
+            # Get state dict from the DB
+            db_state = db.get(id)
+            if db_state is None:
+                # No such dict exist, we have to insert it, with the right id
+                file_state['jobman.id'] = id
+                db.insert(file_state, session=session)
+            else:
+                db_state.update_in_session(file_state, session=session)
+                pass
+    finally:
+        session.close()
+
+runner_registry['sqlreload'] = (parser_sqlreload, runner_sqlreload)

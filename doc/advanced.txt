@@ -138,3 +138,9 @@ channel is an object with the following important methods:
   described above.
 
 
+Reloading an erased sql db
+--------------------------
+
+Their is the sqlreload jobman command that you can use if you deleted totally or
+partially the sql db. It allow to reload the db from the file in the experiment
+directory.
