@@ -207,6 +207,7 @@ Canceling/Restarting jobs
 * `--restart`: print and change the status to START.
     *  This means that `jobman sql` will start those jobs again.
 * `--status=JOB_STATUS`: appends jobs with the status JOB_STATUS to the list jobs to act on.
+* `--reset_prio`: put the priority of jobs back to the default value.
 
 
 Connect to the database, view the results

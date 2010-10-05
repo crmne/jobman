@@ -622,7 +622,7 @@ def runner_sqlview(options, dbdescr, viewname):
 runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 
 
-parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] <tablepath> <id>...',
+parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] [--reset_prio] <tablepath> <id>...',
                               add_help_option=False)
 parser_sqlstatus.add_option('--cancel', action="store_true", dest="cancel",
                           help = 'If true, will change the status of jobs to CANCELED. (default false)')
@@ -637,7 +637,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
     """
     Show the status of jobs. Option allow to change it.
 
-    --restart and --cancel options are mutually exclusive
+    --restart and --cancel options are mutually exclusive.
+
+    The --resert_prio option set the priority of the jobs back to the default value.
 
     Example use:
 

@@ -304,7 +304,7 @@ Canceling/Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] [--resert_prio] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
 
 * Default: only print the current status of those jobs.
 * `--cancel`: print and change the status to CANCELED. 
@@ -315,6 +315,7 @@ Canceling/Restarting jobs
 * `--restart`: print and change the status to START.
     *  This means that `jobman sql` will start those jobs again.
 * `--status=JOB_STATUS`: appends jobs with the status JOB_STATUS to the list jobs to act on.
+* `--reset_prio`: put the priority of jobs back to the default value.
 
 
 Storing the mercurial/other repository version of python module
