@@ -44,9 +44,24 @@ def check_condor_serve(options, dbdescr):
         idle = q.filter_eq('jobman.status',0).all()
         running = q.filter_eq('jobman.status',1).all()
         finished = q.filter_eq('jobman.status',2).all()
+        err_start = q.filter_eq('jobman.status',3).all()
+        err_sync = q.filter_eq('jobman.status',4).all()
+        err_run = q.filter_eq('jobman.status',5).all()
+        canceled = q.filter_eq('jobman.status',-1).all()
         info = []
-        print "I: Their is %d jobs marked as running, %d as idle and %d as finished in the db"%(len(running),len(idle),len(finished))
+        #print "I: number of job by status %d,%d,%d,%d,%d,%d,%d, (START)Their is %d jobs marked as running, %d as idle, %d as finished, %d with error start, %d with error during sync, %d with error while the job runned and %d that was canceled in the db"%(len(running),len(idle),len(finished),len(err_start),len(err_sync),len(err_run),len(canceled))
+        print "I: number of job by status (%d:START, %d:RUNNING, %d:DONE, %d:ERR_START, %d:ERR_SYNC, %d:ERR_RUN, %d:CANCELED) in the db"%(len(idle),len(running),len(finished),len(err_start),len(err_sync),len(err_run),len(canceled))
         print
+
+        #warn about job in error status
+        if len(err_start):
+            print "E: The following jobs had an error while trying to start them", [j.id for j in err_start]
+        if len(err_sync):
+            print "E: The following jobs had an error while doing the rsync", [j.id for j in err_sync]
+        if len(err_run):
+            print "E: The following jobs had an error while running", [j.id for j in err_run]
+        print
+            
         #check not 2 jobs in same slot+host
         host_slot={}
         now = time.time()
