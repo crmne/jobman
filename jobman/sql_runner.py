@@ -641,10 +641,12 @@ parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
                           help = 'If true, will change the status of jobs to START. (default false)')
 parser_sqlstatus.add_option('--status',action="store", dest="status", default='',
                           help = 'append list of jobs to restart jobs that have the gived status.')
-parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio", default='',
+parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio",
                           help = 'Reset the priority to the default.')
-parser_sqlstatus.add_option('--ret_nb_jobs',action="store_true", dest="ret_nb_jobs", default='',
-                          help = 'Return the number of job selected as the return value of the process.')
+parser_sqlstatus.add_option('--ret_nb_jobs',action="store_true", dest="ret_nb_jobs",
+                          help = 'Print only the number of jobs selected.')
+parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
+                          help = 'Be less verbose.')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -667,6 +669,13 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
     if options.restart and options.cancel:
         raise UsageError("The option --restart and --cancel are mutually exclusive.")
+    #we don't want to remove all output when we change the db.
+    if options.restart and options.ret_nb_jobs:
+        raise UsageError("The option --restart and --ret_nb_jobs are mutually exclusive.")
+    if options.cancel and options.ret_nb_jobs:
+        raise UsageError("The option --cancel and --ret_nb_jobs are mutually exclusive.")
+    if options.reset_prio and options.ret_nb_jobs:
+        raise UsageError("The option --reset_prio and --ret_nb_jobs are mutually exclusive.")
 
     db = sql.postgres_serial(
         user = username,
@@ -684,6 +693,10 @@ def runner_sqlstatus(options, dbdescr, *ids):
         new_status = CANCELED
 
     have_running_jobs = False
+    verbose = not options.quiet
+    if options.ret_nb_jobs:
+        verbose=0
+    else: verbose+=1
     ids = list(set(ids))
     ids.sort()
     nb_jobs = len(ids)
@@ -695,7 +708,8 @@ def runner_sqlstatus(options, dbdescr, *ids):
             jobs = q.filter_eq('jobman.status',int(options.status)).all()
             nb_jobs+=len(jobs)
             for job in jobs:
-                print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
+                if verbose>1:
+                    print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
                 if job['jobman.status'] == RUNNING:
                     have_running_jobs = True
                 if modif:
@@ -715,14 +729,17 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 job = id
                 id = job.id
             if job is None:
-                print "Job id %s don't exit in the db"%(id)
+                if verbose>0:
+                    print "Job id %s don't exit in the db"%(id)
+                nb_jobs-=1
                 continue
             prio = None
             try:
                 prio = job['jobman.sql.priority']
             except:
                 pass
-            print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
+            if verbose:
+                print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
             if job['jobman.status'] == RUNNING:
                 have_running_jobs = True
             if modif:
@@ -742,9 +759,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
     finally:
         session.close()
-
+        
     if options.ret_nb_jobs:
-        return nb_jobs
+        print nb_jobs
 
 
 runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)
