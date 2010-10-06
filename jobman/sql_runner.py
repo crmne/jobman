@@ -21,7 +21,7 @@ from tools import *
 from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
-from sql import START, RUNNING, CANCELED
+from sql import START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED
 
 ################################################################################
 ### Channels
@@ -633,13 +633,34 @@ def runner_sqlview(options, dbdescr, viewname):
 runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 
 
+def to_status_number(i):
+    if i=='START':
+        status = START
+    elif i=='RUNNING':
+        status = RUNNING
+    elif i=='DONE':
+        status = DONE
+    elif i=='ERR_START':
+        status = ERR_START
+    elif i=='ERR_SYNC':
+        status = ERR_SYNC
+    elif i=='ERR_RUN':
+        status = ERR_RUN
+    elif i=='CANCELED':
+        status = CANCELED
+    else:
+        try:
+            status = int(i)
+            assert status in [0,1,2,3,4,5,-1]
+        except Exception, e:
+            raise ValueError("The status must be a str in START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or a int in 0,1,2,3,4,5,-1")
+    return status
+
 parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] [--reset_prio] <tablepath> <id>...',
                               add_help_option=False)
-parser_sqlstatus.add_option('--cancel', action="store_true", dest="cancel",
-                          help = 'If present, will change the status of jobs to CANCELED. (default false)')
-parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
-                          help = 'If present, will change the status of jobs to START. (default false)')
-parser_sqlstatus.add_option('--status',action="store", dest="status", type='int',
+parser_sqlstatus.add_option('--set_status', action="store", dest="set_status", default='',
+                          help = 'If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
+parser_sqlstatus.add_option('--status',action="store", dest="status",
                           help = 'Append jobs in the db with the gived status to the list of jobs.')
 parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio",
                           help = 'Reset the priority to the default.')
@@ -654,8 +675,6 @@ def runner_sqlstatus(options, dbdescr, *ids):
     """
     Show the status of jobs. Option allow to change it.
 
-    --restart and --cancel options are mutually exclusive.
-
     The --resert_prio option set the priority of the jobs back to the default value.
 
     Example use:
@@ -669,15 +688,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
     except Exception, e:
         raise UsageError('Wrong syntax for dbdescr',e)
 
-    if options.restart and options.cancel:
-        raise UsageError("The option --restart and --cancel are mutually exclusive.")
     #we don't want to remove all output when we change the db.
-    if options.restart and options.ret_nb_jobs:
-        raise UsageError("The option --restart and --ret_nb_jobs are mutually exclusive.")
-    if options.cancel and options.ret_nb_jobs:
-        raise UsageError("The option --cancel and --ret_nb_jobs are mutually exclusive.")
-    if options.reset_prio and options.ret_nb_jobs:
-        raise UsageError("The option --reset_prio and --ret_nb_jobs are mutually exclusive.")
+    if options.set_status and options.ret_nb_jobs:
+        raise UsageError("The option --set_status and --ret_nb_jobs are mutually exclusive.")
 
     db = sql.postgres_serial(
         user = username,
@@ -686,13 +699,13 @@ def runner_sqlstatus(options, dbdescr, *ids):
         port = port,
         database = dbname,
         table_prefix = tablename)
-
-    modif = options.restart or options.cancel
-
-    if options.restart:
-        new_status = START
-    elif options.cancel:
-        new_status = CANCELED
+    if options.set_status:
+        try:
+            new_status=to_status_number(options.set_status)
+        except ValueError:
+            raise UsageError("The option --set_status accept only the value START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or their equivalent int number")
+    else:
+        new_status = None
 
     have_running_jobs = False
     verbose = not options.quiet
@@ -705,7 +718,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
         if options.status:
             q = db.query(session)
-            jobs = q.filter_eq('jobman.status',int(options.status)).all()
+            jobs = q.filter_eq('jobman.status',to_status_number(options.status)).all()
 
             ids.extend([j.id for j in jobs])
             del jobs,q
@@ -751,19 +764,19 @@ def runner_sqlstatus(options, dbdescr, *ids):
                     have_running_jobs = True
             except KeyError:
                 print "Job id %d have a broken db."%id
-            if modif:
+            if new_status:
                 job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
             if options.reset_prio:
                 job.__setitem__('jobman.sql.priority',1.0,session)
                 job.update_in_session({},session)
 
-        if modif:
+        if new_status:
             session.commit()
             print "Changed the status to %d for %d jobs"%(new_status,len(ids))
         if options.reset_prio:
             print "Reseted the priority to the default value"
-        if options.cancel and have_running_jobs:
+        if new_status==CANCELED and have_running_jobs:
             print "WARNING: Canceled jobs only change the status in the db. Jobs that are already running, will continue to run. If the job finish with status COMPLETE, it will change the status to DONE. Otherwise the status won't be changed"
 
     finally:

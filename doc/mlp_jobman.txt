@@ -196,19 +196,23 @@ Canceling/Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
 
 * Default: only print the current status of those jobs.
-* `--cancel`: print and change the status to CANCELED. 
-    * This means that  `jobman sql` won't start those jobs. If the jobs are 
+* `--status=JOB_STATUS`: Query the db and add jobs with the status JOB_STATUS to the list jobs.
+* `--set_status=JOB_STATUS`: print and change the status of jobs.to CANCELED. 
+    * --set_status=CANCELED: This means that  `jobman sql` won't start those jobs.
+      If the jobs are 
       already running, when the jobs finish it will change the status to START 
       or DONE depending of what it return. If the already running jobs crash,
       it won't change the status.
-* `--restart`: print and change the status to START.
-    *  This means that `jobman sql` will start those jobs again.
-* `--status=JOB_STATUS`: appends jobs with the status JOB_STATUS to the list jobs to act on.
+    * --set_status=START: This means that `jobman sql` will start those jobs again.
 * `--reset_prio`: put the priority of jobs back to the default value.
+* `--select=key=value`: Query the db and add jobs that match all select parameter to the list of jobs.
+* `--quiet`: less verbose
+* `--ret_nb_jobs`: print only the number of jobs selected.
 
+JOB_STATUS={START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED} or their equivelent number
 
 Connect to the database, view the results
 ++++++++++++++++++++++++++++++++++++++++++++
