@@ -643,6 +643,8 @@ parser_sqlstatus.add_option('--status',action="store", dest="status", default=''
                           help = 'append list of jobs to restart jobs that have the gived status.')
 parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio", default='',
                           help = 'Reset the priority to the default.')
+parser_sqlstatus.add_option('--ret_nb_jobs',action="store_true", dest="ret_nb_jobs", default='',
+                          help = 'Return the number of job selected as the return value of the process.')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -682,13 +684,16 @@ def runner_sqlstatus(options, dbdescr, *ids):
         new_status = CANCELED
 
     have_running_jobs = False
-
+    ids = list(set(ids))
+    ids.sort()
+    nb_jobs = len(ids)
     try:
         session = db.session()
         q = db.query(session)
 
         if options.status:
             jobs = q.filter_eq('jobman.status',int(options.status)).all()
+            nb_jobs+=len(jobs)
             for job in jobs:
                 print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
                 if job['jobman.status'] == RUNNING:
@@ -703,8 +708,6 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 print "Changed the status to %d for %d jobs with previous status of %s"%(new_status,
                     len(jobs),options.status)
                        
-        ids = list(set(ids))
-        ids.sort()
         for id in ids:
             if isinstance(id,str):
                 job = db.get(id)
@@ -739,6 +742,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
     finally:
         session.close()
+
+    if options.ret_nb_jobs:
+        return nb_jobs
 
 
 runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)

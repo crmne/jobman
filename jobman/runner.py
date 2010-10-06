@@ -31,7 +31,7 @@ def parse_and_run(command, arguments):
         options, arguments = parser.parse_args(arguments)
     else:
         options = optparse.Values()
-    run(runner, [options] + arguments)
+    return run(runner, [options] + arguments)
 
 def run(runner, arguments):
     argspec = inspect.getargspec(runner)
@@ -42,7 +42,7 @@ def run(runner, arguments):
     if minargs > len(arguments) or maxargs < len(arguments) and not argspec[1]:
         s = format_help(runner)
         raise UsageError(s)
-    runner(*arguments)
+    return runner(*arguments)
 
 def run_cmdline():
     try:
@@ -55,7 +55,7 @@ def run_cmdline():
                 args.append(arg)
             else:
                 cmd = arg
-        parse_and_run(cmd, args)
+        return parse_and_run(cmd, args)
     except UsageError, e:
         print 'Usage error:'
         print e
