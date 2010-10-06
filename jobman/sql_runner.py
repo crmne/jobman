@@ -670,6 +670,8 @@ parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
                           help = 'Be less verbose.')
 parser_sqlstatus.add_option('--select',action="append", dest="select",
                           help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
+parser_sqlstatus.add_option('--print',action="append", dest="prints",
+                          help = 'print the value of the key for the jobs. Accept multiple --print parameter')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -752,18 +754,26 @@ def runner_sqlstatus(options, dbdescr, *ids):
                     print "Job id %s don't exit in the db"%(id)
                 nb_jobs-=1
                 continue
-            prio = None
             try:
                 prio = job['jobman.sql.priority']
             except:
-                pass
+                prio = 'BrokenDB_priority_DontExist'
             try:
-                if verbose:
-                    print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
-                if job['jobman.status'] == RUNNING:
-                    have_running_jobs = True
+                status = job['jobman.status']
             except KeyError:
-                print "Job id %d have a broken db."%id
+                status = 'BrokenDB_Status_DontExist'
+
+            print "Job id %s, status=%d jobman.sql.priority=%s"%(id,status,str(prio)),
+
+            for p in options.prints:
+                try:
+                    print '%s=%s'%(p,job[p]),
+                except KeyError:
+                    print '%s=KeyDontExist'%(p),
+            print
+
+            if status == RUNNING:
+                have_running_jobs = True
             if new_status:
                 job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
