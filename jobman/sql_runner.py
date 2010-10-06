@@ -636,17 +636,19 @@ runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] [--reset_prio] <tablepath> <id>...',
                               add_help_option=False)
 parser_sqlstatus.add_option('--cancel', action="store_true", dest="cancel",
-                          help = 'If true, will change the status of jobs to CANCELED. (default false)')
+                          help = 'If present, will change the status of jobs to CANCELED. (default false)')
 parser_sqlstatus.add_option('--restart', action="store_true", dest="restart",
-                          help = 'If true, will change the status of jobs to START. (default false)')
-parser_sqlstatus.add_option('--status',action="store", dest="status", default='',
-                          help = 'append list of jobs to restart jobs that have the gived status.')
+                          help = 'If present, will change the status of jobs to START. (default false)')
+parser_sqlstatus.add_option('--status',action="store", dest="status", type='int',
+                          help = 'Append jobs in the db with the gived status to the list of jobs.')
 parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio",
                           help = 'Reset the priority to the default.')
 parser_sqlstatus.add_option('--ret_nb_jobs',action="store_true", dest="ret_nb_jobs",
                           help = 'Print only the number of jobs selected.')
 parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
                           help = 'Be less verbose.')
+parser_sqlstatus.add_option('--select',action="append", dest="select",
+                          help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -697,37 +699,41 @@ def runner_sqlstatus(options, dbdescr, *ids):
     if options.ret_nb_jobs:
         verbose=0
     else: verbose+=1
-    ids = list(set(ids))
-    ids.sort()
-    nb_jobs = len(ids)
+    ids = list(ids)
     try:
         session = db.session()
-        q = db.query(session)
 
         if options.status:
+            q = db.query(session)
             jobs = q.filter_eq('jobman.status',int(options.status)).all()
-            nb_jobs+=len(jobs)
-            for job in jobs:
-                if verbose>1:
-                    print "Job id %s currently have status %d"%(job.id,job['jobman.status'])
-                if job['jobman.status'] == RUNNING:
-                    have_running_jobs = True
-                if modif:
-                    job.__setitem__('jobman.status',new_status,session)
-                    job.update_in_session({},session)
-                if options.reset_prio:
-                    job.__setitem__('jobman.sql.priority',1.0,session)
-                    job.update_in_session({},session)
-            if modif:
-                print "Changed the status to %d for %d jobs with previous status of %s"%(new_status,
-                    len(jobs),options.status)
-                       
+
+            ids.extend([j.id for j in jobs])
+            del jobs,q
+
+        if options.select:
+            q = db.query(session)
+            j = q.first()
+            for param in options.select:
+                k,v=param.split('=')
+                if isinstance(j[k] ,(str,unicode)):
+                    q = q.filter_eq(k,v)
+                elif isinstance(j[k] ,float):
+                    q = q.filter_eq(k,float(v))
+                elif isinstance(j[k] ,int):
+                    q = q.filter_eq(k,int(v))
+                else:
+                    q = q.filter_eq(k,repr(v))
+            jobs = q.all()
+            ids.extend([j.id for j in jobs])
+            del j,jobs,q
+
+        ids = [int(id) for id in ids]               
+        ids = list(set(ids))
+        ids.sort()
+        nb_jobs = len(ids)
+
         for id in ids:
-            if isinstance(id,str):
-                job = db.get(id)
-            else: 
-                job = id
-                id = job.id
+            job = db.get(id)
             if job is None:
                 if verbose>0:
                     print "Job id %s don't exit in the db"%(id)
@@ -738,10 +744,13 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 prio = job['jobman.sql.priority']
             except:
                 pass
-            if verbose:
-                print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
-            if job['jobman.status'] == RUNNING:
-                have_running_jobs = True
+            try:
+                if verbose:
+                    print "Job id %s currently have status %d with prio %s"%(id,job['jobman.status'],str(prio))
+                if job['jobman.status'] == RUNNING:
+                    have_running_jobs = True
+            except KeyError:
+                print "Job id %d have a broken db."%id
             if modif:
                 job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
