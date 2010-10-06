@@ -670,7 +670,7 @@ parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
                           help = 'Be less verbose.')
 parser_sqlstatus.add_option('--select',action="append", dest="select",
                           help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
-parser_sqlstatus.add_option('--print',action="append", dest="prints",
+parser_sqlstatus.add_option('--print', action="append", dest="prints", default=(),
                           help = 'print the value of the key for the jobs. Accept multiple --print parameter')
 
 def runner_sqlstatus(options, dbdescr, *ids):
@@ -730,7 +730,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
             j = q.first()
             for param in options.select:
                 k,v=param.split('=')
-                if isinstance(j[k] ,(str,unicode)):
+                if k == 'jobman.status':
+                    q = q.filter_eq(k,to_status_number(v))
+                elif isinstance(j[k] ,(str,unicode)):
                     q = q.filter_eq(k,v)
                 elif isinstance(j[k] ,float):
                     q = q.filter_eq(k,float(v))
@@ -774,14 +776,14 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
             if status == RUNNING:
                 have_running_jobs = True
-            if new_status:
+            if options.set_status:
                 job.__setitem__('jobman.status',new_status,session)
                 job.update_in_session({},session)
             if options.reset_prio:
                 job.__setitem__('jobman.sql.priority',1.0,session)
                 job.update_in_session({},session)
 
-        if new_status:
+        if options.set_status:
             session.commit()
             print "Changed the status to %d for %d jobs"%(new_status,len(ids))
         if options.reset_prio:
