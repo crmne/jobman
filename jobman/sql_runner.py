@@ -576,6 +576,8 @@ parser_sqlview = OptionParser(usage = '%prog sqlview <tablepath> <viewname>',
                               add_help_option=False)
 parser_sqlview.add_option('-d', '--drop',action="store_true", dest="drop",
                           help = 'If true, will drop the view. (default false)')
+parser_sqlview.add_option('-q', '--quiet',action="store_true", dest="quiet",
+                          help = 'be less verbose')
 
 def runner_sqlview(options, dbdescr, viewname):
     """
@@ -624,9 +626,9 @@ def runner_sqlview(options, dbdescr, viewname):
         table_prefix = tablename)
 
     if options.drop:
-        db.dropView(viewname)
+        db.dropView(viewname, not options.quiet)
     else:
-        db.createView(viewname)
+        db.createView(viewname, not options.quiet)
 
 runner_registry['sqlview'] = (parser_sqlview, runner_sqlview)
 

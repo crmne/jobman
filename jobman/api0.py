@@ -558,7 +558,7 @@ class DbHandle (object):
         return h_self._Query(session.query(h_self._Dict)\
                         .options(eagerload('_attrs')))
 
-    def createView(h_self, viewname):
+    def createView(h_self, viewname, verbose = True):
 
         s = h_self.session()
         kv = h_self._KeyVal
@@ -622,7 +622,8 @@ class DbHandle (object):
         # Finally, the view creation command
         create_view_sql = 'CREATE OR REPLACE VIEW %s AS %s'\
                 % (viewname, main_query_sql)
-        print 'Creating sql view with command:\n', create_view_sql
+        if verbose:
+            print 'Creating sql view with command:\n', create_view_sql
 
         # Execution
         h_self._engine.execute(drop_view_sql);
@@ -640,14 +641,15 @@ class DbHandle (object):
 
         return MappedView
 
-    def dropView(h_self, viewname):
+    def dropView(h_self, viewname, verbose = True):
 
         s = h_self.session()
         kv = h_self._KeyVal
         d = h_self._Dict
 
         drop_view_sql = 'DROP VIEW %s'%(viewname)
-        print 'Deleting sql view with command:\n', drop_view_sql
+        if verbose:
+            print 'Deleting sql view with command:\n', drop_view_sql
 
         # Execution
         h_self._engine.execute(drop_view_sql);
