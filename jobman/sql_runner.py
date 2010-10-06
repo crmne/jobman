@@ -312,6 +312,8 @@ parser_sqlschedules.add_option('-r', '--repeat',
                                help = 'repeat each jobs N times')
 parser_sqlschedules.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
                                help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
+parser_sqlschedules.add_option('-q', '--quiet', action = 'store_true', dest = 'quiet', default = False,
+                               help = 'print only the number of added jobs on the number of proposed addition')
 
 def generate_combination(repl):
     if repl == []:
@@ -395,29 +397,36 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
 
     ### resolve(experiment) # we try to load the function associated to the experiment
 
+    verbose = not options.quiet
+
     (commands,choise_args)=generate_commands(strings)
-    print commands, choise_args
+    if verbose:
+        print commands, choise_args
+
 
     if options.force:
         for cmd in commands:
             state = parser(*cmd)
             state['jobman.experiment'] = experiment
             sql.add_experiments_to_db([state]*(options.repeat), 
-                                      db, verbose = 1, force_dup = True)
+                                      db, verbose = verbose, force_dup = True)
+        if options.quiet:
+            print "Added %d jobs to the db"%len(commands)
     else:
         #if the first insert fail, we won't force the other as the force option was not gived.
         failed = 0
         for cmd in commands:
             state = parser(*cmd)
             state['jobman.experiment'] = experiment
-            ret = sql.add_experiments_to_db([state], db, verbose = 1, force_dup = options.force)
+            ret = sql.add_experiments_to_db([state], db, verbose = verbose, force_dup = options.force)
             if ret[0][0]:
                 sql.add_experiments_to_db([state]*(options.repeat-1), db, 
-                                          verbose = 1, force_dup = True)
+                                          verbose = verbose, force_dup = True)
             else:
                 failed+=1
-                print "The last cmd failed to insert, we won't repeat it. use --force to force the duplicate of job in the db."
-        print "Added",len(commands)-failed,"on",len(commands)
+                if verbose:
+                    print "The last cmd failed to insert, we won't repeat it. use --force to force the duplicate of job in the db."
+        print "Added",len(commands)-failed,"on",len(commands),"jobs"
 runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
 # ################################################################################
