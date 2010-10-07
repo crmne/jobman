@@ -670,7 +670,7 @@ parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
                           help = 'Be less verbose.')
 parser_sqlstatus.add_option('--select',action="append", dest="select",
                           help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
-parser_sqlstatus.add_option('--print', action="append", dest="prints", default=(),
+parser_sqlstatus.add_option('--print', action="append", dest="prints", default=[],
                           help = 'print the value of the key for the jobs. Accept multiple --print parameter')
 
 def runner_sqlstatus(options, dbdescr, *ids):
@@ -765,14 +765,15 @@ def runner_sqlstatus(options, dbdescr, *ids):
             except KeyError:
                 status = 'BrokenDB_Status_DontExist'
 
-            print "Job id %s, status=%d jobman.sql.priority=%s"%(id,status,str(prio)),
+            if verbose>1:
+                print "Job id %s, status=%d jobman.sql.priority=%s"%(id,status,str(prio)),
 
-            for p in options.prints:
-                try:
-                    print '%s=%s'%(p,job[p]),
-                except KeyError:
-                    print '%s=KeyDontExist'%(p),
-            print
+                for p in options.prints:
+                    try:
+                        print '%s=%s'%(p,job[p]),
+                    except KeyError:
+                        print '%s=KeyDontExist'%(p),
+                print
 
             if status == RUNNING:
                 have_running_jobs = True
