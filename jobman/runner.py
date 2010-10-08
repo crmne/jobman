@@ -410,7 +410,9 @@ def runner_help(options, topic = None):
         $ python -m my_experiments
         """
     else:
-        helptext = runner_registry.get(topic, None)[1]
+        helptext = runner_registry.get(topic, (None, None))[1]
+        if helptext is None:
+            return runner_help(options, topic=None)
     print format_help(helptext)
     if runner_registry.get(topic, [None])[0]:
         runner_registry.get(topic, [None])[0].print_help()
