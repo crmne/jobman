@@ -656,7 +656,7 @@ def to_status_number(i):
             raise ValueError("The status must be a str in START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or a int in 0,1,2,3,4,5,-1")
     return status
 
-parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--cancel] [--restart] [--status=JOB_STATUS] [--reset_prio] <tablepath> <id>...',
+parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--print=KEY] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] <tablepath> <job id>...',
                               add_help_option=False)
 parser_sqlstatus.add_option('--set_status', action="store", dest="set_status", default='',
                           help = 'If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
