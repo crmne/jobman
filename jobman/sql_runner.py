@@ -744,6 +744,9 @@ def runner_sqlstatus(options, dbdescr, *ids):
             ids.extend([j.id for j in jobs])
             del j,jobs,q
 
+        # Remove all dictionaries from the session
+        session.expunge_all()
+
         ids = [int(id) for id in ids]               
         ids = list(set(ids))
         ids.sort()
