@@ -656,7 +656,7 @@ def to_status_number(i):
             raise ValueError("The status must be a str in START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or a int in 0,1,2,3,4,5,-1")
     return status
 
-parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--print=KEY] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] <tablepath> <job id>...',
+parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--print=KEY] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [-fselect=lambda blob: ...] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] <tablepath> <job id>...',
                               add_help_option=False)
 parser_sqlstatus.add_option('--set_status', action="store", dest="set_status", default='',
                           help = 'If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
@@ -670,6 +670,8 @@ parser_sqlstatus.add_option('-q','--quiet',action="store_true", dest="quiet",
                           help = 'Be less verbose.')
 parser_sqlstatus.add_option('--select',action="append", dest="select",
                           help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
+parser_sqlstatus.add_option('--fselect',action="append", dest="fselect",
+                          help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction...')
 parser_sqlstatus.add_option('--print', action="append", dest="prints", default=[],
                           help = 'print the value of the key for the jobs. Accept multiple --print parameter')
 
@@ -743,6 +745,21 @@ def runner_sqlstatus(options, dbdescr, *ids):
             jobs = q.all()
             ids.extend([j.id for j in jobs])
             del j,jobs,q
+
+        if options.fselect:
+            q = db.query(session)
+            jobs = q.all()
+            for param in options.fselect:
+                k,v=param.split('=',1)
+                f=eval(v)
+                for job in jobs:
+                    if k in job:
+                        if f(job[k]):
+                            ids.append(job.id)
+                    else:
+                        print "job",job.id,"don't have the attribute",k
+
+            del job,jobs,q
 
         # Remove all dictionaries from the session
         session.expunge_all()
