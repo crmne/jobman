@@ -1,5 +1,5 @@
 #This file contain example experiment and in the futur some generic experiment(for example for PLearn)
-import sys
+import sys, time
 
 def example1(state, channel):
 
@@ -43,3 +43,8 @@ def theano_test_return(state, channel):
 
 
 
+def example_sleep(state, channel):
+    print "start of example_sleep for %ss"%str(state.sleep)
+    time.sleep(state.sleep)
+    print "end of example_sleep"
+    return channel.COMPLETE
