@@ -75,6 +75,7 @@ def check_condor_serve(options, dbdescr):
                 s = r["jobman.sql.condor_slot"]
             except KeyError, e:
                 print "E: Job %d don't have a 'jobman.sql.host_name' or 'jobman.sql.condor_slot' field"%(r.id)
+                continue
             st = s+'@'+h
             if host_slot.has_key(st):
                 try:
