@@ -50,7 +50,7 @@ def check_condor_serve(options, dbdescr):
         canceled = q.filter_eq('jobman.status',-1).all()
         info = []
         #print "I: number of job by status %d,%d,%d,%d,%d,%d,%d, (START)Their is %d jobs marked as running, %d as idle, %d as finished, %d with error start, %d with error during sync, %d with error while the job runned and %d that was canceled in the db"%(len(running),len(idle),len(finished),len(err_start),len(err_sync),len(err_run),len(canceled))
-        print "I: number of job by status (%d:START, %d:RUNNING, %d:DONE, %d:ERR_START, %d:ERR_SYNC, %d:ERR_RUN, %d:CANCELED) in the db"%(len(idle),len(running),len(finished),len(err_start),len(err_sync),len(err_run),len(canceled))
+        print "I: number of job by status (%d:START, %d:RUNNING, %d:DONE, %d:ERR_START, %d:ERR_SYNC, %d:ERR_RUN, %d:CANCELED) in the db (%d:TOTAL)"%(len(idle),len(running),len(finished),len(err_start),len(err_sync),len(err_run),len(canceled),len(q.all()))
         print
 
         #warn about job in error status
@@ -69,12 +69,14 @@ def check_condor_serve(options, dbdescr):
             run_time = now-x
             run_time = "%dd %dh%dm%ds"%(run_time/(24*3600),run_time%(24*3600)/3600,run_time%3600/60,run_time%60)
             return run_time
+
+        #check job still running on condor
         for idx,r in enumerate(running):
             try:
                 h = r["jobman.sql.host_name"]
                 s = r["jobman.sql.condor_slot"]
             except KeyError, e:
-                print "E: Job %d don't have a 'jobman.sql.host_name' or 'jobman.sql.condor_slot' field"%(r.id)
+                print "W: Job %d is running but don't have needed info to check them again condor. Possible reaons: the job started with an old version of jobman or without condor."%r.id
                 continue
             st = s+'@'+h
             if host_slot.has_key(st):
@@ -89,14 +91,42 @@ def check_condor_serve(options, dbdescr):
                 print 'E: Job %d and Job %d are running on the same condor slot/host combination. running time: %s and %s'%(running[host_slot[st]].id,r.id,t0,t1)
             else: host_slot[st]=idx
             
-        #check job still running on condor
-        for r in running:
-            try: 
-                r["jobman.sql.condor_slot"]
-            except KeyError:
-                #if "jobman.sql.condor_slot" not in r.keys(): #don't work if not all item have that value.
-                print "W: Job %d  is running but don't have a condor_slot defined. It could have been started with an old version of jobman."%r.id
-                continue
+            if "jobman.sql.condor_GlobalJobId" in r.keys():
+                gjid = r["jobman.sql.condor_GlobalJobId"]
+                submit_host = gjid.split('#')[0]
+
+                #import pdb;pdb.set_trace()
+                #take care of the quotation, condor resquest that "" be used
+                #around string.
+                cmd="condor_q -name %s -const 'GlobalJobId==\"%s\"' -format '%%s' 'JobStatus'"%(submit_host,gjid)
+                p=Popen(cmd, shell=True, stdout=PIPE)
+                p.wait();
+                lines=p.stdout.readlines()
+
+                if len(lines)==0:
+                    print "E: Job %d is marked as running in the bd on this condor jobs %s, but condor tell that this jobs is finished"%(r.id,gjid)
+                    continue
+                elif len(lines)==1:
+                    if lines[0]=='0':#condor unexpanded??? What should we do?
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as unexpanded. We don't know what that mean, so we use an euristic to know if the jobs is still running."%r.id
+                    elif lines[0]=='1':#condor idle
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as idle. This can mean that the computer that was running this job crashed."%r.id
+                        continue
+                    elif lines[0]=='2':# condor running
+                        continue
+                    elif lines[0]=='3':#condor removed
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as removed."%r.id
+                    elif lines[0]=='4':#condor completed
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as completed."%r.id
+                    elif lines[0]=='5':#condor held
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as help."%r.id
+                    elif lines[0]=='6':#condor submission error
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as submission error(SHOULD not happen as if condor can't start the job, it don't select one in the db)."%r.id
+
+                else:
+                    print "W: condor return a not understood answer to a query. We will try some euristic to determine if it is running. test command `%s`. stdout returned `%s`"%(cmd,lines)
+    #except KeyError:
+    #            pass
             info = (r.id, r["jobman.experiment"],r["jobman.sql.condor_slot"], r["jobman.sql.host_name"], r["jobman.sql.start_time"])
             run_time = str_time(info[4])
             

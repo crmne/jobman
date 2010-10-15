@@ -203,6 +203,16 @@ class DBRSyncChannel(RSyncChannel):
         super(DBRSyncChannel, self).setup()
         self.state.jobman.sql.host_name = socket.gethostname()
         self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
+        job_ad_file = os.getenv("_CONDOR_JOB_AD",None)
+        if job_ad_file:
+            f = open(job_ad_file)
+            try:
+                for line in f.readlines():
+                    if line.startswith('GlobalJobId'):
+                        self.state.jobman.sql.condor_GlobalJobId = line.split('=')[1].strip()[1:-1]
+            finally:
+                f.close()    
+        self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
         self.state.jobman.sql.start_time = time.time()
         self.state.jobman.sql.host_workdir = self.path
         self.dbstate.update(flatten(self.state))
