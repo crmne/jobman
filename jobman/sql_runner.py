@@ -202,16 +202,23 @@ class DBRSyncChannel(RSyncChannel):
         # set self.experiment and self.state
         super(DBRSyncChannel, self).setup()
         self.state.jobman.sql.host_name = socket.gethostname()
-        self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
-        job_ad_file = os.getenv("_CONDOR_JOB_AD",None)
-        if job_ad_file:
-            f = open(job_ad_file)
-            try:
-                for line in f.readlines():
-                    if line.startswith('GlobalJobId'):
-                        self.state.jobman.sql.condor_GlobalJobId = line.split('=')[1].strip()[1:-1]
-            finally:
-                f.close()    
+        condor_slot = os.getenv("_CONDOR_SLOT")
+        sge_task_id = os.getenv('SGE_TASK_ID')
+        if condor_slot:
+            self.state.jobman.sql.condor_slot = condor_slot
+            job_ad_file = os.getenv("_CONDOR_JOB_AD",None)
+            if job_ad_file:
+                f = open(job_ad_file)
+                try:
+                    for line in f.readlines():
+                        if line.startswith('GlobalJobId'):
+                            self.state.jobman.sql.condor_GlobalJobId = line.split('=')[1].strip()[1:-1]
+                finally:
+                    f.close()
+        elif sge_task_id:
+            self.state.jobman.sql.sge_task_id=sge_task_id
+            self.state.jobman.sql.job_id=os.getenv('JOB_ID')
+
         self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
         self.state.jobman.sql.start_time = time.time()
         self.state.jobman.sql.host_workdir = self.path
