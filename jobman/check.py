@@ -100,8 +100,12 @@ def check_condor_serve(options, dbdescr):
                 #around string.
                 cmd="condor_q -name %s -const 'GlobalJobId==\"%s\"' -format '%%s' 'JobStatus'"%(submit_host,gjid)
                 p=Popen(cmd, shell=True, stdout=PIPE)
-                p.wait();
+                ret=p.wait();
                 lines=p.stdout.readlines()
+
+                if ret==127 and len(lines)==0:
+                    print "W: Job %d. condor_q failed. Is condor installed on this computer?"%r.id
+                    continue
 
                 if len(lines)==0:
                     print "E: Job %d is marked as running in the bd on this condor jobs %s, but condor tell that this jobs is finished"%(r.id,gjid)
