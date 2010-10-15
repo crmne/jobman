@@ -62,7 +62,11 @@ def resolve(name, try_import=True):
 
     """
     symbols = name.split('.')
-    builder = __import__(symbols[0])
+    try:
+        builder = __import__(symbols[0])
+    except ImportError, e:
+        e.args+=("Error while resolving %s from %s"%(symbols, name),)
+        raise
     try:
         for sym in symbols[1:]:
             try:
