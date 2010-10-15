@@ -196,10 +196,12 @@ Canceling/Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlstatus [--print=KEY] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--all] [--print=KEY] [--print-keys] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
 
 * Default: only print the current status of those jobs.
+* `--all`: add all jobs in the db to the list of jobs.
 * `--print=KEY`: print the value of KEY of jobs in the db. Accept multiple --print option.
+* `--print-keys`: print the keys in the state of the first job.
 * `--status=JOB_STATUS`: Query the db and add jobs with the status JOB_STATUS to the list jobs.
 * `--set_status=JOB_STATUS`: print and change the status of jobs.to CANCELED. 
     * --set_status=CANCELED: This means that  `jobman sql` won't start those jobs.

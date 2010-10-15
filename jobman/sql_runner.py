@@ -660,6 +660,8 @@ parser_sqlstatus = OptionParser(usage = '%prog sqlstatus [--print=KEY] [--status
                               add_help_option=False)
 parser_sqlstatus.add_option('--set_status', action="store", dest="set_status", default='',
                           help = 'If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
+parser_sqlstatus.add_option('--all',action="store_true", dest="all",
+                          help = 'Append all jobs in the db to the list of jobs.')
 parser_sqlstatus.add_option('--status',action="store", dest="status",
                           help = 'Append jobs in the db with the gived status to the list of jobs.')
 parser_sqlstatus.add_option('--reset_prio',action="store_true", dest="reset_prio",
@@ -674,6 +676,8 @@ parser_sqlstatus.add_option('--fselect',action="append", dest="fselect",
                           help = 'Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction...')
 parser_sqlstatus.add_option('--print', action="append", dest="prints", default=[],
                           help = 'print the value of the key for the jobs. Accept multiple --print parameter')
+parser_sqlstatus.add_option('--print-keys', action="store_true", dest="print_keys", default=[],
+                          help = 'print all keys in the state of the first jobs.')
 
 def runner_sqlstatus(options, dbdescr, *ids):
     """
@@ -720,6 +724,15 @@ def runner_sqlstatus(options, dbdescr, *ids):
     try:
         session = db.session()
 
+        if options.print_keys:
+            q = db.query(session)
+            job = q.first()
+            print "Keys in the state of the first jobs",
+            for k in job.keys():
+                print k,
+            print
+            del q, job, k
+
         if options.status:
             q = db.query(session)
             jobs = q.filter_eq('jobman.status',to_status_number(options.status)).all()
@@ -760,6 +773,12 @@ def runner_sqlstatus(options, dbdescr, *ids):
                         print "job",job.id,"don't have the attribute",k
 
             del job,jobs,q
+
+        if options.all:
+            q = db.query(session)
+            jobs = q.all()
+            ids.extend([j.id for j in jobs])
+            del q, jobs
 
         # Remove all dictionaries from the session
         session.expunge_all()
