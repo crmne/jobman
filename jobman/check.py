@@ -231,5 +231,3 @@ def check_serve(options, dbdescr):
         session.close()
 
 runner_registry['check'] = (parse_check, check_serve)
-
-runner_registry['condor_check'] = (parse_check, check_serve)
