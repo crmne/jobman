@@ -1,5 +1,5 @@
 #tested this script in ~/test_jobman
-#python ~/repos/Jobman/bin/jobman condor_check 'postgres://ift6266h10:f0572cd63b@gershwin.iro.umontreal.ca/ift6266h10_sandbox_db/testing_fred'
+#python ~/repos/Jobman/bin/jobman check 'postgres://ift6266h10:f0572cd63b@gershwin.iro.umontreal.ca/ift6266h10_sandbox_db/testing_fred'
 #job submitted from maggie46
 
 from subprocess import Popen,PIPE
@@ -9,20 +9,17 @@ from optparse import OptionParser
 from runner import runner_registry
 from tools import UsageError
 
-parse_check_condor = OptionParser(usage = '%prog check_condor <tablepath> ',
-                            add_help_option=False)
+parse_check = OptionParser(usage = '%prog check <tablepath> ',
+                           add_help_option=False)
 
-#parse_check_condor.add_option('', '--restart', action = 'store_true', dest = 'restart', default = False,
-#                              help = 'Re schedule a jobs marked as running when we know that it failed.')
+def check_serve(options, dbdescr):
+    """Check that all jobs marked as running in the db are marked as running in some cluster jobs scheduler.
 
-def check_condor_serve(options, dbdescr):
-    """Check that all jobs marked as running in the db are marked as running in condor
-
-    print jobs that could have crashed.
+    print jobs that could have crashed/been killed ...
 
     Example usage:
 
-        jobman check_condor <tablepath>
+        jobman check <tablepath>
 
     """
 
@@ -233,4 +230,6 @@ def check_condor_serve(options, dbdescr):
     finally:
         session.close()
 
-runner_registry['condor_check'] = (parse_check_condor, check_condor_serve)
+runner_registry['check'] = (parse_check, check_serve)
+
+runner_registry['condor_check'] = (parse_check, check_serve)

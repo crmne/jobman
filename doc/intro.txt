@@ -41,8 +41,8 @@ The first (baby)step should be to become familiar with the various Jobman option
     Available commands: (use help <command> for more info)
     cmdline              Start an experiment with parameters given on the
      			 command line.
-    condor_check         Check that all jobs marked as running in the db are 
-    			 marked as running in condor
+    check                Check that all jobs marked as running in the db are 
+    			 marked as running in some cluster system.
     help                 Get help for a topic.
     sql                  Run jobs from a sql table.
     sqlreload            Reload the sql db from the experiment directory.

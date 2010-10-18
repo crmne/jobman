@@ -3,11 +3,12 @@
 Advanced
 ========
 
-condor_check
+check
 ------------
 
-There is the `jobman condor_check <tablepath>` command which checks that all jobs 
-marked as running in the db are marked as running in condor.
+There is the `jobman check <tablepath>` command which checks that all jobs 
+marked as running in the db are marked as running in some cluster jobs scheduler.
+Now we support condor and sge as cluster jobs scheduler.
 
 It prints warnings and errors about jobs that may have crashed or have crashed. It 
 is useful with `jobman sqlstatus` to restart jobs that have crashed.
