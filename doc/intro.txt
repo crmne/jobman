@@ -39,10 +39,11 @@ The first (baby)step should be to become familiar with the various Jobman option
     parameters     How to list the parameters for an experiment.
 
     Available commands: (use help <command> for more info)
-    cmdline              Start an experiment with parameters given on the
-     			 command line.
+    cachesync            Syncs the working directory of jobs with remote cache.
     check                Check that all jobs marked as running in the db are 
     			 marked as running in some cluster system.
+    cmdline              Start an experiment with parameters given on the
+     			 command line.
     help                 Get help for a topic.
     sql                  Run jobs from a sql table.
     sqlreload            Reload the sql db from the experiment directory.

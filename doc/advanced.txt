@@ -4,7 +4,7 @@ Advanced
 ========
 
 check
-------------
+-----
 
 There is the `jobman check <tablepath>` command which checks that all jobs 
 marked as running in the db are marked as running in some cluster jobs scheduler.
@@ -13,6 +13,14 @@ Now we support condor and sge as cluster jobs scheduler.
 It prints warnings and errors about jobs that may have crashed or have crashed. It 
 is useful with `jobman sqlstatus` to restart jobs that have crashed.
 
+cachesync
+---------
+
+Syncs the working directory of running jobs with their final experiment directory. See `jobman help cachesync` for more detail. Usage:
+
+.. code-block:: bash
+
+    jobman cachesync [--force|-f] [--multiple|-m] [--sql] <path_to_job(s)_workingdir(s)>
 
 reval
 -----
