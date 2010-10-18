@@ -211,8 +211,14 @@ class DBRSyncChannel(RSyncChannel):
                 f = open(job_ad_file)
                 try:
                     for line in f.readlines():
-                        if line.startswith('GlobalJobId'):
+                        if line.startswith('GlobalJobId = '):
                             self.state.jobman.sql.condor_GlobalJobId = line.split('=')[1].strip()[1:-1]
+                        elif line.startswith('Out = '):
+                            self.state.jobman.sql.condor_stdout = line.split('=')[1].strip()[1:-1]
+                        elif line.startswith('Err = '):
+                            self.state.jobman.sql.condor_stderr = line.split('=')[1].strip()[1:-1]
+                        elif line.startswith('OrigIwd = '):
+                            self.state.jobman.sql.condor_origiwd = line.split('=')[1].strip()[1:-1]
                 finally:
                     f.close()
         elif sge_task_id:
