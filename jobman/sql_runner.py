@@ -201,7 +201,10 @@ class DBRSyncChannel(RSyncChannel):
         # Extract a single experiment from the table that is not already running.
         # set self.experiment and self.state
         super(DBRSyncChannel, self).setup()
+
         self.state.jobman.sql.host_name = socket.gethostname()
+
+        #put jobs scheduler info into the state
         condor_slot = os.getenv("_CONDOR_SLOT")
         sge_task_id = os.getenv('SGE_TASK_ID')
         if condor_slot:
@@ -221,11 +224,33 @@ class DBRSyncChannel(RSyncChannel):
                             self.state.jobman.sql.condor_origiwd = line.split('=')[1].strip()[1:-1]
                 finally:
                     f.close()
+            if hasattr(self.state,'jobman.sql.sge_task_id'):
+                del sef.state['jobman.sql.sge_task_id']
         elif sge_task_id:
             self.state.jobman.sql.sge_task_id=sge_task_id
             self.state.jobman.sql.job_id=os.getenv('JOB_ID')
 
-        self.state.jobman.sql.condor_slot = os.getenv("_CONDOR_SLOT","no_condor_slot")
+        #delete old jobs scheduler info into the state
+        #this is needed in case we move a job to a different system.
+        #to know where it is running now.
+        key_to_del=[]
+        if not condor_slot:
+            key_to_del.extend(['jobman.sql.condor_GlobalJobId','jobman.sql.condor_stdout','jobman.sql.condor_stderr','jobman.sql.condor_origiwd', 'jobman.sql.condor_slot'])
+        if not sge_task_id:
+            key_to_del.extend(['jobman.sql.sge_task_id','jobman.sql.job_id'])
+
+        import pdb;pdb.set_trace()
+        flattened_state = flatten(self.state)
+        deleted = False
+        for k in key_to_del:
+            print k
+            #print self.state[k]
+            if k in flattened_state:
+                del flattened_state[k]
+                deleted = True
+        if deleted:
+            self.state = expand(flattened_state)
+
         self.state.jobman.sql.start_time = time.time()
         self.state.jobman.sql.host_workdir = self.path
         self.dbstate.update(flatten(self.state))
