@@ -99,7 +99,7 @@ def check_serve(options, dbdescr):
                    776415 0.00000 dbi_5381a1 bastienf     qw    10/18/2010 13:30:21                                    1 1,2
                 """
                 if len(lines)==0:
-                    print "E: Job %d marked as a SGE job, but `qstat -t` on this host tell that their is no job running."%r.id
+                    print "E: Job %d marked as a SGE job, but `qstat` on this host tell that their is no job running."%r.id
                     continue
                 
                 #assert lines[0]=="job-ID  prior   name       user         state submit/start at     queue                          master ja-task-ID task-ID state cpu        mem     io      stat failed \n"
