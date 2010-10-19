@@ -15,9 +15,10 @@ import socket
 import optparse
 import time
 import random
+import re
 from optparse import OptionParser
 
-from tools import *
+from tools import expand, flatten, resolve
 from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
