@@ -25,7 +25,7 @@ def list_dups(exproot, **kwargs):
             seen_names.append(jobname)
 @cmd
 def del_dups(exproot, **kwargs):
-    """List duplicate jobs in the experiment"""
+    """Delete duplicate jobs in the experiment"""
     seen_args = []
     seen_names = []
     for jobname, args, results in load_all(exproot):
