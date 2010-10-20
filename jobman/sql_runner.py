@@ -240,7 +240,6 @@ class DBRSyncChannel(RSyncChannel):
         if not sge_task_id:
             key_to_del.extend(['jobman.sql.sge_task_id','jobman.sql.job_id'])
 
-        import pdb;pdb.set_trace()
         flattened_state = flatten(self.state)
         deleted = False
         for k in key_to_del:
