@@ -243,8 +243,6 @@ class DBRSyncChannel(RSyncChannel):
         flattened_state = flatten(self.state)
         deleted = False
         for k in key_to_del:
-            print k
-            #print self.state[k]
             if k in flattened_state:
                 del flattened_state[k]
                 deleted = True
