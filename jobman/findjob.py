@@ -54,7 +54,7 @@ def runner_findjob(options, *strings):
 
 runner_registry['findjob'] = (parser_findjob, runner_findjob)
 
-def get_dir_by_key_name(dirs,key):
+def get_dir_by_key_name(dirs, keys, sort_inside_groups=True):
     '''
     Returns a 3-tuple
     The first is the number of key values that where found in the directory
@@ -66,14 +66,18 @@ def get_dir_by_key_name(dirs,key):
     ----------
     dirs : str or list of str
         Directories that correspond to the table path directory inside the experiment root directory.
-    key : str
-        Experiment parameter used to group the jobs
-
+    keys : str or list of str
+        Experiments parameters used to group the jobs
+    sort_inside_groups: bool    
+        We sort seach group so that each job in each group have the same other parameter
     Examples
     --------
     
         get_dir_by_key_name(['/data/lisa/exp/mullerx/exp/dae/mullerx_db/ms_0050'],'nb_groups')
     '''
+
+    if isinstance(keys,str):
+        keys = [keys]
 
     nb_key_values=0
     dir_list=[]
@@ -96,8 +100,10 @@ def get_dir_by_key_name(dirs,key):
             
  
             # Get the keyvalue in the conf file.
-           
-            kval = params.get(key, None)
+            kval=()
+            for key in keys:
+                kval += params.get(key, None),
+
             new_key=-1;
             # Check if we have this key value already.
             for i in range(len(key_values)):
@@ -116,8 +122,10 @@ def get_dir_by_key_name(dirs,key):
                 nb_dir_per_group[new_key]=nb_dir_per_group[new_key] + 1
                 dir_list[new_key].append([confdir,expdir])
 
-
     if(nb_key_values==1):
+        return (nb_key_values,key_values,dir_list)
+
+    if not sort_inside_groups or nb_key_values==1:
         return (nb_key_values,key_values,dir_list)
 
     # Check if we have the same number of elements in each group.
