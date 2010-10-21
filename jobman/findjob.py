@@ -13,9 +13,11 @@ from jobman.runner import runner_registry
 
 
 
-parser_findjob = OptionParser(usage = '%prog findjob [--sort_by_key_name] <table experiment directory> ... <key=value> ...', add_help_option=False)
-parser_findjob.add_option('--sort_by_key_name', action = 'store_true', dest = 'sort_by_key_name', default = False,
-                          help = 'group the output directory by this key name and sort them identically inside each group')
+parser_findjob = OptionParser(usage = '%prog findjob [--group [--dont-sort]] <table experiment directory> ... <key=value> ...', add_help_option=False)
+parser_findjob.add_option('--group', action = 'store_true', dest = 'group', default = False,
+                          help = 'group the output directories by keys name and sort them identically inside each group')
+parser_findjob.add_option('--dont-sort', action = 'store_true', dest = 'dont_sort', default = False,
+                          help = 'when --group is their dont sort the directory inside each group.')
 
 def runner_findjob(options, *strings):
     """
@@ -32,18 +34,18 @@ def runner_findjob(options, *strings):
         if os.path.exists(strings[id]):
             dirs.append(strings[id])
         else:
-            if not options.sort_by_key_name:
+            if not options.group:
                 assert all(['=' in s for s in strings[id:]])
             else:
                 assert not any(['=' in s for s in strings[id:]])
             keys=strings[id:]
             break
 
-    if options.sort_by_key_name:
-        assert len(keys)==1
-        exp_dirs = get_dir_by_key_name(dirs, keys[0])
+    if options.group:
+        exp_dirs = get_dir_by_key_name(dirs, keys, not options.dont_sort)
+        print "Keys:",keys
         for group_id in range(exp_dirs[0]):
-            print keys[0],'=',exp_dirs[1][group_id]
+            print 'Keys =',exp_dirs[1][group_id]
             for exp_dir in exp_dirs[2][group_id]:
                 print exp_dir[0]
     else:
