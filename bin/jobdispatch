@@ -1,0 +1,835 @@
+#!/usr/bin/env python
+import datetime,os,random,re,sys,time
+from socket import gethostname
+from subprocess import Popen,PIPE
+if sys.version_info[:2] < (2,5):
+    def any(iterable):
+        for element in iterable:
+            if element:
+                return True
+        return False
+
+from jobman.dbi.utils import search_file
+from jobman.dbi.dbi import *
+
+ScriptName="launchdbi.py"
+verbose=False
+ShortHelp='''Usage: dbidispatch <common options> <back-end parameters> {--file=FILEPATH | <command-template>|--[*no_]restart condor_jobs_number... }
+
+<common options>:
+        [--help|-h]
+        [--[*no_]dbilog]
+        [--condor[=N]|--bqtools[=N]|--cluster[=N]|--local[=N]|--sge[=N]|--sharcnet|--ssh[=N]i]
+        [--[*no_]test]
+        [--[*no_]testdbi]
+        [--[*no_]nb_proc=N]
+        [--exp_dir=dir]
+        [*--[no_]exec_in_exp_dir]
+        [--only_n_first=N]
+        [--repeat_jobs=N]
+        [--[*no_]whitespace]
+        [--sort={generated*,random}]
+
+<back-end parameter>:
+    all                      :[--tasks_filename={compact,explicit,nb0,nb1,
+                                                 sh(condor only),
+                                                 clusterid(condor only),
+                                                 processid(condor only))}+]
+    bqtools, cluster, condor, sge, sharcnet options:
+                              [--cpu=nb_cpu_per_node]
+                              [--mem=N]
+    bqtools, cluster, sge, sharcnet option:
+                              [--duree=X]
+    bqtools, condor, sge options:
+                              [--env=VAR=VALUE[ VAR2=VALUE2]]  (must be quoted into the shell!)
+                              [*--[no_]set_special_env]
+                              [--raw=STRING[\nSTRING]]
+    cluster, condor options  :[--32|--64|--3264] [--os=X]
+    bqtools, sge, sharcnet options:
+                              [--queue=X] [--jobs_name=X]
+    bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
+                              [--nano=X] [--submit_options=X]
+                              [*--[no_]clean_up] [*--[no_]m32G]
+    cluster option           :[*--[no_]cwait]  [--[*no_]force]
+                              [--[*no_]interruptible]
+    condor option            :[--req="CONDOR_REQUIREMENT"] [--[*no_]nice]
+                              [--[*no_]getenv] [*--[no_]prefserver] 
+                              [--rank=RANK_EXPRESSION] 
+                              [--files=file1[,file2...]]
+                              [*--[no_]abs_path] [--[*no_]pkdilly]
+                              [--universe={vanilla*, standard, grid, java,
+                                           scheduler, local, parallel, vm}]
+                              [--machine=HOSTNAME+] [--machines=regex+]
+                              [--no_machine=HOSTNAME+]
+                              [--[*no_]keep_failed_jobs_in_queue]
+                              [--max_file_size=N][--[no_]debug]
+                              [--[no_]local_log_file][--next_job_start_delay=N]
+                              [--fast] [--[no_]gpu] [--[no_]gpu_enabled]
+    sge options              :[--project=STRING]
+    (Note: SGE support is experimental)
+    (Note: Sharcnet support is even more experimental)
+
+An * after '[', '{' or ',' signals the default value.
+An + tell that we can put one or more separeted by a comma
+'''
+
+LongHelp="""Dispatches jobs with dbi.py. DBI can dispatch jobs on condor,
+bqtools, cluster, local, ssh and sge (experimental). If no system is
+selected on the command line, we try them in the previous order.
+ssh is never automaticaly selected. Currently we have a common interface for
+parallel jobs that run on SMP node. We don't have a common interface for
+parallel job that run on multiple nodes.
+
+%(ShortHelp)s
+
+common options:
+  The -h, --help print the long help(this)
+  The --condor, --bqtools, --cluster, --local, --ssh or --sge option specify on
+    which system the jobs will be sent. If not present, we will use the first
+    available in the previously given order. ssh is never automaticaly selected.
+  The '--[no_]dbilog' tells dbi to generate (or not) an additional log
+  The '--[no_]test' option makes dbidispatch generate the file %(ScriptName)s,
+    without executing it. That way you can see what dbidispatch generates. Also,
+    this file calls dbi in test mode, so dbi do everything but don't execute the
+    jobs. (so you can check the script).
+  The '--testdbi' set only dbi in test mode. Not dbidispatch
+  The '--file=FILEPATH' specifies a file containing the jobs to execute, one 
+    per line. This is instead of specifying job(s) on the command line.
+  The '--nb_proc=nb_proc', specifies the maximum number of concurrent jobs. 
+    The value -1 will try to execute all jobs concurently. This work for condor,
+    bqtools, but for cluster you SHOULD add  the --cwait option.
+    --local=N is the same as --local --nb_proc=N
+    --cluster=N is the same as --cluster --nb_proc=N
+    --bqtools=N is the same as --bqtools --nb_proc=N
+    --ssh=N is the same as --ssh --nb_proc=N
+    --condor=N  is the same as --condor --nb_proc=N
+    condor and bqtools default -1. Cluster default 32.  local and ssh default 1
+
+    --local=FILE_PATH is accepted. The file should contain only the number of
+    threads wanted. This allows dynamically changing the number of threads. 
+    The change in the number of threads happen before we start the threads or 
+    when a thread ends. We wait until threads finish to lower the number of
+    running threads.
+
+  The '--exp_dir=dir' specifies the name of the temporary directory
+    relative to LOGDIR, instead of one generated automatically based
+    upon the command line and the time.
+  The '*--[no_]clean_up' set the DBI option clean_up to true or false
+  The 'DBIDISPATCH_DEFAULT_OPTION' environnement variable can contain default
+    option for dbidispatch. They can be overrided on the command line.
+  The 'DBIDISPATCH_LOGDIR' environnement variable set the name of the directory
+    where all the individual logs directory will be put. Default to LOGS.
+  The '--[*no_]restart' option work only for condor. The parameter 
+    following this option should be condor jobs number. We will parse the
+    history on the local host and relaunch those jobs. We only take the command
+    line that was executed, all other options are are those passed to 
+    dbidispatch this time. Work only with jobs launched with dbidispatch.
+  The '--only_n_first=N' option tell to launch only the first N jobs from the list.
+  The '--repeat_jobs=N' option tell that we must repeat N time each jobs.
+  The '--tasks_filename={compact,explicit,nb0,nb1,sh}+' option will change the
+    filename where the stdout, stderr are redirected. We can put many option 
+    separated by comma. They will apper in the filename in order separated by a 
+    dot. For all except sh, they have this pattern condor.X.{out,error} where X=:
+      - default : as --tasks_filename=nb0,compact
+      - compact : a unic string with parameter that change of value between jobs
+      - explicit: a unic string that represent the full command to execute
+      - nb0     : a number from 0 to nb job -1.
+      - nb1     : a number from 1 to nb job.
+      - sh      : parse the command for > and 2> redirection command.
+                  If one or both of them are missing, they are redirected
+                  to /dev/null
+      - clusterid: (condor only)put the cluster id of the jobs.
+      - processid: (condor only)put the process id of the jobs. Idem as nb0
+      - none    : remove all preceding pattern
+  The '*--[no_]exec_in_exp_dir' option remove the executable from the log dir.
+  The '--[*no_]whitespace' option allow to put white space inside {{}}. I put this as an option as I don't remember the reason why their was this restriction.
+  The '--sort={generated*,random}' option allow to change the default order of jobs.
+  
+bqtools, cluster, condor and sge option:
+  The '--cpu=nb_cpu_per_node' option determine the number of cpu(cores) that 
+    will be reserved for each job.(default=1, -1 won't set it)
+  The '--mem=X' speficify the number of ram in meg the program need to execute.
+    If you put G[g],M[m] or K[k] at the end. We consider it as Gig, Meg or K
+    with multiple of 1024.
+
+bqtools, cluster and sge option:
+  The '--duree' option specifies the maximum duration of the jobs. The syntax 
+    depends on the back-end. For the cluster syntax, see 'cluster --help'. 
+    For bqtools and sge, the syntax is '--duree=12:13:15', giving 12 hours, 
+    13 minutes and 15 seconds.
+
+bqtools, condor and sge options:
+  The '--env=VAR=VALUE' option will set in the environment of the executing
+    jobs the variable VAR with value VALUE. To pass many variable you can:
+      1) use one --env option and separ the pair by ' '(don't forget to quote)
+      2) you can pass many time the --env parameter.
+  The '--[no_]set_special_env' option will set the varialbe OMP_NUM_THREADS, 
+    MKL_NUM_THREADS and GOTO_NUM_THREADS to the number of cpus allocated to job.
+  The '--raw=STRING1[\nSTRING2...]' option append all STRINGX in the submit file.
+      if this option appread many time, they will be concatanated with a new line.
+
+cluster and condor options:
+  The '--3264', '--32' or '--64' specify the type of cpu for the execution node.
+    Default the same as the submit host.
+  The '--os=X' speficify the os of the server. 
+    Cluster default: fc7. Cluster accepted value fc4, fc7 and fc9.
+    Condor default to the same as the submit host and --os=FC7,FC9 
+    tell to use FC7 or FC9 hosts.
+
+bqtools and sge options:
+  The '--queue=X' tell on witch queue the jobs will be launched.
+  The '--jobs_name=X' option give the X as the jobs name to bqtools or sge.
+    Default, random.
+
+bqtools only options:
+  If the --long option is not set, the maximum duration of each job will be 
+    120 hours (5 days).
+  The '--micro[=nb_batch]' option can be used with BqTools when launching many 
+    jobs that have a very short duration. This may prevent some queue crashes. 
+    The nb_batch value is the number of experience to group together in a batch.
+    (by default not used, --micro is equivalent to --micro=20)
+  The '--long' option must be used with BqTools to launch jobs whose duration
+    is more than 5 days. The maximum duration of a job will be either the
+    BQ_MAX_JOB_DURATION environment variable (in the form hour:min:sec) if it is
+    set, and 1200:00:00 (50 days) otherwise. Since long jobs are launched on a
+    different queue with few nodes, please make sure you are not using too many
+    nodes at once with the --nb_proc option.
+  The '--nano=X' add nanoJobs=X in the submit file.
+  The '--submit_options=X' X is appended to the submitOptions in the submit file.
+  The '--[no_]m32G' option tell to use node with 32G of RAM. Usefull on mammouth-serie2 only.
+  
+cluster only options:
+  The '--[no_]cwait' is transfered to cluster. 
+    This must be enabled if there is not nb_proc available nodes. Otherwise 
+    when there are no nodes available, the launch of that command fails.
+  The '--force' option is transfered to cluster
+  The '--interruptible' option is passed to cluster
+
+condor only options:
+  The 'CONDOR_HOME' environment variable will change value of the HOME variable
+    in the environment of the submitted jobs.
+  The 'CONDOR_LOCAL_SOURCE' environment variable define a file that will be
+    sourced before the jobs execute.
+  The 'CONDOR_JOB_LOGDIR' for each jobs the environment variable is set to 
+    the condor log directory. 
+  The '--[no_]getenv' option is forwarded to condor. If True, the current 
+    environnement variable will be forwarded to the execution node.
+  The '--req=\"CONDOR_REQUIREMENT\"' add requirement for condor. 
+    CONDOR_REQUIREMENT must follow the syntax of requirement for condor with 
+    one exception. The symbol '\"' must be escaped 3 times! So the requirement 
+    (Machine == \"computer.example.com\") must be writen in the following way:
+
+    dbidispatch \"--req=Machine==\\\"computer.example.com\\\"\"
+       or
+    dbidispatch '--req=Machine=="computer.example.com"'
+
+  The '--[no_]server' option add the requirement that the executing host must
+    be a server dedicated to computing. This is equivalent to: 
+    dbidispatch '--req=SERVER==True'(SERVER==False)
+  The '--[no_]prefserver' option will tell that you prefer to execute on server
+    first. This is equivalent to dbidispatch '--rank=SERVER=?=True'.
+  The '--rank=STRING' option add rank=STRING in the submit file.
+  The '--machine=full_host_name' option add the requirement that the executing
+     host is full_host_name. If multiple --machine or --machines options,
+    take anyone of them. Is equivalent to
+     dbidispatch '--req=Machine=="full_host_name"'
+  The '--no_machine=full_host_name' option remove the machines from possible 
+    host to run your jobs.
+  The '--machines=regexp' option add the requirement that the executing host 
+    name must be match the regexp. If multiple --machine or --machines options,
+    take anyone of them.
+     dbidispatch '--machines=computer00*'
+        witch is equivalent to
+     dbidispatch '--req=regexp("computer0*", target.Machine)'
+  The '--[no_]nice' option set the nice_user option to condor. 
+    If nice, the job(s) will have the lowest possible priority.
+  The '--[no_]abs_path' option will tell condor to change the path to the 
+    executable to the absolute path or not. Default True.
+  The '--[no_]pkdilly': will use the pkdilly tool to make condor more 
+      kerberos friendly.
+  The '--universe={vanilla*, standard, grid, java, scheduler, local, parallel, vm}'
+      The universe parameter is passed to condor. You can use the 'local' 
+       universe to test your script as this make the all the jobs start 
+       immediately without being preempted on the local host. Take care to 
+       don't send too much jobs.
+  The '--[no_]keep_failed_jobs_in_queue' option will cause the jobs to stay 
+      in the queue in completed status if it failed. You should do condor_rm 
+      after to remove it from the queue.
+  The '--max_file_size=N' option tell the maximum file size. Default 10G.
+  The '--[no_]debug' option is forwarded to condor_submit
+  The '--[no_]local_log_file' option tell to put the condor log file on the 
+      local disk. This help to solv a bug with condor and lock on NFS directory.
+  The '--next_job_start_delay=N' option allow to tell condor to wait N second
+      between each job we start. Default 0.
+  The '--fast' option tell condor to send the jobs only on fast computer. This 
+      add some hardcoded(maggie, brams and zappa) computers to the list 
+      generated by --machine=...
+  The '--gpu' option tell to launch only on host with gpu card.
+  The '--gpu_enabled' option tell that we can take adventage of gpu card.
+      We try to launch on gpu host first.
+
+sge only option:
+  The '--project' specifies the project to which this  job  is  assigned.
+
+where <command-template> is interpreted as follows: the first argument
+is the <command> above, and the rest are interpreted as <arguments>.
+The arguments may contain one or many segments of the form {{a,b,c,d}},
+which generate multiple jobs to execute. Each segement will be replaced 
+by one value in the segment separated by comma. The first will have the 
+a value, the second the b value, etc. If their is many segment, it will 
+generate the cross-product of possible value between the segment. The 
+jobs will be executed serially or in parallel depending of the backend 
+and the nb_proc option.
+
+  For example, the command (NOTE: THERE MUST NOT
+BE ANY SPACES WITHIN THE 'numhidden={{5,10,25}}' part and the quotes are
+important to avoid shell misinterpretation) :
+
+  dbidispatch aplearn myscript.plearn 'numhidden={{5,10,25}}'
+
+is equivalent to launching three jobs:
+
+  aplearn myscript.plearn numhidden=5
+  aplearn myscript.plearn numhidden=10
+  aplearn myscript.plearn numhidden=25
+
+If several arguments contain {{ }} forms, all combinations of arguments
+are taken. For instance
+
+  dbidispatch aplearn myscript.plearn 'numhidden={{10,25}}' 'wd={{0.01,0.001}}'
+
+is equivalent to:
+
+  aplearn myscript.plearn numhidden=10 wd=0.01
+  aplearn myscript.plearn numhidden=10 wd=0.001
+  aplearn myscript.plearn numhidden=25 wd=0.01
+  aplearn myscript.plearn numhidden=25 wd=0.001
+
+In the file of the option --file=FILEPATH, there must not be double 
+quotes around the {{}} as they are for the shell and if the command is 
+in the file, it is not interpreted by the shell.
+
+
+"""%{'ShortHelp':ShortHelp,'ScriptName':ScriptName}
+
+#the computer to use with the --fast option.
+fast_computer=["maggie"+str(x) for x in [11,12,13,14,15,16,21,22,23,24,25,26,31,32,33,34,35,36,41,42,43,44,45,46]]
+fast_computer+=["brams0"+str(x) for x in [0,1,2,3,4,5,6,7,'a','b','c','d','e','f']]
+fast_computer+=["zappa"+str(x) for x in range(1,9)]
+MAX_FILE_NAME_SIZE=255
+
+dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
+           "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
+           "restart":False,'whitespace':False,"fast":False,
+           "gpu":False,"gpu_enabled":False, "sort":"generated"}
+dbi_param_orig = dbi_param.copy()
+testmode=False
+
+PATH=os.getenv('PATH')
+if search_file('condor_submit',PATH):
+    launch_cmd = 'Condor'
+elif search_file('bqsubmit',PATH):
+    launch_cmd = 'Bqtools'
+elif search_file('cluster',PATH):
+    launch_cmd = 'Cluster'
+elif search_file('sqsub',PATH):
+    launch_cmd = 'Sharcnet'
+elif search_file('qsub',PATH):
+    launch_cmd = 'Sge'
+else:
+    launch_cmd = 'Local'
+LOGDIR=os.getenv("DBIDISPATCH_LOGDIR")
+if not LOGDIR:
+    LOGDIR="LOGS"
+
+to_parse=[]
+env=os.getenv("DBIDISPATCH_DEFAULT_OPTION")
+if env:
+    to_parse=env.split()
+to_parse.extend(sys.argv[1:])
+command_argv = to_parse[:]
+for argv in to_parse:
+
+    if argv == "--help" or argv == "-h":
+        print LongHelp
+        sys.exit(0)
+    #--nodbilog should be allowed do to bug in old version that requested it with _.
+    elif argv == "--no_dbilog" or argv == "--nodbilog":
+        dbi_param["dolog"]=False
+    elif argv == "--dbilog":
+        dbi_param["dolog"]=True
+    elif argv.split('=')[0] in ["--bqtools","--cluster","--local","--condor",
+                                "--ssh", "--sge", "--sharcnet"]:
+        launch_cmd = argv[2].upper()+argv.split('=')[0][3:]
+        if len(argv.split('='))>1:
+            dbi_param["nb_proc"]=argv.split('=')[1]
+        if argv.startswith("--ssh"):
+            dbi_param["file_redirect_stdout"]=False
+            dbi_param["file_redirect_stderr"]=False
+    elif argv in ["--32","--64","--3264"]:
+        dbi_param["arch"]=argv[2:]
+    elif argv.startswith("--micro"):
+        dbi_param["micro"]=20
+        if len(argv)>7:
+            assert(argv[7]=="=")
+            dbi_param["micro"]=argv[8:]
+    elif argv in  ["--force", "--interruptible", "--long", 
+                   "--getenv", "--cwait", "--clean_up" ,"--nice",
+                   "--set_special_env", "--abs_path", "--pkdilly", "--to_all",
+                   "--m32G", "--keep_failed_jobs_in_queue", "--restart",
+                   "--debug", "--local_log_file", "--exec_in_exp_dir", "--fast", "--whitespace",
+                   "--gpu", "--gpu_enabled",
+                   ]:
+        dbi_param[argv[2:]]=True
+    elif argv in ["--no_force", "--no_interruptible", "--no_long",
+                  "--no_getenv", "--no_cwait", "--no_clean_up" , "--no_nice",
+                  "--no_set_special_env", "--no_abs_path", "--no_pkdilly",
+                  "--no_m32G", "--no_keep_failed_jobs_in_queue", "--no_restart",
+                  "--no_debug", "--no_local_log_file", "--no_exec_in_exp_dir",
+                  "--no_fast", "--no_whitespace",
+                  "--no_gpu", "--no_gpu_enabled",
+                  ]:
+        dbi_param[argv[5:]]=False
+    elif argv=="--testdbi":
+        dbi_param["test"]=True
+    elif argv=="--no_testdbi":
+        dbi_param["test"]=False
+    elif argv=="--test":
+        dbi_param[argv[2:]]=True
+        testmode=True
+    elif argv=="--no_test":
+        dbi_param[argv[2:]]=True
+        testmode=False
+    elif argv.split('=')[0] in ["--duree","--cpu","--mem","--os","--nb_proc",
+                                "--req", "--files", "--raw", "--rank", "--env",
+                                "--universe", "--exp_dir", "--machine", "--machines",
+                                "--queue", "--nano", "--submit_options",
+                                "--jobs_name", "--file", "--tasks_filename",
+                                "--only_n_first", "--no_machine",
+                                "--max_file_size", "--next_job_start_delay",
+                                "--repeat_jobs", "--sort",]:
+        sp = argv.split('=',1)
+        param=sp[0][2:]
+        val = sp[1]
+        if param in ["req", "files", "rank"]:
+            #param that we happend to if defined more then one time
+            dbi_param[param]+='&&('+val+')'
+        elif param == "raw":
+            dbi_param[param]+='\n'+val
+        elif param=="env":
+            dbi_param[param] += ' '+val
+        elif param in ["machine", "machines", "no_machine", "tasks_filename"]:
+            dbi_param[param]+=val.split(",")
+        else:
+            #otherwise we erase the old value
+            dbi_param[param]=val
+    elif argv=="--server" or argv=="--no_server" \
+            or argv=='--prefserver' or argv=="--no_prefserver":
+        if argv.find('prefserver')!=-1:
+            param='rank'
+        else:
+            param='req'
+        if argv.find('no_')==-1:
+            dbi_param[param]+='&&(SERVER=?=True)'
+        else:
+            dbi_param[param]+='&&(SERVER=?=False || SERVER =?= UNDEFINED )'
+    elif argv[0:1] == '-':
+        print "Unknow option (%s)"%argv
+        print ShortHelp
+        sys.exit(1)
+    else:
+        break
+    command_argv.remove(argv)
+
+if len(dbi_param["tasks_filename"])==0:
+    dbi_param["tasks_filename"] = ["nb0","compact"]
+
+if len(command_argv) == 0 and not dbi_param.has_key("file"):
+    print "No command or file with command to execute!"
+    print
+    print ShortHelp
+    sys.exit(1)
+if dbi_param.has_key("file") and dbi_param["restart"]:
+    print "the --file= and --restart option are incompatible!"
+    print
+    print ShortHelp
+    sys.exit(1)
+
+if not os.path.exists(LOGDIR):
+    os.mkdir(LOGDIR)
+
+valid_dbi_param=["clean_up", "test", "dolog", "nb_proc", "exp_dir", "file",
+                 "tasks_filename", "exec_in_exp_dir", "repeat_jobs",
+                 "whitespace", "sort",
+                 ]
+if launch_cmd=="Cluster":
+    valid_dbi_param +=["cwait","force","arch","interruptible",
+                       "duree","cpu","mem","os"]
+elif launch_cmd=="Condor":
+    valid_dbi_param +=["req", "arch", "getenv", "nice", "files", "rank", "env",
+                       "raw", "os", "set_special_env", "mem", "cpu", "pkdilly",
+                       "universe", "machine", "machines", "no_machine","to_all",
+                       "keep_failed_jobs_in_queue", "restart",
+                       "max_file_size", "debug", "local_log_file",
+                       "next_job_start_delay", "gpu", "gpu_enabled",
+                       "fast",
+                       ]
+elif launch_cmd=="Bqtools":
+    valid_dbi_param +=["cpu", "duree", "long", "mem", "micro",
+                       "nano", "queue", "raw", "submit_options", "jobs_name",
+                       "set_special_env", "env" ]
+elif launch_cmd=="Sge":
+    valid_dbi_param += ["duree", "jobs_name", "queue", "cpu", "mem", "env",
+                        "raw", "set_special_env",
+                        ]
+elif launch_cmd=="Sharcnet":
+    valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu"] #"env, "set_special_env", "raw" ?
+
+# Only valid for condor
+if launch_cmd == 'Condor':
+    if dbi_param['gpu']:
+        dbi_param['req']+="&&(Target.GPU=?=True)"
+        dbi_param['raw']+='\n+GPU=True'
+    elif dbi_param['gpu_enabled']:
+        dbi_param['rank']+="&&(Target.GPU=?=True)"
+        dbi_param['raw']+='\n+GPU=True'
+
+if  launch_cmd == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
+    #default value for pkdilly is true.
+    if dbi_param.get("pkdilly")==None:
+        dbi_param["pkdilly"]=True
+
+    p = os.path.abspath(os.path.curdir)
+    nokerb_path=["/home/fringant1/","/home/fringant2/","/cluster/", "/data/"]
+    pkdilly=False
+    dir_with_kerb=not any([p.startswith(x) for x in nokerb_path])
+    if not dir_with_kerb or dbi_param['files']:
+        pass
+    elif dbi_param.get("pkdilly")==True:
+        pkdilly = True
+    else:
+        raise Exception("You must be in a subfolder of /home/fringant2/")
+    source=os.getenv("CONDOR_LOCAL_SOURCE")
+    if source and not pkdilly:
+        source=os.path.realpath(source)
+        source_with_kerb=not any([source.startswith(x) for x in nokerb_path])
+        if source_with_kerb:
+            dbi_param['copy_local_source_file']=True
+
+
+print "\n\nThe jobs will be launched on the system:", launch_cmd
+print "With options: ",[str(param)+":"+str(value) for param,value in dbi_param.items() if value!=dbi_param_orig.get(param,None)]
+for i in dbi_param:
+    if i not in valid_dbi_param and (i not in dbi_param_orig or dbi_param_orig[i]!=dbi_param[i]):
+        print "WARNING: The parameter",i,"is not valid for the",launch_cmd,"back-end. It will be ignored."
+if dbi_param["restart"]:
+    print "With the command to be restarted:"," ".join(command_argv),"\n\n"
+elif verbose:
+    print "With the command to be expanded:"," ".join(command_argv),"\n\n"
+
+def generate_combination(repl,sep=" "):
+    if repl == []:
+        return []
+    else:
+        res = []
+        x = repl[0]
+        res1 = generate_combination(repl[1:],sep)
+        for y in x:
+            if res1 == []:
+                res.append(y)
+            else:
+                res.extend([y+sep+r for r in res1])
+        return res
+
+def generate_commands(sp):
+### Find replacement lists in the arguments
+    repl = []
+    if dbi_param['whitespace']:
+        p = re.compile('\{\{.*\}\}')
+    else:
+        p = re.compile('\{\{\S*?\}\}')
+    for arg in sp:
+        reg = p.findall(arg)
+        if len(reg)==1:
+            reg = p.search(arg)
+            curargs = reg.group()[2:-2].split(",")
+            newcurargs = []
+            for curarg in curargs:
+                new = p.sub(curarg,arg)
+                newcurargs.append(new)
+            repl.append(newcurargs)
+        elif len(reg)>1:
+            s=p.split(arg)
+            tmp=[]
+            for i in range(len(reg)):
+                if s[i]:
+                    tmp.append(s[i])
+                tmp.append(reg[i][2:-2].split(","))
+            i+=1
+            if s[i]:
+                tmp.append(s[i])
+            repl.append(generate_combination(tmp,''))
+        else:
+            repl.append([arg])
+    argscombination = generate_combination(repl)
+    args_modif = generate_combination([x for x in repl if len(x)>1])
+
+    return (argscombination,args_modif)
+
+#generate the command
+if dbi_param.has_key("file"):
+    fd = open(dbi_param["file"],'r')
+    commands=[]
+    choise_args = []
+    for line in fd.readlines():
+        line = line.rstrip()
+        if not line:
+            continue
+        sp = line.split(" ")
+        (t1,t2)=generate_commands(sp)
+        commands+=t1
+        choise_args+=t2
+    fd.close
+elif dbi_param["restart"]:
+    assert launch_cmd=="Condor"
+    cmds=[]
+    #We accept to start jobs in the queue only if they are completed
+    p=Popen('condor_q -l -const "JobStatus!=4" '+" ".join(command_argv),
+             shell=True, stdout=PIPE)
+    p.wait();
+    lines=p.stdout.readlines()
+    for l in lines:
+        if l.startswith("Arguments = "):
+            print "We don't accept to restart jobs in the queue that are not completed:", arg
+            sys.exit(1)
+
+    #get all jobs in the queue that are completed.
+    p=Popen('condor_q -l -const "JobStatus==4" '+" ".join(command_argv),
+             shell=True, stdout=PIPE)
+    p.wait()
+    for l in p.stdout.readlines():
+        if l.startswith("Arguments = "):
+            cmd=l[13:-2]
+            cmds.append(cmd.replace("'",""))
+
+    for arg in command_argv:
+        #condor_history don't accept multiple argument! This is the bottleneck.
+        #We need to modif condor_history to let it accept multiple parameter!
+        p=Popen("condor_history -l "+arg, shell=True, stdout=PIPE)
+        p.wait()
+        lines=p.stdout.readlines()
+        for l in lines:
+            if l.startswith("Arguments = "):
+                cmd=l[13:-2]
+                cmds.append(cmd.replace("'",""))
+    commands=cmds
+    if len(commands)<1:
+        raise Exception("Their is no commands selected to be restarted!")
+    if len(commands)<len(command_argv):
+        raise Exception("Their is a bad command number in '%s'!"%command_argv)
+    if all([x.find(".")>=0 for x in command_argv]) and len(commands)!=len(command_argv):
+        raise Exception("Their is a bad command number in '%s'!"%command_argv)
+        
+    choise_args=[]
+    del p, lines, cmds
+else:
+    (commands,choise_args)=generate_commands(command_argv)
+
+if dbi_param.has_key("only_n_first"):
+    n=int(dbi_param["only_n_first"])
+    commands=commands[:n]
+    choise_args=choise_args[:n]
+    del dbi_param["only_n_first"]
+
+if dbi_param.has_key("repeat_jobs"):
+    n=int(dbi_param["repeat_jobs"])
+    commands=commands*n
+    choise_args=choise_args*n
+    del dbi_param["repeat_jobs"]
+
+if dbi_param['sort']=='random':
+    random.shuffle(commands)
+elif dbi_param['sort']=='generated':
+    pass
+else:
+    raise Exception("--sort option accept value random and generated only. got %s"%dbi_param['sort'])
+
+if not dbi_param.has_key("next_job_start_delay") and launch_cmd=="Condor" and len(commands)>20:
+    #by default, if their is more then 20 jobs we make a start delay of 1 second between each jobs start.
+    dbi_param["next_job_start_delay"]=1
+    
+
+if dbi_param["fast"]:
+    for m in fast_computer:
+        dbi_param["machine"]+=[m+".iro.umontreal.ca"]
+    del dbi_param["fast"]
+
+#we duplicate the command so that everything else work correctly.
+if dbi_param.has_key("to_all"):
+    assert(len(commands)==1)
+    assert(len(dbi_param["machine"])>0)
+    commands=commands*len(dbi_param["machine"])
+
+if dbi_param.has_key("exp_dir"):
+    dbi_param["log_dir"]=os.path.join(LOGDIR,dbi_param["exp_dir"])
+elif not dbi_param.has_key("file"):
+    t = [x for x in sys.argv[1:] if not x[:2]=="--"]
+    if dbi_param.get("exec_in_exp_dir",True)==True:
+        t[0]=os.path.split(t[0])[1]#keep only the exec name, not the full path
+    else:
+        t=t[1:]#remove the exec.
+
+    tmp="_".join(t)
+    tmp=re.sub( '[^a-zA-Z0-9-.,]', '_', tmp )
+    ### We need to remove the symbols "," as this cause trouble with bqtools
+    tmp=re.sub( ',', '-', tmp )
+    date_str=str(datetime.datetime.now())
+    if dbi_param["restart"]:
+        tmp="jobs_restarted_"+tmp
+    
+    if launch_cmd == "Bqtools":
+        #bqtools have a limit. It must have a abspath size < max_file_size -16
+        #(255 on ext3)
+        l=len(os.path.abspath(tmp))
+        l=MAX_FILE_NAME_SIZE-16-len(date_str)-(l-len(tmp))-10 #-10 for dbi.py #-16 for bqtools itself
+        assert(l>0)
+        tmp=tmp[:l]
+    else:
+        l=MAX_FILE_NAME_SIZE-len(date_str)-1 #-1 for the '_' before date_str
+        tmp=tmp[:l]
+    tmp+='_'+date_str.replace(' ','_').replace(':','-')
+    dbi_param["log_dir"]=os.path.join(LOGDIR,tmp)
+else:
+    dbi_param["log_dir"]=os.path.join(LOGDIR,dbi_param["file"])
+dbi_param["log_file"]=os.path.join(dbi_param["log_dir"],'log')
+
+n="base_tasks_log_file"
+dbi_param[n]=[""]*len(commands)
+
+def merge_pattern(new_list):
+#    return [x+'.'+y if x else y for (x,y) in  zip(dbi_param[n], new_list)]
+    l=[]
+    for (x,y) in zip(dbi_param[n], new_list):
+        if x:
+            l.append(x+'.'+str(y))
+        else:
+            l.append(x)
+    return l
+for pattern in dbi_param["tasks_filename"]:
+    if pattern == "explicit":
+        dbi_param[n]=merge_pattern([re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in commands])
+    elif pattern == "compact":
+        l=[re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in choise_args]
+        if l:
+            dbi_param[n]=merge_pattern(l)
+    elif pattern == "nb0":
+        dbi_param[n]=merge_pattern(map(str,range(len(commands))))
+    elif pattern == "nb1":
+        dbi_param[n]=merge_pattern(map(str,range(1,len(commands)+1)))
+    elif pattern == "":
+        pass
+    elif pattern == "none":
+        dbi_param[n]=[""]*len(commands)
+    elif pattern == "clusterid":#$(Cluster)        
+        if launch_cmd=="Condor":
+            dbi_param[n]=merge_pattern(["$(Cluster)"]*len(dbi_param[n]))
+        else:
+            print "Warning the option tasks_filename=clusterid is only valid for condor"
+    elif pattern == "processid":#$(Process)
+        if launch_cmd=="Condor":
+            dbi_param[n]=merge_pattern(["$(Process)"]*len(dbi_param[n]))
+        else:
+            print "Warning the option tasks_filename=processid is only valid for condor"
+    elif pattern == "sh":
+        stdouts=[]
+        stderrs=[]
+        for x in range(len(commands)):
+            sp=commands[x].split()
+            i=0
+            output=""
+            error=""
+            while i < len(sp):
+                if sp[i]=="2>":
+                    del sp[i]
+                    error=sp[i]
+                    del sp[i]
+                elif sp[i]==">":
+                    del sp[i]
+                    output=sp[i]
+                    del sp[i]
+                else:
+                    i+=1
+            if stdout_file==stderr_file and launch_cmd=="Condor":
+                print "ERROR: Condor can't redirect the stdout and stderr to the same file!"
+                sys.exit(1)
+            stdouts.append(output)
+            stderrs.append(error)
+            commands[x]=' '.join(sp)
+            dbi_param[n]=[]
+        dbi_param["stdouts"]=stdouts
+        dbi_param["stderrs"]=stderrs
+    else:
+        raise Exception("bad value for tasks_filename ("+pattern+"). Accepted value: compact, explicit, nb0, nb1, sh, clusterid, processid, none.")
+    assert(not (dbi_param.has_key("stdouts") and (dbi_param[n])==0))
+
+#undef merge_pattern
+
+SCRIPT=open(os.getenv("HOME")+"/.dbidispatch.launched",'a');
+SCRIPT.write("["+time.ctime()+"] "+str(sys.argv)+"\n")
+SCRIPT.close()
+
+if testmode:
+    print "We generated %s command in the file"% len(commands)
+    print "The script %s was not launched"% ScriptName
+    SCRIPT=open(ScriptName,'w');
+    SCRIPT.write(
+"""#! /usr/bin/env python
+#%s
+from jobman.dbi import DBI
+jobs = DBI([
+"""% " ".join(sys.argv))
+    for arg in commands:
+        cmdstr = "".join(arg);
+        SCRIPT.write("   '%s',\n"%cmdstr)
+    SCRIPT.write("   ],'%s'"%(launch_cmd))
+    for key in dbi_param.keys():
+        if isinstance(dbi_param[key],str):
+            SCRIPT.write(","+str(key)+"='"+str(dbi_param[key])+"'")
+        else:
+            SCRIPT.write(","+str(key)+"="+str(dbi_param[key]))
+    SCRIPT.write(
+""")
+jobs.run()
+jobs.wait()
+# There is %d command in the script"""%(len(commands)))
+    if "test" in dbi_param:
+        print "[DBI dispatch] In test mode, we do not make dbi errase temp file"
+    else:
+        SCRIPT.write("jobs.clean()")
+    SCRIPT.close()
+    os.system("chmod +x %s"%(ScriptName));
+
+else:
+    print "We generate the DBI object with %s command"%(len(commands))
+    print time.ctime()
+    t1=time.time()
+    jobs = DBI(commands,launch_cmd,**dbi_param)
+    t2=time.time()
+    error=False
+    if verbose:
+        print "it took %f s to create the DBI objects"%(t2-t1)
+    try:
+        jobs.run()
+    except DBIError, e:
+        error=True
+        print e
+        sys.exit(1)
+    t3=time.time()
+    jobs.wait()
+    if "test" in dbi_param:
+        print "[DBI dispatch] In test mode, we do not make dbi errase temp file"
+    else:
+        jobs.clean()
+    if verbose:
+        print "it took %f s to launch all the commands"%(t3-t2)
+

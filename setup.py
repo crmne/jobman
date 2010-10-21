@@ -16,6 +16,6 @@ setup(name='Jobman',
       url='http://www.deeplearning.net/software/jobman',
       packages=['jobman', 'jobman.examples','jobman.analyze'
                 ],
-      scripts=['bin/jobman']
+      scripts=['bin/jobman','bin/jobdispatch']
 
            )
