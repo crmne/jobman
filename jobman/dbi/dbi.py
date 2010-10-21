@@ -152,12 +152,18 @@ class MultiThread:
                 if left<=0:
                     return False
                 else:
+                    nb_thread = len( self._threadPool ) + left
+                    if by_running_threads:
                     #-1 as we reuse the current thread
-                    nb_thread = len( self._threadPool ) + left - 1
+                        nb_thread-=1
 
-            elif nb_thread > (len( self._threadPool )+ left - 1):
+            elif nb_thread > (len( self._threadPool )+ left):
                 #we don't generate more new thread then the nuber of jobs left
-                nb_thread = len( self._threadPool ) + left - 1
+                nb_thread = len( self._threadPool ) + left
+                if by_running_threads:
+                    #-1 as we reuse the current thread
+                    nb_thread-=1
+
             
             if nb_thread != len( self._threadPool ):
                 if nb_thread < len( self._threadPool ):
