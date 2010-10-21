@@ -12,9 +12,9 @@ if sys.version_info[:2] < (2,5):
 from jobman.dbi.utils import search_file
 from jobman.dbi.dbi import *
 
-ScriptName="launchdbi.py"
+ScriptName="launchjob.py"
 verbose=False
-ShortHelp='''Usage: dbidispatch <common options> <back-end parameters> {--file=FILEPATH | <command-template>|--[*no_]restart condor_jobs_number... }
+ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=FILEPATH | <command-template>|--[*no_]restart condor_jobs_number... }
 
 <common options>:
         [--help|-h]
@@ -88,11 +88,11 @@ common options:
     which system the jobs will be sent. If not present, we will use the first
     available in the previously given order. ssh is never automaticaly selected.
   The '--[no_]dbilog' tells dbi to generate (or not) an additional log
-  The '--[no_]test' option makes dbidispatch generate the file %(ScriptName)s,
-    without executing it. That way you can see what dbidispatch generates. Also,
+  The '--[no_]test' option makes the generation of the file %(ScriptName)s,
+    without executing it. That way you can see what this script generates. Also,
     this file calls dbi in test mode, so dbi do everything but don't execute the
     jobs. (so you can check the script).
-  The '--testdbi' set only dbi in test mode. Not dbidispatch
+  The '--testdbi' set only dbi in test mode. Not this script
   The '--file=FILEPATH' specifies a file containing the jobs to execute, one 
     per line. This is instead of specifying job(s) on the command line.
   The '--nb_proc=nb_proc', specifies the maximum number of concurrent jobs. 
@@ -116,14 +116,14 @@ common options:
     upon the command line and the time.
   The '*--[no_]clean_up' set the DBI option clean_up to true or false
   The 'DBIDISPATCH_DEFAULT_OPTION' environnement variable can contain default
-    option for dbidispatch. They can be overrided on the command line.
+    option for this script. They can be overrided on the command line.
   The 'DBIDISPATCH_LOGDIR' environnement variable set the name of the directory
     where all the individual logs directory will be put. Default to LOGS.
   The '--[*no_]restart' option work only for condor. The parameter 
     following this option should be condor jobs number. We will parse the
     history on the local host and relaunch those jobs. We only take the command
     line that was executed, all other options are are those passed to 
-    dbidispatch this time. Work only with jobs launched with dbidispatch.
+    jobdispatch this time. Work only with jobs launched with jobdispatch.
   The '--only_n_first=N' option tell to launch only the first N jobs from the list.
   The '--repeat_jobs=N' option tell that we must repeat N time each jobs.
   The '--tasks_filename={compact,explicit,nb0,nb1,sh}+' option will change the
@@ -219,28 +219,28 @@ condor only options:
     one exception. The symbol '\"' must be escaped 3 times! So the requirement 
     (Machine == \"computer.example.com\") must be writen in the following way:
 
-    dbidispatch \"--req=Machine==\\\"computer.example.com\\\"\"
+    jobdispatch \"--req=Machine==\\\"computer.example.com\\\"\"
        or
-    dbidispatch '--req=Machine=="computer.example.com"'
+    jobdispatch '--req=Machine=="computer.example.com"'
 
   The '--[no_]server' option add the requirement that the executing host must
     be a server dedicated to computing. This is equivalent to: 
-    dbidispatch '--req=SERVER==True'(SERVER==False)
+    jobdispatch '--req=SERVER==True'(SERVER==False)
   The '--[no_]prefserver' option will tell that you prefer to execute on server
-    first. This is equivalent to dbidispatch '--rank=SERVER=?=True'.
+    first. This is equivalent to jobdispatch '--rank=SERVER=?=True'.
   The '--rank=STRING' option add rank=STRING in the submit file.
   The '--machine=full_host_name' option add the requirement that the executing
      host is full_host_name. If multiple --machine or --machines options,
     take anyone of them. Is equivalent to
-     dbidispatch '--req=Machine=="full_host_name"'
+     jobdispatch '--req=Machine=="full_host_name"'
   The '--no_machine=full_host_name' option remove the machines from possible 
     host to run your jobs.
   The '--machines=regexp' option add the requirement that the executing host 
     name must be match the regexp. If multiple --machine or --machines options,
     take anyone of them.
-     dbidispatch '--machines=computer00*'
+     jobdispatch '--machines=computer00*'
         witch is equivalent to
-     dbidispatch '--req=regexp("computer0*", target.Machine)'
+     jobdispatch '--req=regexp("computer0*", target.Machine)'
   The '--[no_]nice' option set the nice_user option to condor. 
     If nice, the job(s) will have the lowest possible priority.
   The '--[no_]abs_path' option will tell condor to change the path to the 
@@ -285,7 +285,7 @@ and the nb_proc option.
 BE ANY SPACES WITHIN THE 'numhidden={{5,10,25}}' part and the quotes are
 important to avoid shell misinterpretation) :
 
-  dbidispatch aplearn myscript.plearn 'numhidden={{5,10,25}}'
+  jobdispatch aplearn myscript.plearn 'numhidden={{5,10,25}}'
 
 is equivalent to launching three jobs:
 
@@ -296,7 +296,7 @@ is equivalent to launching three jobs:
 If several arguments contain {{ }} forms, all combinations of arguments
 are taken. For instance
 
-  dbidispatch aplearn myscript.plearn 'numhidden={{10,25}}' 'wd={{0.01,0.001}}'
+  jobdispatch aplearn myscript.plearn 'numhidden={{10,25}}' 'wd={{0.01,0.001}}'
 
 is equivalent to:
 
@@ -774,7 +774,7 @@ for pattern in dbi_param["tasks_filename"]:
 
 #undef merge_pattern
 
-SCRIPT=open(os.getenv("HOME")+"/.dbidispatch.launched",'a');
+SCRIPT=open(os.getenv("HOME")+"/.jobdispatch.launched",'a');
 SCRIPT.write("["+time.ctime()+"] "+str(sys.argv)+"\n")
 SCRIPT.close()
 
