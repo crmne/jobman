@@ -51,6 +51,12 @@ class LockedIterator:
         finally:
             self._lock.release()
 
+    def nb_left( self ):
+        try:
+            self._lock.acquire()
+            return self._iterator.__length_hint__()
+        finally:
+            self._lock.release()
 
     def next( self ):
         try:
@@ -79,6 +85,12 @@ class LockedListIter:
         finally:
             self._lock.release()
 
+    def nb_left( self ):
+        try:
+            self._lock.acquire()
+            return len(self._list) - self._last - 1
+        finally:
+            self._lock.release()
 
     def append( self, a ):
         try:
@@ -135,6 +147,18 @@ class MultiThread:
         """
         try:
             self._lock_threadPool.acquire()
+            left = self._argsIterator.nb_left()
+            if nb_thread==-1:
+                if left<=0:
+                    return False
+                else:
+                    #-1 as we reuse the current thread
+                    nb_thread = len( self._threadPool ) + left - 1
+
+            elif nb_thread > (len( self._threadPool )+ left - 1):
+                #we don't generate more new thread then the nuber of jobs left
+                nb_thread = len( self._threadPool ) + left - 1
+            
             if nb_thread != len( self._threadPool ):
                 if nb_thread < len( self._threadPool ):
                     if by_running_threads:
