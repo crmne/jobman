@@ -876,8 +876,10 @@ class DBISge(DBIBase):
         self.project = 'jvb-000-aa'
         self.env = ''
         self.set_special_env = True
+        self.nb_proc = -1
         DBIBase.__init__(self, commands, **args)
 
+        self.nb_proc = int(self.nb_proc)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
         self.log_dir = os.path.abspath(self.log_dir)
         if not self.jobs_name:
@@ -892,7 +894,7 @@ class DBISge(DBIBase):
         self.add_commands(commands)
 
         # Warn for not implemented features
-        if getattr(self, 'nb_proc', -1) != -1:
+        if self.nb_proc != -1:
             sge_root = os.getenv("SGE_ROOT")
             if not sge_root:
                 print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. Colosse have 6.2u3", self.nb_proc
