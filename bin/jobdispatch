@@ -33,8 +33,9 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
 <back-end parameter>:
     all                      :[--tasks_filename={compact,explicit,nb0,nb1,
                                                  sh(condor only),
-                                                 clusterid(condor only),
-                                                 processid(condor only))}+]
+                                                 clusterid(condor,sge only),
+                                                 processid(condor,sge only),
+                                                 jobname(sge only)}+]
     bqtools, cluster, condor, sge, sharcnet options:
                               [--cpu=nb_cpu_per_node]
                               [--mem=N]
@@ -130,7 +131,11 @@ common options:
     filename where the stdout, stderr are redirected. We can put many option 
     separated by comma. They will apper in the filename in order separated by a 
     dot. For all except sh, they have this pattern condor.X.{out,error} where X=:
-      - default : as --tasks_filename=nb0,compact
+      Sge don't support compact,explicit,nb0,nb1,sh
+      - default : as --tasks_filename=[jobname,]{clusterid,processid|nb0},[compact]
+                  The ones in [] as put their only if their back end support it.
+                  We select the first in {} if their back end support it. Otherwise
+                  we select the second.
       - compact : a unic string with parameter that change of value between jobs
       - explicit: a unic string that represent the full command to execute
       - nb0     : a number from 0 to nb job -1.
@@ -138,8 +143,9 @@ common options:
       - sh      : parse the command for > and 2> redirection command.
                   If one or both of them are missing, they are redirected
                   to /dev/null
-      - clusterid: (condor only)put the cluster id of the jobs.
-      - processid: (condor only)put the process id of the jobs. Idem as nb0
+      - clusterid: (condor,sge only) put the cluster id of the jobs.
+      - processid: (condor,sge only) put the process id of the jobs. Idem as nb0
+      - jobname:   (sge only) put the name of the job.
       - none    : remove all preceding pattern
   The '*--[no_]exec_in_exp_dir' option remove the executable from the log dir.
   The '--[*no_]whitespace' option allow to put white space inside {{}}. I put this as an option as I don't remember the reason why their was this restriction.
@@ -442,8 +448,18 @@ for argv in to_parse:
     command_argv.remove(argv)
 
 if len(dbi_param["tasks_filename"])==0:
-    dbi_param["tasks_filename"] = ["nb0","compact"]
-
+    #$JOB_NAME.$JOB_ID.$T
+    if launch_cmd == "Cluster":
+        dbi_param["tasks_filename"] = ["clusterid", "processid", "compact"]
+    elif launch_cmd == "Sge":
+        dbi_param["tasks_filename"] = ["jobname", "clusterid", "processid", "compact"]
+    else:
+        dbi_param["tasks_filename"] = ["nb0", "compact"]
+elif launch_cmd == "Sge":
+    if set(['compact','explicit','nb0','nb1','sh']).intersection(dbi_param["tasks_filename"]):
+        print "Error --tasks_filename for Sge don't support compact,explicit,nb0,nb1,sh"
+        sys.exit(1)
+        
 if len(command_argv) == 0 and not dbi_param.has_key("file"):
     print "No command or file with command to execute!"
     print
@@ -730,16 +746,25 @@ for pattern in dbi_param["tasks_filename"]:
         pass
     elif pattern == "none":
         dbi_param[n]=[""]*len(commands)
-    elif pattern == "clusterid":#$(Cluster)        
+    elif pattern == "clusterid":
         if launch_cmd=="Condor":
             dbi_param[n]=merge_pattern(["$(Cluster)"]*len(dbi_param[n]))
+        elif launch_cmd=="Sge":
+            dbi_param[n]=merge_pattern(["$JOB_ID"]*len(dbi_param[n]))
         else:
-            print "Warning the option tasks_filename=clusterid is only valid for condor"
-    elif pattern == "processid":#$(Process)
+            print "Warning the option tasks_filename=clusterid is only valid for Condor and Sge"
+    elif pattern == "processid":
         if launch_cmd=="Condor":
             dbi_param[n]=merge_pattern(["$(Process)"]*len(dbi_param[n]))
+        elif launch_cmd=="Sge":
+            dbi_param[n]=merge_pattern(["$TASK_ID"]*len(dbi_param[n]))
         else:
-            print "Warning the option tasks_filename=processid is only valid for condor"
+            print "Warning the option tasks_filename=processid is only valid for Condor and Sge"
+    elif pattern == "jobname":
+        if launch_cmd=="Sge":
+            dbi_param[n]=merge_pattern(["$JOB_NAME"]*len(dbi_param[n]))
+        else:
+            print "Warning the option tasks_filename=processid is only valid for Sge"
     elif pattern == "sh":
         stdouts=[]
         stderrs=[]

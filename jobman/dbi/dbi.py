@@ -978,8 +978,8 @@ class DBISge(DBIBase):
                 #$ -N %(name)s
 
                 ## log out/err files
-                #$ -o %(log_dir)s/$JOB_NAME.$JOB_ID.$TASK_ID.log.out
-                #$ -e %(log_dir)s/$JOB_NAME.$JOB_ID.$TASK_ID.log.err
+                #$ -o %(log_dir)s/%(output_file)s
+                #$ -e %(log_dir)s/%(error_file)s
 
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
@@ -1035,10 +1035,14 @@ class DBISge(DBIBase):
                 /bin/bash -l -e %(log_dir)s/launcher
                 '''
 
+        (output_file, error_file)=self.get_file_redirection(0)
+
         submit_sh = open(os.path.join(self.log_dir, 'submit.sh'), 'w')
         submit_sh.write(dedent(
             submit_sh_template % dict(
                 project = self.project,
+                output_file = output_file,
+                error_file = error_file,
                 duree = self.duree,
                 name = self.jobs_name,
                 log_dir = self.log_dir,
