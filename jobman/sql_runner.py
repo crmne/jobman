@@ -176,25 +176,43 @@ class DBRSyncChannel(RSyncChannel):
             raise
 
 
-    def save(self):
+    def save(self, num_retries=3):
         # If the DB is not writable, the rsync won't happen
         # If the DB is up, but rsync fails, the status will be ERR_SYNC,
         # but self.state will not be updated in the database.
+        def print_err_and_wait(attempt, msg):
+            r = random.randint(30,(attempt+1)*120)
+            print >> os.sys.stderr, ('Save Error when %s at attempt %i/%i:'
+                                     +' sleeping %is') %(msg,attempt,num_retries,r)
+            time.sleep(r)
+
+
+        #1st implementation of retry
         session = self.db.session()
         try:
             # Test write access to DB
-            self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
-
+            
+            for attempt in range(num_retries):
+                try:
+                    self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
+                except OperationalError, e:
+                    print_err_and_wait(attempt,"setting jobman.status to ERR_SYNC")
+                    
             # save self.state in file current.state, and rsync
-            super(DBRSyncChannel, self).save()
+            super(DBRSyncChannel, self).save(num_retries=num_retries)
 
             if self.sync_in_save:
                 # update DB
-                self.dbstate.update_in_session(flatten(self.state), session)
+                state_jobman = flatten(self.state)
             else:
                 # update only jobman.*
                 state_jobman = flatten({'jobman':self.state.jobman})
-                self.dbstate.update_in_session(state_jobman, session)
+
+            for attempt in range(num_retries):
+                try:
+                    self.dbstate.update_in_session(state_jobman, session)
+                except OperationalError, e:
+                    print_err_and_wait(attempt,"setting jobman.status back")
         finally:
             session.close()
 
