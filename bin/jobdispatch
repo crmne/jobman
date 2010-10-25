@@ -713,7 +713,7 @@ def merge_pattern(new_list):
         if x:
             l.append(x+'.'+str(y))
         else:
-            l.append(x)
+            l.append(y)
     return l
 for pattern in dbi_param["tasks_filename"]:
     if pattern == "explicit":
