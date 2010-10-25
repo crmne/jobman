@@ -112,19 +112,19 @@ class RSyncChannel(StandardChannel):
         if 0 != touch_rval:
             raise Exception('touch failure', (touch_rval, touch_cmd))
 
-    def pull(self):
-        return self.rsync('pull')
+    def pull(self, num_retries=3):
+        return self.rsync('pull', num_retries=num_retries)
 
-    def push(self):
-        return self.rsync('push')
+    def push(self, num_retries=3):
+        return self.rsync('push', num_retries=num_retries)
 
-    def save(self):
+    def save(self, num_retries=3):
         # Useful for manual tests; leave this there, just commented.
         #cachesync_runner.manualtest_inc_save_count()
 
         if self.sync_in_save:
             super(RSyncChannel, self).save()
-            self.push()
+            self.push(num_retries=num_retries)
         #TODO: else: update current.conf with only state.jobman, push current.conf
 
     def setup(self):
