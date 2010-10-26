@@ -1,7 +1,7 @@
 
 import sys, os, copy, time, hashlib
 
-import numpy.random
+import random
 
 import sqlalchemy
 from sqlalchemy import create_engine
@@ -131,7 +131,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
                 # first() succeeded, commit() failed
                 dcts_seen.add(dct)
                 dct = None
-            wait = numpy.random.rand(1)*retry_max_sleep
+            wait = random.random(1)*retry_max_sleep
             if verbose: print 'another process stole our dct. Waiting %f secs' % wait
             print 'waiting for %i second' % wait
             time.sleep(wait)
