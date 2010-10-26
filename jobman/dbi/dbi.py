@@ -978,8 +978,8 @@ class DBISge(DBIBase):
                 #$ -N %(name)s
 
                 ## log out/err files
-                #$ -o %(log_dir)s/%(output_file)s
-                #$ -e %(log_dir)s/%(error_file)s
+                #$ -o %(output_file)s
+                #$ -e %(error_file)s
 
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
@@ -1057,8 +1057,6 @@ class DBISge(DBIBase):
         self.exec_pre_batch()
 
         print "[DBI] All logs will be in the directory: ", self.log_dir
-        print "[DBI] WARNING: the log formatting specified by --task_names will be ignored,"
-        print "     the following format will be used: $JOB_NAME.$JOB_ID.$TASK_ID.log.{err,out}"
         # Launch qsub
         submit_command = 'qsub ' + os.path.join(self.log_dir, 'submit.sh')
         if not self.test:
