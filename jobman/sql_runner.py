@@ -248,7 +248,8 @@ class DBRSyncChannel(RSyncChannel):
         elif sge_task_id:
             self.state.jobman.sql.sge_task_id=sge_task_id
             self.state.jobman.sql.job_id=os.getenv('JOB_ID')
-
+            self.state.jobman.sql.sge_stdout=os.getenv('SGE_STDOUT_PATH')
+            self.state.jobman.sql.sge_stderr=os.getenv('SGE_STDERR_PATH')
         #delete old jobs scheduler info into the state
         #this is needed in case we move a job to a different system.
         #to know where it is running now.
@@ -256,7 +257,7 @@ class DBRSyncChannel(RSyncChannel):
         if not condor_slot:
             key_to_del.extend(['jobman.sql.condor_global_job_id','jobman.sql.condor_stdout','jobman.sql.condor_stderr','jobman.sql.condor_origiwd', 'jobman.sql.condor_slot'])
         if not sge_task_id:
-            key_to_del.extend(['jobman.sql.sge_task_id','jobman.sql.job_id'])
+            key_to_del.extend(['jobman.sql.sge_task_id','jobman.sql.job_id','jobman.sql.sge_stdout','self.state.jobman.sql.sge_stderr'])
 
         flattened_state = flatten(self.state)
         deleted = False
