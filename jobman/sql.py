@@ -131,7 +131,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
                 # first() succeeded, commit() failed
                 dcts_seen.add(dct)
                 dct = None
-            wait = random.random(1)*retry_max_sleep
+            wait = random.random()*retry_max_sleep
             if verbose: print 'another process stole our dct. Waiting %f secs' % wait
             print 'waiting for %i second' % wait
             time.sleep(wait)
