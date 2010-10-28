@@ -234,7 +234,7 @@ class DBRSyncChannel(RSyncChannel):
                 try:
                     for line in f.readlines():
                         if line.startswith('GlobalJobId = '):
-                            self.state.jobman.sql.condor_GlobalJobId = line.split('=')[1].strip()[1:-1]
+                            self.state.jobman.sql.condor_global_job_id = line.split('=')[1].strip()[1:-1]
                         elif line.startswith('Out = '):
                             self.state.jobman.sql.condor_stdout = line.split('=')[1].strip()[1:-1]
                         elif line.startswith('Err = '):
@@ -254,7 +254,7 @@ class DBRSyncChannel(RSyncChannel):
         #to know where it is running now.
         key_to_del=[]
         if not condor_slot:
-            key_to_del.extend(['jobman.sql.condor_GlobalJobId','jobman.sql.condor_stdout','jobman.sql.condor_stderr','jobman.sql.condor_origiwd', 'jobman.sql.condor_slot'])
+            key_to_del.extend(['jobman.sql.condor_global_job_id','jobman.sql.condor_stdout','jobman.sql.condor_stderr','jobman.sql.condor_origiwd', 'jobman.sql.condor_slot'])
         if not sge_task_id:
             key_to_del.extend(['jobman.sql.sge_task_id','jobman.sql.job_id'])
 

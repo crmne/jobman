@@ -151,8 +151,12 @@ def check_serve(options, dbdescr):
                 print 'E: Job %d and Job %d are running on the same condor slot/host combination. running time: %s and %s'%(running[host_slot[st]].id,r.id,t0,t1)
             else: host_slot[st]=idx
             
-            if "jobman.sql.condor_GlobalJobId" in r.keys():
+            gjid = None
+            if "jobman.sql.condor_global_job_id" in r.keys():
+                gjid = r["jobman.sql.ccondor_global_job_id"]
+            elif "jobman.sql.condor_GlobalJobId" in r.keys():
                 gjid = r["jobman.sql.condor_GlobalJobId"]
+            if gjid is not None:
                 submit_host = gjid.split('#')[0]
 
                 #import pdb;pdb.set_trace()
