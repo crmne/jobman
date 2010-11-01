@@ -1795,9 +1795,10 @@ class DBICondor(DBIBase):
                 if stdout_file:
                     condor_submit_fd.write("output       = %s \n" %stdout_file)
                 if stderr_file:
-                    condor_submit_fd.write("error        = %s \nqueue\n" %stderr_file)
+                    condor_submit_fd.write("error        = %s \n" %stderr_file)
                 if req:
                     condor_submit_fd.write("requirements   = %s\n"%(req))
+                condor_submit_fd.write("queue\n")
 
             for i in range(len(self.tasks)):
                 task=self.tasks[i]
@@ -1871,8 +1872,11 @@ class DBICondor(DBIBase):
                 machine_choice.append('(Machine=="'+m+'")')
         else:
             assert(len(self.machines)==0)
-            for m in self.machine:
-                self.tasks_req.append(self.req+'&&(Machine=="'+m+'")')
+            assert len(self.machine)==len(self.tasks)
+            assert len(machine_choice)==0
+            assert len(self.no_machine)==0
+            for idx,m in enumerate(self.machine):
+                self.tasks_req[idx] = self.req+'&&(Machine=="'+m+'")'
         
         for m in self.machines:
             machine_choice.append('regexp("'+m+'", Machine)')
