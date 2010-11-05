@@ -358,9 +358,7 @@ if not env:
     env=os.getenv("DBIDISPATCH_DEFAULT_OPTION")
 if env:
     to_parse=env.split()
-print LOGDIR
-print env
-sys.exit(1)
+
 to_parse.extend(sys.argv[1:])
 command_argv = to_parse[:]
 for argv in to_parse:
