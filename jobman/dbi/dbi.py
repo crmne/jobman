@@ -1948,7 +1948,7 @@ class DBICondor(DBIBase):
             self.p = Popen( cmd, shell=True)
             self.p.wait()
             if self.p.returncode != 0:
-                print "[DBI] submission failed! We can't stard the jobs"
+                print "[DBI] submission failed! We can't stard the jobs (Hint: If no schedd was found, try submitting jobs from zappa8.)"
             if self.pkdilly:
                 self.renew_launch_file(os.path.join(self.log_dir,"renew.outerr")
                                        , 'sh -c "$@"')
