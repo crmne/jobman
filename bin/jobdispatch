@@ -116,10 +116,12 @@ common options:
     relative to LOGDIR, instead of one generated automatically based
     upon the command line and the time.
   The '*--[no_]clean_up' set the DBI option clean_up to true or false
-  The 'DBIDISPATCH_DEFAULT_OPTION' environnement variable can contain default
+  The 'JOBDISPATCH_DEFAULT_OPTION' environnement variable can contain default
     option for this script. They can be overrided on the command line.
-  The 'DBIDISPATCH_LOGDIR' environnement variable set the name of the directory
+    If it is not defined we look for 'DBIDISPATCH_DEFAULT_OPTION' for history.
+  The 'JOBDISPATCH_LOGDIR' environnement variable set the name of the directory
     where all the individual logs directory will be put. Default to LOGS.
+    If it is not defined we look for 'DBIDISPATCH_LOGDIR' for history.
   The '--[*no_]restart' option work only for condor. The parameter 
     following this option should be condor jobs number. We will parse the
     history on the local host and relaunch those jobs. We only take the command
@@ -344,14 +346,21 @@ elif search_file('qsub',PATH):
     launch_cmd = 'Sge'
 else:
     launch_cmd = 'Local'
-LOGDIR=os.getenv("DBIDISPATCH_LOGDIR")
+LOGDIR=os.getenv("JOBDISPATCH_LOGDIR")
 if not LOGDIR:
-    LOGDIR="LOGS"
+    LOGDIR=os.getenv("DBIDISPATCH_LOGDIR")
+    if not LOGDIR:
+        LOGDIR="LOGS"
 
 to_parse=[]
-env=os.getenv("DBIDISPATCH_DEFAULT_OPTION")
+env=os.getenv("JOBDISPATCH_DEFAULT_OPTION")
+if not env:
+    env=os.getenv("DBIDISPATCH_DEFAULT_OPTION")
 if env:
     to_parse=env.split()
+print LOGDIR
+print env
+sys.exit(1)
 to_parse.extend(sys.argv[1:])
 command_argv = to_parse[:]
 for argv in to_parse:
