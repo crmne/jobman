@@ -96,6 +96,7 @@ common options:
   The '--testdbi' set only dbi in test mode. Not this script
   The '--file=FILEPATH' specifies a file containing the jobs to execute, one 
     per line. This is instead of specifying job(s) on the command line.
+    You can put multiple --file option to read jobs from multiple files.
   The '--nb_proc=nb_proc', specifies the maximum number of concurrent jobs. 
     The value -1 will try to execute all jobs concurently. This work for condor,
     bqtools, but for cluster you SHOULD add  the --cwait option.
@@ -329,7 +330,8 @@ MAX_FILE_NAME_SIZE=255
 dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
            "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
            "restart":False,'whitespace':False,"fast":False,
-           "gpu":False,"gpu_enabled":False, "sort":"generated"}
+           "gpu":False,"gpu_enabled":False, "sort":"generated",
+           "file":[]}
 dbi_param_orig = dbi_param.copy()
 testmode=False
 
@@ -431,6 +433,8 @@ for argv in to_parse:
             dbi_param[param]+='\n'+val
         elif param=="env":
             dbi_param[param] += ' '+val
+        elif param=="file":
+            dbi_param[param].append(val)
         elif param in ["machine", "machines", "no_machine", "tasks_filename"]:
             dbi_param[param]+=val.split(",")
         else:
@@ -472,7 +476,8 @@ if len(command_argv) == 0 and not dbi_param.has_key("file"):
     print
     print ShortHelp
     sys.exit(1)
-if dbi_param.has_key("file") and dbi_param["restart"]:
+
+if dbi_param["file"] and dbi_param["restart"]:
     print "the --file= and --restart option are incompatible!"
     print
     print ShortHelp
@@ -601,18 +606,22 @@ def generate_commands(sp):
 
 #generate the command
 if dbi_param.has_key("file"):
-    fd = open(dbi_param["file"],'r')
     commands=[]
     choise_args = []
-    for line in fd.readlines():
-        line = line.rstrip()
-        if not line:
-            continue
-        sp = line.split(" ")
-        (t1,t2)=generate_commands(sp)
-        commands+=t1
-        choise_args+=t2
-    fd.close
+    for file in dbi_param["file"]:
+        fd = open(file,'r')
+        for line in fd.readlines():
+            line = line.rstrip()
+            if not line:
+                continue
+            sp = line.split(" ")
+            (t1,t2)=generate_commands(sp)
+            if not t2:
+                t2 = ['']*len(t1)            
+            commands+=t1
+            choise_args+=t2
+        fd.close()
+
 elif dbi_param["restart"]:
     assert launch_cmd=="Condor"
     cmds=[]
@@ -695,7 +704,7 @@ if dbi_param.has_key("to_all"):
 
 if dbi_param.has_key("exp_dir"):
     dbi_param["log_dir"]=os.path.join(LOGDIR,dbi_param["exp_dir"])
-elif not dbi_param.has_key("file"):
+elif len(dbi_param["file"])==0:
     t = [x for x in sys.argv[1:] if not x[:2]=="--"]
     if dbi_param.get("exec_in_exp_dir",True)==True:
         t[0]=os.path.split(t[0])[1]#keep only the exec name, not the full path
@@ -723,7 +732,7 @@ elif not dbi_param.has_key("file"):
     tmp+='_'+date_str.replace(' ','_').replace(':','-')
     dbi_param["log_dir"]=os.path.join(LOGDIR,tmp)
 else:
-    dbi_param["log_dir"]=os.path.join(LOGDIR,dbi_param["file"])
+    dbi_param["log_dir"]=os.path.join(LOGDIR,'_'.join(dbi_param["file"]))
 dbi_param["log_file"]=os.path.join(dbi_param["log_dir"],'log')
 
 n="base_tasks_log_file"
@@ -742,6 +751,7 @@ for pattern in dbi_param["tasks_filename"]:
     if pattern == "explicit":
         dbi_param[n]=merge_pattern([re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in commands])
     elif pattern == "compact":
+        assert len(choise_args)==len(commands) or len(choise_args)==0
         l=[re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in choise_args]
         if l:
             dbi_param[n]=merge_pattern(l)
