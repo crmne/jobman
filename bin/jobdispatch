@@ -605,7 +605,7 @@ def generate_commands(sp):
     return (argscombination,args_modif)
 
 #generate the command
-if dbi_param.has_key("file"):
+if len(dbi_param["file"])>0:
     commands=[]
     choise_args = []
     for file in dbi_param["file"]:
