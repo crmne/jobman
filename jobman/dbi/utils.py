@@ -96,6 +96,10 @@ def get_plearndir():
     #        homedir = 'R:/'
     return dir
         
+def get_jobmandir():
+    import jobman
+    return os.path.split(jobman.__file__)[0]
+
 def get_homedir():
     homedir = os.environ['HOME']
     return homedir

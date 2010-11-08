@@ -13,7 +13,7 @@ import time
 from time import sleep
 import traceback
 
-from utils import get_condor_platform, get_config_value, get_plearndir, get_new_sid, set_config_value, truncate
+from utils import get_condor_platform, get_config_value, get_jobmandir, get_new_sid, set_config_value, truncate
 
 try:
     from random import shuffle
@@ -1549,7 +1549,7 @@ class DBICondor(DBIBase):
         #we write in a temp file then move it to be sure no jobs will 
         # read a partially writed file when we renew the file.
 
-        dbi_file=get_plearndir()+'/python_modules/plearn/parallel/dbi.py'
+        dbi_file=os.path.join(get_jobmandir(),"dbi","dbi.py")
         overwrite_launch_file=False
         if not os.path.exists(dbi_file):
             print '[DBI] WARNING: Can\'t locate file "dbi.py". Maybe the file "'+self.launch_file+'" is not up to date!'
@@ -1925,15 +1925,15 @@ class DBICondor(DBIBase):
         #why are they needed?
         utils_file = os.path.join(self.tmp_dir, 'utils.py')
         if not os.path.exists(utils_file):
-            shutil.copy( get_plearndir()+
-                         '/python_modules/plearn/parallel/utils.py', utils_file)
+            shutil.copy( os.path.join(get_jobmandir(),"dbi","utils.py"),
+                         utils_file)
             self.temp_files.append(utils_file)
             os.chmod(utils_file, 0755)
 
         configobj_file = os.path.join(self.tmp_dir, 'configobj.py')
         if not os.path.exists('configobj.py'):
-            shutil.copy( get_plearndir()+
-                         '/python_modules/plearn/parallel/configobj.py',  configobj_file)
+            shutil.copy( os.path.join(get_jobmandir(),"dbi","configobj.py"),
+                         configobj_file)
             self.temp_files.append(configobj_file)
             os.chmod(configobj_file, 0755)
 
