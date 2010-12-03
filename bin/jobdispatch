@@ -528,7 +528,7 @@ if  launch_cmd == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
         dbi_param["pkdilly"]=True
 
     p = os.path.abspath(os.path.curdir)
-    nokerb_path=["/home/fringant1/","/home/fringant2/","/cluster/", "/data/"]
+    nokerb_path=["/cluster/", "/data/"]
     pkdilly=False
     dir_with_kerb=not any([p.startswith(x) for x in nokerb_path])
     if not dir_with_kerb or dbi_param['files']:
