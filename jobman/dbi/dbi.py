@@ -1259,6 +1259,7 @@ class DBICondor(DBIBase):
         self.local_log_file = True#by default true as condor can have randomly failure otherwise.
         self.next_job_start_delay = -1
         self.imagesize=-1
+        self.ulimit_vm = 0
 
         DBIBase.__init__(self, commands, **args)
         if self.debug:
@@ -1600,7 +1601,12 @@ class DBICondor(DBIBase):
                     #access this file by the nfs server.
                     fd.write('[ -r "%s" ];echo "Can read the source file? " $? 1>&2 \n'%self.source_file)
                     fd.write('source ' + self.source_file + '\n')
-
+                ulimit_cmd = ""
+                if self.ulimit_vm>0:
+                    m = self.mem
+                    if m<=0:
+                        m=1024
+                    ulimit_cmd = "ulimit -v "+str((self.ulimit_vm+m)*1024)
                 fd.write(dedent('''\
                     /usr/kerberos/bin/klist
                     echo "Executing on " `/bin/hostname` 1>&2
@@ -1614,13 +1620,15 @@ class DBICondor(DBIBase):
                     pwd 1>&2
                     echo "nb args: $#" 1>&2
                     echo "Running: command: \\"$@\\"" 1>&2
+                    echo "ulimit cmd: %s"
+                    %s
                     [ -x "$1" ];echo "Can execute the cmd? " $? 1>&2 
                     %s
                     ret=$?
                     rm -f echo ${KRB5CCNAME:5}
                     echo "return value ${ret}"
                     exit ${ret}
-                    '''%(bash_exec)))
+                    '''%(ulimit_cmd,ulimit_cmd,bash_exec)))
             else:
                 fd.write(dedent('''\
                     #!/bin/tcsh
@@ -1709,7 +1717,7 @@ class DBICondor(DBIBase):
         if self.mem>0:
             fd.write(dedent("""
             request_memory = %i
-            """)%(self.mem))
+            """)%(self.mem))#unit is in meg.
         if self.cpu>0:
             fd.write(dedent("""
             request_cpus = %i

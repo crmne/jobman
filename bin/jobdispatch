@@ -66,6 +66,7 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
                               [--max_file_size=N][--[no_]debug]
                               [--[no_]local_log_file][--next_job_start_delay=N]
                               [--fast] [--[no_]gpu] [--[no_]gpu_enabled]
+                              [--ulimit_vm=N]
     sge options              :[--project=STRING]
     (Note: SGE support is experimental)
     (Note: Sharcnet support is even more experimental)
@@ -276,6 +277,8 @@ condor only options:
   The '--gpu' option tell to launch only on host with gpu card.
   The '--gpu_enabled' option tell that we can take adventage of gpu card.
       We try to launch on gpu host first.
+  The '--ulimit_vm=N' option tell condor to limit the virtual memory usage by
+      N(in meg, default 500)+memory requested(default 1G)
 
 sge only option:
   The '--project' specifies the project to which this  job  is  assigned.
@@ -331,7 +334,7 @@ dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
            "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
            "restart":False,'whitespace':False,"fast":False,
            "gpu":False,"gpu_enabled":False, "sort":"generated",
-           "file":[]}
+           "file":[], "ulimit_vm":500}
 dbi_param_orig = dbi_param.copy()
 testmode=False
 
@@ -422,7 +425,7 @@ for argv in to_parse:
                                 "--jobs_name", "--file", "--tasks_filename",
                                 "--only_n_first", "--no_machine",
                                 "--max_file_size", "--next_job_start_delay",
-                                "--repeat_jobs", "--sort",]:
+                                "--repeat_jobs", "--sort", "--ulimit_vm"]:
         sp = argv.split('=',1)
         param=sp[0][2:]
         val = sp[1]
@@ -500,7 +503,7 @@ elif launch_cmd=="Condor":
                        "keep_failed_jobs_in_queue", "restart",
                        "max_file_size", "debug", "local_log_file",
                        "next_job_start_delay", "gpu", "gpu_enabled",
-                       "fast",
+                       "fast", "ulimit_vm"
                        ]
 elif launch_cmd=="Bqtools":
     valid_dbi_param +=["cpu", "duree", "long", "mem", "micro",
