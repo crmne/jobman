@@ -1262,6 +1262,13 @@ class DBICondor(DBIBase):
         self.ulimit_vm = 0
 
         DBIBase.__init__(self, commands, **args)
+
+        if not 'mem' in args:
+            # Default to 950 to be close to 1G, but account for condor rounding.
+            # We want to put a default as we need some sensible value for
+            # condor dynamic partition.
+            self.mem = "950" 
+
         if self.debug:
             self.condor_submit_exec+=" -debug"
             self.condor_submit_dag_exec+=" -debug"
@@ -1604,7 +1611,7 @@ class DBICondor(DBIBase):
                 ulimit_cmd = ""
                 if self.ulimit_vm>0:
                     m = self.mem
-                    if m<=0:
+                    if m<=0:# Should not happen as we default to 950.
                         m=1024
                     ulimit_cmd = "ulimit -v "+str((self.ulimit_vm+m)*1024)
                 fd.write(dedent('''\

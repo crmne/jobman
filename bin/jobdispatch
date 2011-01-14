@@ -160,7 +160,8 @@ bqtools, cluster, condor and sge option:
     will be reserved for each job.(default=1, -1 won't set it)
   The '--mem=X' speficify the number of ram in meg the program need to execute.
     If you put G[g],M[m] or K[k] at the end. We consider it as Gig, Meg or K
-    with multiple of 1024.
+    with multiple of 1024. Default to don't specify it for all except on 
+    condor where it default to 950.
 
 bqtools, cluster and sge option:
   The '--duree' option specifies the maximum duration of the jobs. The syntax 
@@ -278,7 +279,7 @@ condor only options:
   The '--gpu_enabled' option tell that we can take adventage of gpu card.
       We try to launch on gpu host first.
   The '--ulimit_vm=N' option tell condor to limit the virtual memory usage by
-      N(in meg, default 500)+memory requested(default 1G)
+      N(in meg, default 500) + memory requested (default 950M on condor)
 
 sge only option:
   The '--project' specifies the project to which this  job  is  assigned.
