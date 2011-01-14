@@ -531,15 +531,20 @@ if  launch_cmd == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
         dbi_param["pkdilly"]=True
 
     p = os.path.abspath(os.path.curdir)
-    nokerb_path=["/cluster/", "/data/"]
+    nokerb_path=["/data/"]
     pkdilly=False
     dir_with_kerb=not any([p.startswith(x) for x in nokerb_path])
+    if dir_with_kerb:
+        # From now on, we don't want the condor log file to be under kerberos
+        # Otherwise this cause too much problem with the fileserver
+        raise Exception("You must be in a subfolder of %s. Otherwise their is too much problem with the fileserver."%nokerb_path)
     if not dir_with_kerb or dbi_param['files']:
         pass
     elif dbi_param.get("pkdilly")==True:
         pkdilly = True
     else:
-        raise Exception("You must be in a subfolder of /home/fringant2/")
+        # Without pkdilly, they don't have access to path with kerberos!
+        raise Exception("You must be in a subfolder of %s. "%nokerb_path)
     source=os.getenv("CONDOR_LOCAL_SOURCE")
     if source and not pkdilly:
         source=os.path.realpath(source)
