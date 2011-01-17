@@ -1267,7 +1267,7 @@ class DBICondor(DBIBase):
             # Default to 950 to be close to 1G, but account for condor rounding.
             # We want to put a default as we need some sensible value for
             # condor dynamic partition.
-            self.mem = "950" 
+            self.mem = 950 
 
         if self.debug:
             self.condor_submit_exec+=" -debug"
