@@ -474,8 +474,8 @@ elif launch_cmd == "Sge":
     if set(['compact','explicit','nb0','nb1','sh']).intersection(dbi_param["tasks_filename"]):
         print "Error --tasks_filename for Sge don't support compact,explicit,nb0,nb1,sh"
         sys.exit(1)
-        
-if len(command_argv) == 0 and not dbi_param.has_key("file"):
+
+if len(command_argv) == 0 and not dbi_param["file"]:
     print "No command or file with command to execute!"
     print
     print ShortHelp
