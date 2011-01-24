@@ -1860,7 +1860,12 @@ class DBICondor(DBIBase):
             return #no task to run
 
         if self.set_special_env:
-            self.env += ' OMP_NUM_THREADS=$$(CPUS) GOTO_NUM_THREADS=$$(CPUS) MKL_NUM_THREADS=$$(CPUS)'
+            # The value must be equivalent to $$(CPUS), but with dynamic partioning of node
+            # Their is a bug in condor 7.4.2, it is substituted by the value of the partionable slot
+            # before partition, not the value of the newly created partition.
+            # $(RequestCpus) did not work. Probably that it request that request_cpus must be filled before
+            # this line.
+            self.env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu, self.cpu, self.cpu)
 
         self.env += ' CONDOR_JOB_LOGDIR=%s'%self.log_dir
 
