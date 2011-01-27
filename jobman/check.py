@@ -153,7 +153,7 @@ def check_serve(options, dbdescr):
             
             gjid = None
             if "jobman.sql.condor_global_job_id" in r.keys():
-                gjid = r["jobman.sql.ccondor_global_job_id"]
+                gjid = r["jobman.sql.condor_global_job_id"]
             elif "jobman.sql.condor_GlobalJobId" in r.keys():
                 gjid = r["jobman.sql.condor_GlobalJobId"]
             if gjid is not None:
