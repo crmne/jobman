@@ -1,5 +1,5 @@
-
 import sys, os, copy, time, hashlib
+import re
 
 import random
 
@@ -47,6 +47,8 @@ CANCELED = -1
 FUCKED_UP = 666
 
 _TEST_CONCURRENCY = False
+
+POSTGRES_PARSE = re.compile('postgres://([^:@]+)(?::([^@]+))?@([^:/]+)(?::([^/]+))?/([^/]+)/(.+)')
 
 def postgres_serial(user, password, host, port, database, poolclass=sqlalchemy.pool.NullPool, **kwargs):
     """Return a DbHandle instance that communicates with a postgres database at transaction
@@ -180,57 +182,27 @@ def parse_dbstring(dbstring):
     :note: port defaults to 5432 (postgres default).
 
     """
-    postgres = 'postgres://'
-    if not dbstring.startswith(postgres):
-        raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
-    dbstring = dbstring[len(postgres):]
-
-    #username_and_password
-    colon_pos = dbstring.find('@')
-    username_and_password = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    colon_pos = username_and_password.find(':')
-    if -1 == colon_pos:
-        username = username_and_password
-        password = None
+    r = POSTGRES_PARSE.match(dbstring)
+    if r:
+        username = r.group(1)
+        password = r.group(2)
+        hostname = r.group(3)
+        port = int(r.group(4) or '5432')
+        database = r.group(5)
+        tablename = r.group(6)
+        if password is None:
+            password = get_password(hostname, dbname)
+        if False:
+            print 'USERNAME', username
+            print 'PASS', password
+            print 'HOST', hostname
+            print 'PORT', port
+            print 'DB', dbname
+            print 'TABLE', tablename
+        
+        return username, password, hostname, port, dbname, tablename
     else:
-        username = username_and_password[:colon_pos]
-        password = username_and_password[colon_pos+1:]
-
-    #hostname/port
-    colon_pos = dbstring.find('/')
-    hostname_and_port = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    colon_pos = hostname_and_port.find(':')
-    if -1 == colon_pos:
-        hostname = hostname_and_port
-        port = 5432
-    else:
-        hostname = hostname_and_port[:colon_pos]
-        port = int(hostname_and_port[colon_pos+1:])
-
-    #dbname
-    colon_pos = dbstring.find('/')
-    dbname = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    #tablename
-    tablename = dbstring
-
-    if password is None:
-        password = get_password(hostname, dbname)
-
-    if False:
-        print 'USERNAME', username
-        print 'PASS', password
-        print 'HOST', hostname
-        print 'PORT', port
-        print 'DB', dbname
-        print 'TABLE', tablename
-
-    return username, password, hostname, port, dbname, tablename
+        raise ValueError('Unrecognized format for dbstring:', dbstring)
 
 def get_password(hostname, dbname):
     """Return the current user's password for a given database
