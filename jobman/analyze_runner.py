@@ -30,11 +30,9 @@ def runner_analyze(options, cmdname):
     if options.addr.startswith('pkl://'):
         import analyze.pkl
         exproot = options.addr[len('pkl://'):]
-    elif options.addr.startswith('postgres://'):
+    elif options.addr.startswith('postgres://') or options.addr.startswith('sqlite://'):
+        raise NotImplementedError()
         import analyze.pg
-        dbstring = options.addr
-        db = sql_db(dbstring)
-        username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
     elif options.addr.startswith('dd://'):
         raise NotImplementedError()
         import analyze.dd
