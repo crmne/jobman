@@ -187,7 +187,7 @@ def check_serve(options, dbdescr):
                     elif lines[0]=='4':#condor completed
                         print "E: Job %d is marked as running in the db, but its condor submited job is marked as completed."%r.id
                     elif lines[0]=='5':#condor held
-                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as help."%r.id
+                        print "E: Job %d is marked as running in the db, but its condor submited job is marked as held."%r.id
                     elif lines[0]=='6':#condor submission error
                         print "E: Job %d is marked as running in the db, but its condor submited job is marked as submission error(SHOULD not happen as if condor can't start the job, it don't select one in the db)."%r.id
 
