@@ -877,7 +877,45 @@ class DBISge(DBIBase):
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
+        self.jobs_per_node = 0
+        self.cores_per_node = 0
+        self.mem_per_node = 0
+        
         DBIBase.__init__(self, commands, **args)
+        
+        self.jobs_per_node = int(self.jobs_per_node)
+        self.cores_per_node = int(self.cores_per_node)
+        self.mem_per_node = int(self.mem_per_node)
+        
+        # Compute the number of jobs to put per node.
+        jobs_per_node = -1
+        if self.cores_per_node > 0:
+            jobs_per_node = self.cores_per_node // self.cpu
+            assert jobs_per_node != 0, "Requested more cores per node then available"
+            if self.cores_per_node % self.cpu != 0 and self.jobs_per_node == 0:
+                print """[DBI] WARNING: You requested %d cores per jobs
+                and told there is %d cores per nodes. This could be
+                wastefull as this leave %d cores not used per node."""%(
+                    self.cpu, self.cores_per_node,
+                    self.cores_per_node - (jobs_per_node*self.cpu))
+        if self.mem_per_node > 0 and self.mem > 0:
+            jobs_per_node_ = self.mem_per_node // self.mem
+            assert jobs_per_node_ != 0, "Requested more memory per node then available"
+            if jobs_per_node == -1:
+                jobs_per_node = jobs_per_node_
+            else:
+                jobs_per_node = min(jobs_per_node, jobs_per_node_)
+                
+        if self.jobs_per_node != 0 and jobs_per_node != self.jobs_per_node:
+            print """[DBI] WARNING: you specified the number of jobs
+            per nodes as %d, but we computed that %d would be
+            better. We use your number."""%(self.jobs_per_node, jobs_per_node)
+        assert jobs_per_node != 0
+        if self.jobs_per_node == 0 and jobs_per_node > 0:
+            self.jobs_per_node = jobs_per_node                
+
+        if self.jobs_per_node > 0:
+            assert self.cores_per_node > 0
 
         self.nb_proc = int(self.nb_proc)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
@@ -925,10 +963,8 @@ class DBISge(DBIBase):
                 args = self.args))
             id+=1
 
-    def run(self):
-        pre_batch_command = ';'.join( self.pre_batch )
-        post_batch_command = ';'.join( self.post_batch )
-
+    def create_separate_jobs_submit_files(self):
+        """ We suppose SGE will launch the jobs separatly"""
         launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
         launcher.write(dedent('''\
                 #!/bin/bash -l
@@ -951,12 +987,78 @@ class DBISge(DBIBase):
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
                 # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+                ##trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
 
                 # Execute the task
                 ${tasks[$ID]}
                 '''))
 
+
+    def create_full_node_submit_files(self):
+        """We reserve a full node and ourself we some jobs on it """
+        launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
+        launcher.write(dedent('''\
+                #!/bin/bash -l
+                # Bash is needed because we use its "array" data structure
+                # the -l flag means it will act like a login shell,
+                # and source the .profile, .bashrc, and so on
+
+                # List of all tasks to execute
+                tasks=(
+                '''))
+        for task in self.tasks:
+            launcher.write("'" + ';'.join(task.commands) + "'\n")
+            
+        (output_file, error_file)=self.get_file_redirection(0)
+        launcher.write(dedent('''\
+                )
+
+                # The index in 'tasks' array starts at 0,
+                # but SGE_TASK_ID starts at 1...
+                echo "IN LAUNCHER"
+                ID=$(($SGE_TASK_ID - 1))
+                UPPER_LIMIT=`expr ${ID} + %i - 1`
+                UPPER_LIMIT=`python -c "print min(${UPPER_LIMIT},%i - 1)"`
+                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
+                # These signals are emitted by SGE before (respectively)
+                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
+                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+                echo "ID=$ID"
+                echo "UPPER_LIMIT=$UPPER_LIMIT"
+                echo "seq start"
+                seq ${ID} ${UPPER_LIMIT}
+                echo "seq end"
+
+                # Execute the task
+                echo "SGE_TASK_ID=${SGE_TASK_ID}"
+                echo "Before we launch the jobs on this node"
+                date
+                for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
+                    echo "Launching task id = ${TASK_ID}"
+                    ${tasks[${TASK_ID}]} > %s 2> %s &
+                done
+                wait
+                echo "All jobs finished on this node"
+                date
+                '''%(self.jobs_per_node, len(self.tasks),
+                     output_file, error_file)))
+
+    def run(self):
+
+        (output_file, error_file)=self.get_file_redirection(0)
+        if self.jobs_per_node > 0:
+            self.create_full_node_submit_files()
+            output_file = os.path.join(os.path.dirname(output_file),
+                                       "NODE.${SGE_TASK_ID}.out")
+            error_file = os.path.join(os.path.dirname(error_file),
+                                      "NODE.${SGE_TASK_ID}.err")
+        else:
+            self.create_separate_jobs_submit_files()
+
+        pre_batch_command = ';'.join( self.pre_batch )
+        post_batch_command = ';'.join( self.post_batch )
+        #TODO exec pre and post batch command
+        
         submit_sh_template = '''\
                 #!/bin/bash
 
@@ -964,7 +1066,7 @@ class DBISge(DBIBase):
                 # Execute the job from the current working directory.
                 #$ -cwd
                 # Send "warning" signals to a running job prior to sending the signals themselves. 
-                #$ -notify
+                ##$ -notify
 
                 ## Mandatory arguments
                 #Specifies  the  project (RAPI number from CCDB) to  which this job is assigned.
@@ -982,18 +1084,28 @@ class DBISge(DBIBase):
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
                 # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
-
+                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+                '''
+        if self.jobs_per_node > 0:
+            submit_sh_template += '''
+                ## Number of CPU (on the same node) per job
+                #$ -pe default %(cores_per_node)i
+                ## Execute as many jobs as needed
+                #$ -t 1-%(n_tasks)i:%(jobs_per_node)i
+                '''
+        else:
+            submit_sh_template += '''
                 ## Execute as many jobs as needed
                 #$ -t 1-%(n_tasks)i:1
                 '''
-        if self.cpu > 0:
-            submit_sh_template += '''
+        
+            if self.cpu > 0:
+                submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
                 #$ -pe smp %(cpu)i
                 '''
-        if self.mem > 0:
-            submit_sh_template += '''
+            if self.mem > 0:
+                submit_sh_template += '''
                 ## Memory size (on the same node) per job
                 #$ -l ml=%sM
                 '''%str(self.mem)
@@ -1030,10 +1142,8 @@ class DBISge(DBIBase):
                 # Bash is needed because we use its "array" data structure
                 # the -l flag means it will act like a login shell,
                 # and source the .profile, .bashrc, and so on
-                /bin/bash -l -e %(log_dir)s/launcher
+                /bin/bash -l -e %(log_dir)s/launcher > %(node_out)s.out 2> %(node_out)s.err
                 '''
-
-        (output_file, error_file)=self.get_file_redirection(0)
 
         submit_sh = open(os.path.join(self.log_dir, 'submit.sh'), 'w')
         submit_sh.write(dedent(
@@ -1047,6 +1157,9 @@ class DBISge(DBIBase):
                 n_tasks = len(self.tasks),
                 cpu = self.cpu,
                 queue = self.queue,
+                jobs_per_node = self.jobs_per_node,
+                cores_per_node = self.cores_per_node,
+                node_out = os.path.join(os.path.dirname(output_file), "Node.${SGE_TASK_ID}")
             )))
 
         submit_sh.close()
