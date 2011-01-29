@@ -187,7 +187,7 @@ cluster and condor options:
     Condor default to the same as the submit host and --os=FC7,FC9 
     tell to use FC7 or FC9 hosts.
 
-bqtools and sge options:
+bqtools, sge and sharcnet options:
   The '--queue=X' tell on witch queue the jobs will be launched.
   The '--jobs_name=X' option give the X as the jobs name to bqtools or sge.
     Default, random.
@@ -426,7 +426,8 @@ for argv in to_parse:
                                 "--jobs_name", "--file", "--tasks_filename",
                                 "--only_n_first", "--no_machine",
                                 "--max_file_size", "--next_job_start_delay",
-                                "--repeat_jobs", "--sort", "--ulimit_vm"]:
+                                "--repeat_jobs", "--sort", "--ulimit_vm",
+                                "--project"]:
         sp = argv.split('=',1)
         param=sp[0][2:]
         val = sp[1]
@@ -512,7 +513,7 @@ elif launch_cmd=="Bqtools":
                        "set_special_env", "env" ]
 elif launch_cmd=="Sge":
     valid_dbi_param += ["duree", "jobs_name", "queue", "cpu", "mem", "env",
-                        "raw", "set_special_env",
+                        "raw", "set_special_env", "project",
                         ]
 elif launch_cmd=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu"] #"env, "set_special_env", "raw" ?
