@@ -1048,10 +1048,6 @@ class DBISge(DBIBase):
         (output_file, error_file)=self.get_file_redirection(0)
         if self.jobs_per_node > 0:
             self.create_full_node_submit_files()
-            output_file = os.path.join(os.path.dirname(output_file),
-                                       "Node.${SGE_TASK_ID}.out")
-            error_file = os.path.join(os.path.dirname(error_file),
-                                      "Node.${SGE_TASK_ID}.err")
         else:
             self.create_separate_jobs_submit_files()
 
@@ -1078,8 +1074,8 @@ class DBISge(DBIBase):
                 #$ -N %(name)s
 
                 ## log out/err files
-                #$ -o %(output_file)s
-                #$ -e %(error_file)s
+                ##$ -o%(output_file)s The SGE_TASK_id do not get expanded
+                ##$ -e (error_file)s So we do it ourself.
 
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
@@ -1142,7 +1138,7 @@ class DBISge(DBIBase):
                 # Bash is needed because we use its "array" data structure
                 # the -l flag means it will act like a login shell,
                 # and source the .profile, .bashrc, and so on
-                /bin/bash -l -e %(log_dir)s/launcher
+                /bin/bash -l -e %(log_dir)s/launcher > %(node_out)s.out 2> %(node_out)s.err
                 '''
 
         submit_sh = open(os.path.join(self.log_dir, 'submit.sh'), 'w')
@@ -1159,6 +1155,7 @@ class DBISge(DBIBase):
                 queue = self.queue,
                 jobs_per_node = self.jobs_per_node,
                 cores_per_node = self.cores_per_node,
+                node_out = os.path.join(os.path.dirname(output_file), "Node.${SGE_TASK_ID}")
             )))
 
         submit_sh.close()
