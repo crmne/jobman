@@ -464,14 +464,13 @@ for argv in to_parse:
     command_argv.remove(argv)
 
 if len(dbi_param["tasks_filename"])==0:
-    #$JOB_NAME.$JOB_ID.$T
     if launch_cmd == "Cluster":
         dbi_param["tasks_filename"] = ["clusterid", "processid", "compact"]
     elif launch_cmd == "Sge":
-        dbi_param["tasks_filename"] = ["jobname", "clusterid", "processid", "compact"]
+        dbi_param["tasks_filename"] = ["jobname", "clusterid", "processid"]
     else:
         dbi_param["tasks_filename"] = ["nb0", "compact"]
-elif launch_cmd == "Sge":
+if launch_cmd == "Sge":
     if set(['compact','explicit','nb0','nb1','sh']).intersection(dbi_param["tasks_filename"]):
         print "Error --tasks_filename for Sge don't support compact,explicit,nb0,nb1,sh"
         sys.exit(1)
