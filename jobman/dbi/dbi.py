@@ -873,7 +873,7 @@ class DBISge(DBIBase):
         self.jobs_name = ''
         self.queue = ''
         self.duree = '23:59:59'
-        self.project = 'jvb-000-aa'
+        self.project = 'jvb-000-ab'
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
