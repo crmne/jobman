@@ -89,9 +89,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
             else:
                 # no jobs are left
                 keep_trying = False
-        except (psycopg2.OperationalError,
-                sqlalchemy.exceptions.ProgrammingError,
-                sqlalchemy.exc.DBAPIError), e:
+        except sqlalchemy.exc.DBAPIError:
             #either the first() or the commit() raised
             s.rollback() # docs say to do this (or close) after commit raises exception
             if verbose: print 'caught exception', e

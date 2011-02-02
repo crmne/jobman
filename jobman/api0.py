@@ -6,7 +6,7 @@ import sqlalchemy.pool
 
 from sqlalchemy import create_engine#, desc
 from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
-from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
+from sqlalchemy import Integer, String, Float, DateTime, Text, Binary, BigInteger #Boolean
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import mapper, relation, eagerload#backref
@@ -21,6 +21,7 @@ from sqlalchemy.engine.url import make_url
 
 import time
 import random
+import os
 
 class Todo(Exception):
     # Here 'this' refers to the code where the exception is raised,
@@ -172,7 +173,7 @@ class DbHandle (object):
                     s.close()     #d_self -> detached
                 else:
                     s = session
-                    s.save(d_self)
+                    s.add(d_self)
 
             _forbidden_keys = set(['session'])
 
@@ -398,7 +399,7 @@ class DbHandle (object):
                 if not created:
                     created = h_self._KeyVal(key, val)
                     d_self._attrs.append(created)
-                session.save(created)
+                session.add(created)
 
         mapper(Dict, dict_table,
                 properties = {
@@ -705,7 +706,7 @@ def db_from_engine(engine,
             Column('read', DateTime),
             Column('status', Integer),
             Column('priority', Float(53)),
-            Column('hash', postgres.PGBigInteger))
+            Column('hash', BigInteger))
 
     t_keyval = Table(table_prefix+keyval_suffix, metadata,
             Column('id', Integer, primary_key=True),
@@ -713,7 +714,7 @@ def db_from_engine(engine,
             Column('name', String(128), index=True, nullable=False), #name of attribute
             Column('type', String(1)),
             #Column('ntype', Boolean),
-            Column('ival', postgres.PGBigInteger),
+            Column('ival', BigInteger),
             Column('fval', Float(53)),
             Column('sval', Text),
             Column('bval', Binary),
@@ -767,6 +768,9 @@ port]/dbname?table=tablename
         else:
             raise ValueError('no table name provided (add ?table=tablename)')
 
+    if url.drivername == 'sqlite':
+        url.database = os.path.abspath(url.database)
+
     if url.password is None and url.drivername != 'sqlite':
         url.password = get_password(url.hostname, url.database)
 
@@ -781,8 +785,10 @@ def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool,
 
     if serial:
         extra_opts['isolation_level'] = 'SERIALIZABLE'
+    
+    tablename = url.query.pop('table')
 
     engine = create_engine(url, echo=echo, poolclass=poolclass, **extra_opts)
 
-    return db_from_engine(engine, table_prefix=url.query['table'], **kwargs)
+    return db_from_engine(engine, table_prefix=tablename, **kwargs)
 
