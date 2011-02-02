@@ -1,14 +1,9 @@
-
 import sys, os, copy, time, hashlib
 
 import random
 
 import sqlalchemy
-from sqlalchemy import create_engine
 from sqlalchemy.orm import eagerload
-import psycopg2, psycopg2.extensions
-
-from api0 import db_from_engine, postgres_db
 
 JOBID = 'jobman.id'
 EXPERIMENT = 'jobman.experiment'
@@ -31,33 +26,6 @@ CANCELED = -1
 FUCKED_UP = 666
 
 _TEST_CONCURRENCY = False
-
-def postgres_serial(user, password, host, port, database, poolclass=sqlalchemy.pool.NullPool, **kwargs):
-    """Return a DbHandle instance that communicates with a postgres database at transaction
-    isolation_level 'SERIALIZABLE'.
-
-    :param user: a username in the database
-    :param password: the password for the username
-    :param host: the network address of the host on which the postgres server is running
-    :param port: the port on which to connect to host
-    :param database: a database served by the postgres server
-
-    """
-    this = postgres_serial
-
-    if not hasattr(this,'engine'):
-        def connect():
-            c = psycopg2.connect(user=user, password=password, database=database, host=host, port=port)
-            c.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
-            return c
-        this.engine = create_engine('postgres://'
-                ,creator=connect
-                ,poolclass=poolclass
-                )
-
-    db = db_from_engine(this.engine, **kwargs)
-    db._is_serialized_session_db = True
-    return db
 
 def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     """Find a trial in the lisa_db with status START.
@@ -147,96 +115,6 @@ def book_dct_non_postgres(db):
 
     raise NotImplementedError()
 
-
-###########
-# Connect
-###########
-
-def parse_dbstring(dbstring):
-    """Unpacks a dbstring of the form postgres://username[:password]@hostname[:port]/dbname/tablename
-
-    :rtype: tuple of strings
-    :returns: username, password, hostname, port, dbname, tablename
-
-    :note: If the password is not given in the dbstring, this function attempts to retrieve it using
-    >>> password = get_password(hostname, dbname)
-
-    :note: port defaults to 5432 (postgres default).
-
-    """
-    postgres = 'postgres://'
-    if not dbstring.startswith(postgres):
-        raise ValueError('For now, jobman dbstrings must start with postgres://', dbstring)
-    dbstring = dbstring[len(postgres):]
-
-    #username_and_password
-    colon_pos = dbstring.find('@')
-    username_and_password = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    colon_pos = username_and_password.find(':')
-    if -1 == colon_pos:
-        username = username_and_password
-        password = None
-    else:
-        username = username_and_password[:colon_pos]
-        password = username_and_password[colon_pos+1:]
-
-    #hostname/port
-    colon_pos = dbstring.find('/')
-    hostname_and_port = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    colon_pos = hostname_and_port.find(':')
-    if -1 == colon_pos:
-        hostname = hostname_and_port
-        port = 5432
-    else:
-        hostname = hostname_and_port[:colon_pos]
-        port = int(hostname_and_port[colon_pos+1:])
-
-    #dbname
-    colon_pos = dbstring.find('/')
-    dbname = dbstring[:colon_pos]
-    dbstring = dbstring[colon_pos+1:]
-
-    #tablename
-    tablename = dbstring
-
-    if password is None:
-        password = get_password(hostname, dbname)
-
-    if False:
-        print 'USERNAME', username
-        print 'PASS', password
-        print 'HOST', hostname
-        print 'PORT', port
-        print 'DB', dbname
-        print 'TABLE', tablename
-
-    return username, password, hostname, port, dbname, tablename
-
-def get_password(hostname, dbname):
-    """Return the current user's password for a given database
-
-    :TODO: Replace this mechanism with a section in the pylearn configuration file
-    """
-    password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
-    try:
-        password = open(password_path).readline()[:-1] #cut the trailing newline
-    except:
-        raise ValueError( 'Failed to read password for db "%s" from %s' % (dbname, password_path))
-    return password
-
-def db(dbstring):
-    username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
-    try:
-        return postgres_db(username, password, hostname, port, dbname, table_prefix=tablename)
-    except:
-        print 'Error connecting with password', password
-        raise
-
-
 ###########
 # Queue
 ###########
@@ -282,7 +160,6 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
     if session is None:
         s.close()
     return rval
-
 
 def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority=1.0):
     state = copy.copy(state)

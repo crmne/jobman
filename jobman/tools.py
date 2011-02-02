@@ -278,7 +278,7 @@ def rebuild_DB_from_FS(db, cwd='./', keep_id=True, verbose=False):
     files stored in an experiment directory. This can be useful for consolidating
     data stored in multiple locations or after bad things happen to the DB...
 
-    @param db: db handle (as returned by sql.db) of the DB in which to insert job dicts
+    @param db: db handle (as returned by api0.open_db) of the DB in which to insert job dicts
     @param cwd: current working dir or path from which to start looking for conf files
     @param keep_id: attempt to use the directory name as job id for inserting in DB
     @param verbose: prints info about which jobs are succesfully inserted

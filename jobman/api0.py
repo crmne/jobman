@@ -17,6 +17,8 @@ from sqlalchemy.databases import postgres
 from sqlalchemy.sql import select #operators
 from sqlalchemy.sql.expression import column, not_ #outerjoin
 
+from sqlalchemy.engine.url import make_url
+
 import time
 import random
 
@@ -671,7 +673,6 @@ class DbHandle (object):
         return rval
 
 
-
 def db_from_engine(engine,
         table_prefix='DbHandle_default_',
         trial_suffix='trial',
@@ -724,24 +725,64 @@ def db_from_engine(engine,
     #warning: tables can exist, but have incorrect schema
     # see bug mentioned in DbHandle constructor
 
-    return DbHandle(Session, engine, t_trial, t_keyval)
+    db = DbHandle(Session, engine, t_trial, t_keyval)
+    db.tablename = table_prefix
+    return db
 
-def sqlite_memory_db(echo=False, **kwargs):
-    """Return a DbHandle backed by a memory-based database"""
-    engine = create_engine('sqlite:///:memory:', echo=False)
-    return db_from_engine(engine, **kwargs)
+def get_password(hostname, dbname):
+    """Return the current user's password for a given database
 
-def sqlite_file_db(filename, echo=False, **kwargs):
-    """Return a DbHandle backed by a file-based database"""
-    engine = create_engine('sqlite:///%s' % filename, echo=False)
-    return db_from_engine(engine, **kwargs)
-
-def postgres_db(user, password, host, port, database, echo=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
-    """Create an engine to access a postgres_dbhandle
+    :TODO: Replace this mechanism with a section in the pylearn
+           configuration file
     """
-    db_str ='postgres://%(user)s:%(password)s@%(host)s:%(port)i/%(database)s' % locals()
+    password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
+    try:
+        password = open(password_path).readline().rstrip('\r\n')
+    except:
+        raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+    return password
 
-    engine = create_engine(db_str, echo=echo, poolclass=poolclass)
+def parse_dbstring(dbstring):
+    """Unpacks a dbstring of the form postgres://username[:password]@hostname[:
+port]/dbname?table=tablename
 
-    return db_from_engine(engine, **kwargs)
+    :rtype: tuple of strings
+    :returns: username, password, hostname, port, dbname, tablename
+
+    :note: If the password is not given in the dbstring, this function
+           attempts to retrieve it using
+
+      >>> password = get_password(hostname, dbname)
+
+    :note: port defaults to 5432 (postgres default).
+    """
+    url = make_url(dbstring)
+    if 'table' not in url.query:
+        # support legacy syntax for postgres
+        if url.drivername == 'postgresql':
+            db = url.database.split('/')
+            if len(db) == 2:
+                url.database = db[0]
+                url.query['table'] = db[1]
+        else:
+            raise ValueError('no table name provided (add ?table=tablename)')
+
+    if url.password is None and url.drivername != 'sqlite':
+        url.password = get_password(url.hostname, url.database)
+
+    return url
+
+def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
+    """Create an engine to access a DbHandle.
+    """
+    url = parse_dbstring(dbstr)
+
+    extra_opts = {}
+
+    if serial:
+        extra_opts['isolation_level'] = 'SERIALIZABLE'
+
+    engine = create_engine(url, echo=echo, poolclass=poolclass, **extra_opts)
+
+    return db_from_engine(engine, table_prefix=url.query['table'], **kwargs)
 

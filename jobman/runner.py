@@ -397,12 +397,12 @@ def runner_help(options, topic = None):
 
         Or this way:
 
-        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host[:port]/dbname?table=tablename \\
                            my_experiments.experiment \\
                            some_param=1 \\
                            other_param=0.4
 
-        jobman sql postgres://user:pass@host[:port]/dbname/tablename exproot
+        jobman sql postgres://user:pass@host[:port]/dbname?table=tablename exproot
 
         You need to make sure that the module `my_experiments` is accessible
         from python. You can check with the command

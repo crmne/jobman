@@ -22,7 +22,7 @@ def runner_analyze(options, cmdname):
 
         jobman analyze --extra=jobs --addr=pkl://relpath/to/experiment <cmd>
         jobman analyze --extra=jobs --addr=pkl:///abspath/to/experiment <cmd>
-        jobman analyze --extra=jobs --addr=postgres://user@host:dbname/tablename <cmd>
+        jobman analyze --extra=jobs --addr=postgres://user@host:dbname?table=tablename <cmd>
 
     Try jobman analyze help for more information.
     """
