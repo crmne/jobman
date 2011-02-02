@@ -125,7 +125,7 @@ def flatten(obj):
     d = {}
     def helper(d, prefix, obj):
         # TODO: add numpy.floating, numpy.integer?
-        if isinstance(obj, (str, int, float, list, tuple)) or obj in (True, False, None):
+        if isinstance(obj, (str, unicode, int, float, list, tuple)) or obj in (True, False, None):
             d[prefix] = obj #convert(obj)
         else:
             if isinstance(obj, dict):
