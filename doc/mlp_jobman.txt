@@ -140,6 +140,19 @@ will populate the mlp_dumi table with values inferred from mlp_jobman.conf **and
 
 This shows how to keep default values for the parameters in a .conf file and add jobs corresponding to multiple values of a given (set of) hyperparameter(s).
 
+Create a view
+.............
+
+.. code-block:: bash
+
+    jobman sqlview postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi mlp_dumi_view
+
+This creates a virtual table called mlp_dumi_view for later viewing and
+interpreting results (see below). Note that each time a new field is
+added to `state`, the view should be recreated. For instance, if you
+create the view before any job is finished, the table will not contain
+the `best_validation_loss` column, and if you want to use it you will
+have to call ``jobman sqlview ...`` once again after one job finishes.
 
 Advanced method: Python script
 ------------------------------
@@ -240,19 +253,6 @@ The reason these two options exist separately is to allow a certain degree of
 trade-off between the number of machines used to execute jobs vs. the number
 of jobs per machine.
 
-Create a view
-++++++++++++++++
-
-.. code-block:: bash
-
-    jobman sqlview postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi mlp_dumi_view
-
-This creates a virtual table called mlp_dumi_view for later viewing and
-interpreting results (see below). Note that each time a new field is
-added to `state`, the view should be recreated. For instance, if you
-create the view before any job is finished, the table will not contain
-the `best_validation_loss` column, and if you want to use it you will
-have to call ``jobman sqlview ...`` once again after one job finishes.
 
 Canceling/Restarting jobs
 +++++++++++++++++++++++++

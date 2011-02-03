@@ -57,7 +57,7 @@ parameter syntax to use is then:
 .. code-block:: bash
 
     jobman sqlschedules postgres://user:pass@host/dbname/tablename \
-           first={{1,2,3,4}} second=3 third={{3,5,6}}
+           path.to.experiment first={{1,2,3,4}} second=3 third={{3,5,6}}
 
 This will take all permutations of parameters ``first``, ``second`` and ``third``
 and insert 12 jobs in the table.

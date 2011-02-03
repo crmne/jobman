@@ -5,7 +5,8 @@ from jobman.tools import DD, flatten
 from mlp_jobman import experiment
 
 # Database
-db = sql.db('postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi')
+TABLE_NAME = 'mlp_dumi'
+db = sql.db('postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/'+TABLE_NAME)
 
 # Default values
 state = DD()
@@ -35,3 +36,6 @@ for n_hidden in 20, 30:
 
         # Insert job
         sql.insert_job(experiment, flatten(state), db)
+
+# Create the view
+db.createView(TABLE_NAME+'_view')
