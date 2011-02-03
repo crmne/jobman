@@ -38,9 +38,11 @@ From the Command Line
 .....................
 
 To insert jobs into the database from the command line, use the ``jobman
-sqlschedule`` command. An example is given below::
+sqlschedule`` command. An example is given below:
 
-    jobman sqlschedule postgres://user:pass@host/dbname/tablename
+.. code-block:: bash
+
+    jobman sqlschedule postgres://user:pass@host/dbname/tablename \
            path.to.experiment first=1 second=3
 
 This will insert a single experiment into the table ``<tablename>`` of database
@@ -50,9 +52,11 @@ duplicate jobs are not inserted in the DB. To force insertion of a duplicate
 job, use the ``-f`` flag.
 
 The ``sqlschedules`` command may be used to insert many jobs at once. The
-parameter syntax to use is then::
+parameter syntax to use is then:
 
-    jobman sqlschedules postgres://user:pass@host/dbname/tablename
+.. code-block:: bash
+
+    jobman sqlschedules postgres://user:pass@host/dbname/tablename \
            first={{1,2,3,4}} second=3 third={{3,5,6}}
 
 This will take all permutations of parameters ``first``, ``second`` and ``third``
@@ -268,26 +272,32 @@ executed on any machine with access to this database.
 The files that will be produced during the execution will be placed in a
 unique subdirectory of the experiment root path, provided when launching
 the job. For instance, if you want the experiment root to be the current
-directory::
+directory:
+
+.. code-block:: bash
 
     jobman sql postgres://<user>:<pass>@<server>/<database>/<table> .
 
 You can also specify a distant path, if you want to gather results from
-jobs executed on different machines::
+jobs executed on different machines:
 
-    jobman sql postgres://<user>:<pass>@<server>/<database>/<table> 
+.. code-block:: bash
+
+    jobman sql postgres://<user>:<pass>@<server>/<database>/<table> \
                ssh://<fileserver>:<some>/<path>
 
 The above commands will retrieve one job description among those with
 highest priority, and that have not been started yet, and execute
 it. You can also ask for several jobs to be executed one after the
-other::
+other:
+
+.. code-block:: bash
 
     jobman sql -n3 postgres://<user>:<pass>@<server>/<database>/<table> .
 
 will execute 3 jobs, and
 
-::
+.. code-block:: bash
 
     jobman sql -n0 postgres://<user>:<pass>@<server>/<database>/<table> .
 
