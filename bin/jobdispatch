@@ -70,6 +70,7 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
     sge options              :[--project=STRING]
                               [--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
+                              [--pe]
     (Note: SGE support is experimental)
     (Note: Sharcnet support is even more experimental)
 
@@ -291,6 +292,8 @@ sge only option:
       and compute the number of jobs par node to use with this information.
   The '--mem_per_node=N' option tell dbi to act as --jobs_per_node
       and compute the number of jobs par node to use with this information.
+  The '--pe' option tell SGE to use this parallel environment.
+      Default 'default CORES_PER_NODE'.
 
 where <command-template> is interpreted as follows: the first argument
 is the <command> above, and the rest are interpreted as <arguments>.
@@ -436,7 +439,9 @@ for argv in to_parse:
                                 "--max_file_size", "--next_job_start_delay",
                                 "--repeat_jobs", "--sort", "--ulimit_vm",
                                 "--project", "--jobs_per_node",
-                                "--cores_per_node", "--mem_per_node"]:
+                                "--cores_per_node", "--mem_per_node",
+                                "--pe"
+                                ]:
         sp = argv.split('=',1)
         param=sp[0][2:]
         val = sp[1]
@@ -522,7 +527,7 @@ elif launch_cmd=="Bqtools":
 elif launch_cmd=="Sge":
     valid_dbi_param += ["duree", "jobs_name", "queue", "cpu", "mem", "env",
                         "raw", "set_special_env", "project", "jobs_per_node",
-                        "cores_per_node", "mem_per_node",
+                        "cores_per_node", "mem_per_node", "pe",
                         ]
 elif launch_cmd=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu"] #"env, "set_special_env", "raw" ?

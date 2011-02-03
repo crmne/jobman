@@ -880,7 +880,7 @@ class DBISge(DBIBase):
         self.jobs_per_node = 0
         self.cores_per_node = 0
         self.mem_per_node = 0
-        
+        self.pe = 'default'
         DBIBase.__init__(self, commands, **args)
         
         self.jobs_per_node = int(self.jobs_per_node)
@@ -1085,7 +1085,7 @@ class DBISge(DBIBase):
         if self.jobs_per_node > 0:
             submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
-                #$ -pe default %(cores_per_node)i
+                #$ -pe %(pe)s %(cores_per_node)i
                 ## Execute as many jobs as needed
                 #$ -t 1-%(n_tasks)i:%(jobs_per_node)i
                 '''
@@ -1155,7 +1155,8 @@ class DBISge(DBIBase):
                 queue = self.queue,
                 jobs_per_node = self.jobs_per_node,
                 cores_per_node = self.cores_per_node,
-                node_out = os.path.join(os.path.dirname(output_file), "Node.${SGE_TASK_ID}")
+                node_out = os.path.join(os.path.dirname(output_file), "Node.${SGE_TASK_ID}"),
+                pe = self.pe,
             )))
 
         submit_sh.close()
