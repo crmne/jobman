@@ -333,7 +333,7 @@ Canceling/Restarting jobs
 * `--quiet`: less verbose
 * `--ret_nb_jobs`: print only the number of jobs selected.
 
-JOB_STATUS={START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED} or their equivelent number
+JOB_STATUS={START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED} or the corresponding number {0,1,2,3,4,5,-1}.
 
 Storing the mercurial/other repository version of python module
 ---------------------------------------------------------------
