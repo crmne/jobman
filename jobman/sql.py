@@ -225,7 +225,8 @@ def get_password(hostname, dbname):
     try:
         password = open(password_path).readline()[:-1] #cut the trailing newline
     except:
-        raise ValueError( 'Failed to read password for db "%s" from %s' % (dbname, password_path))
+        #print >>sys.stderr, ('Failed to read password for db "%s" from %s' % (dbname, password_path))
+        password = '' # psycopg2 will try to read it from .pgpass if possible
     return password
 
 def db(dbstring):
