@@ -18,7 +18,7 @@ import random
 import re
 from optparse import OptionParser
 
-from tools import expand, flatten, resolve
+from tools import expand, flatten, resolve, UsageError
 from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
