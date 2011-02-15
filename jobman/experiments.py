@@ -48,3 +48,12 @@ def example_sleep(state, channel):
     time.sleep(state.sleep)
     print "end of example_sleep"
     return channel.COMPLETE
+
+#This example fail for now. I will try to make it work later.
+def example_numpy(state, channel):
+    print "start of example_numpy"
+    import numpy
+    state.ndarray = numpy.zeros(4)
+    print "end of example_numpy"
+    return channel.COMPLETE
+    
