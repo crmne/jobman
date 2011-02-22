@@ -266,7 +266,7 @@ def cachesync_runner(options, dir):
         jobman cachesync .
 
         # this syncs another directory
-        jobman cachesync myexperiment/mytablename/5
+        jobman cachesync myexperiment/mydbname/mytablename/5
 
     It can also sync all subdirectories of the directory you specify.
     You must use the -m (or --multiple) option for this.
@@ -275,7 +275,7 @@ def cachesync_runner(options, dir):
     Examples:
 
         # syncs all subdirectories 1, 2 ...
-        jobman cachesync -m myexperiment/mytablename 
+        jobman cachesync -m myexperiment/mydbname/mytablename 
 
     Normally completed jobs (status = DONE) won't be synced based on
     the "status" set in current.conf. Yet you can force sync by using
@@ -292,7 +292,7 @@ def cachesync_runner(options, dir):
 
     dbidispatch jobman sql 'postgres://user@gershwin/mydatabase?table=mytable' .
 
-    A directory ``mytable``.
+    A directory ``mydatabase`` with subdirectory ``mytable``.
 
     will be created, containing further subdirectories numbered 1, 2 and 3 
     (based on job id's in the DB). These directories are the working 

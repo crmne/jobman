@@ -154,14 +154,14 @@ class DBRSyncChannel(RSyncChannel):
             raise JobError(JobError.NOJOB,
                            'No job was found to run.')
 
-        print "Selected job id=%d in table=%s"%(self.dbstate.id,self.db.tablename)
+        print "Selected job id=%d in table=%s in db=%s"%(self.dbstate.id,self.db.tablename, self.db.dbname)
 
         try:
             state = expand(self.dbstate)
             if state.has_key("dbdict"):
                 state.jobman=state.dbdict
             experiment = resolve(state.jobman.experiment)
-            remote_path = os.path.join(remote_root, self.db.tablename, str(self.dbstate.id))
+            remote_path = os.path.join(remote_root, self.db.dbname, self.db.tablename, str(self.dbstate.id))
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state,
                     redirect_stdout, redirect_stderr, finish_up_after, save_interval)
         except:
@@ -844,7 +844,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
 runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)
 
 
-parser_sqlreload = OptionParser(usage = '%prog sqlreload <tablepath> <exproot>/tablename <id>...',
+parser_sqlreload = OptionParser(usage = '%prog sqlreload <tablepath> <exproot>/dbname/tablename <id>...',
                               add_help_option=False)
 parser_sqlreload.add_option('--all', action="store_true", dest="all",
                           help = 'If true, will reload all jobs that are in the directory. (default false)')
@@ -857,15 +857,16 @@ def runner_sqlreload(options, dbdescr, table_dir, *ids):
 
     Example use:
 
-        jobman sqlreload [--all] postgres://user:pass@host[:port]/dbname?table=tablename ~/expdir/tablename 10 11
+        jobman sqlreload [--all] postgres://user:pass@host[:port]/dbname?table=tablename ~/expdir/dbname/tablename 10 11
     """
     if table_dir[-1]==os.path.sep:
         table_dir=table_dir[:-1]
 
-    assert os.path.split(table_dir)[-1]==tablename
-    expdir = os.path.split(table_dir)[0]
-
     db = open_db(dbdescr, serial=True)
+
+    assert os.path.split(table_dir)[-1]==db.tablename
+    assert os.path.split(os.path.split(table_dir)[0])[-1]==db.dbname
+    expdir = os.path.split(os.path.split(table_dir)[0])[0]
 
     if options.all:
         assert len(ids)==0

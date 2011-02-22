@@ -6,12 +6,16 @@ import sqlalchemy.pool
 
 from sqlalchemy import create_engine#, desc
 from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
-from sqlalchemy import Integer, String, Float, DateTime, Text, Binary, BigInteger #Boolean
+from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
+try:
+    from sqlalchemy import BigInteger
+except ImportError:
+    # for SQLAlchemy 0.5 (will not work with sqlite)
+    from sqlalchemy.databases.postgres import PGBigInteger as BigInteger
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import mapper, relation, eagerload#backref
 
-from sqlalchemy.databases import postgres
 #from sqlalchemy.engine.base import Connection
 
 from sqlalchemy.sql import select #operators
@@ -675,6 +679,7 @@ class DbHandle (object):
 
 
 def db_from_engine(engine,
+        dbname,
         table_prefix='DbHandle_default_',
         trial_suffix='trial',
         keyval_suffix='keyval'):
@@ -728,6 +733,7 @@ def db_from_engine(engine,
 
     db = DbHandle(Session, engine, t_trial, t_keyval)
     db.tablename = table_prefix
+    db.dbname = dbname
     return db
 
 def get_password(hostname, dbname):
@@ -760,7 +766,7 @@ port]/dbname?table=tablename
     url = make_url(dbstring)
     if 'table' not in url.query:
         # support legacy syntax for postgres
-        if url.drivername == 'postgresql':
+        if url.drivername == 'postgres':
             db = url.database.split('/')
             if len(db) == 2:
                 url.database = db[0]
@@ -770,6 +776,7 @@ port]/dbname?table=tablename
 
     if url.drivername == 'sqlite':
         url.database = os.path.abspath(url.database)
+        url.query['dbname'] = 'SQLITE_DB'
 
     if url.password is None and url.drivername != 'sqlite':
         url.password = get_password(url.hostname, url.database)
@@ -787,8 +794,12 @@ def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool,
         extra_opts['isolation_level'] = 'SERIALIZABLE'
     
     tablename = url.query.pop('table')
+    dbname = url.quere.pop('dbname', None)
+    if dbname == None:
+        dbname = url.database
 
     engine = create_engine(url, echo=echo, poolclass=poolclass, **extra_opts)
 
-    return db_from_engine(engine, table_prefix=tablename, **kwargs)
+    return db_from_engine(engine, table_prefix=tablename,
+                          dbname=dbname, **kwargs)
 
