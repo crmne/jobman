@@ -3,10 +3,26 @@ import sys, os, copy, time, hashlib
 
 import random
 
-import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy.orm import eagerload
-import psycopg2, psycopg2.extensions
+sqlalchemy_ok = True
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy_ok = False
+
+if sqlalchemy_ok:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import eagerload
+else:
+    from jobman import fake_sqlalchemy as sqlalchemy
+
+psycopg2_ok = True
+try:
+    import psycopg2
+except ImportError:
+    psycopg2_ok = False
+
+if psycopg2_ok:
+    import psycopg2.extensions
 
 from api0 import db_from_engine, postgres_db
 

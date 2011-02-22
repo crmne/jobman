@@ -55,10 +55,28 @@ def run_cmdline():
                 args.append(arg)
             else:
                 cmd = arg
+        warn_if_sql_failure()
         return parse_and_run(cmd, args)
     except UsageError, e:
         print 'Usage error:'
         print e
+
+def warn_if_sql_failure():
+    """Display a warning if sqlalchemy or psycopg2 could not be imported.
+
+    This warning is not displayed if the user is running the 'cmdline' command,
+    which does not require SQL features.
+    """
+    if len(sys.argv) >= 2 and sys.argv[1] == 'cmdline':
+        return
+    from jobman import sql
+    for module in ('sqlalchemy', 'psycopg2'):
+        if not getattr(sql, '%s_ok' % module):
+            # Note: we use `RuntimeWarning` instead of `ImportWarning` because
+            # the latter are ignored by default, and we do not want it to be
+            # ignored.
+            print ("WARNING: SQL-related module '%s' could not be imported: SQL"
+                   " features will most likely crash" % module)
 
 
 ################################################################################

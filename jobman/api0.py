@@ -2,20 +2,26 @@
 This file defines class `DbHandle` and a few routines for creating instances of DbHandle.
 
 """
-import sqlalchemy.pool
 
-from sqlalchemy import create_engine#, desc
-from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
-from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
+import sql
 
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import mapper, relation, eagerload#backref
+if sql.sqlalchemy_ok:
+    import sqlalchemy.pool
 
-from sqlalchemy.databases import postgres
-#from sqlalchemy.engine.base import Connection
+    from sqlalchemy import create_engine#, desc
+    from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
+    from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
 
-from sqlalchemy.sql import select #operators
-from sqlalchemy.sql.expression import column, not_ #outerjoin
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.orm import mapper, relation, eagerload#backref
+
+    from sqlalchemy.databases import postgres
+    #from sqlalchemy.engine.base import Connection
+
+    from sqlalchemy.sql import select #operators
+    from sqlalchemy.sql.expression import column, not_ #outerjoin
+else:
+    from jobman import fake_sqlalchemy as sqlalchemy
 
 import time
 import random
