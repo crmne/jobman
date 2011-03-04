@@ -15,6 +15,8 @@ class DD(dict):
     def __getattr__(self, attr):
         if attr == '__getstate__':
             return super(DD, self).__getstate__
+        elif attr == '__setstate__':
+            return super(DD, self).__setstate__
         elif attr == '__slots__':
             return super(DD, self).__slots__
         return self[attr]
@@ -27,7 +29,7 @@ class DD(dict):
 
     def __setattr__(self, attr, value):
         # Safety check to ensure consistent behavior with __getattr__.
-        assert attr not in ('__getstate__', '__slots__')
+        assert attr not in ('__getstate__', '__setstate__', '__slots__')
 #         if attr.startswith('__'):
 #             return super(DD, self).__setattr__(attr, value)
         self[attr] = value
