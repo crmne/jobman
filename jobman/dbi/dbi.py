@@ -1013,24 +1013,27 @@ class DBISge(DBIBase):
         launcher.write(dedent('''\
                 )
 
+                echo "IN LAUNCHER"
+                echo "SGE_TASK_ID=${SGE_TASK_ID}"
                 # The index in 'tasks' array starts at 0,
                 # but SGE_TASK_ID starts at 1...
-                echo "IN LAUNCHER"
                 ID=$(($SGE_TASK_ID - 1))
-                UPPER_LIMIT=`expr ${ID} + %i - 1`
-                UPPER_LIMIT=`python -c "print min(${UPPER_LIMIT},%i - 1)"`
-                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
-                # These signals are emitted by SGE before (respectively)
-                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
                 echo "ID=$ID"
+                JOBS_PER_NODE=%i
+                NB_TASKS=%i
+                echo "python -c \\"print min(${ID} + ${JOBS_PER_NODE} - 1, ${JOBS_PER_NODE} 1)\\""
+                UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
                 echo "UPPER_LIMIT=$UPPER_LIMIT"
                 echo "seq start"
                 seq ${ID} ${UPPER_LIMIT}
                 echo "seq end"
 
+                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
+                # These signals are emitted by SGE before (respectively)
+                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
+                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+
                 # Execute the task
-                echo "SGE_TASK_ID=${SGE_TASK_ID}"
                 echo "Before we launch the jobs on this node"
                 date
                 for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
