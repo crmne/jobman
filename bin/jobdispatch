@@ -48,6 +48,8 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
     cluster, condor options  :[--32|--64|--3264] [--os=X]
     bqtools, sge, sharcnet options:
                               [--queue=X] [--jobs_name=X]
+    condor and sharcnet options:
+                              [--[no_]gpu]
     bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
                               [--nano=X] [--submit_options=X]
                               [*--[no_]clean_up] [*--[no_]m32G]
@@ -65,14 +67,18 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
                               [--[*no_]keep_failed_jobs_in_queue]
                               [--max_file_size=N][--[no_]debug]
                               [--[no_]local_log_file][--next_job_start_delay=N]
-                              [--fast] [--[no_]gpu] [--[no_]gpu_enabled]
+                              [--fast] [--[no_]gpu_enabled]
                               [--ulimit_vm=N]
     sge options              :[--project=STRING]
                               [--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
                               [--pe]
-    (Note: SGE support is experimental)
-    (Note: Sharcnet support is even more experimental)
+    Note: Sharcnet support is partial
+          It support the option cpu, mem, queue, jobs_name and gpu, duree.
+          It support all common option except --nb_proc
+          Do it support --[no_]dbilog?
+    
+    (Note: SGE support is in beta.)
 
 An * after '[', '{' or ',' signals the default value.
 An + tell that we can put one or more separeted by a comma
@@ -155,7 +161,8 @@ common options:
       - jobname:   (sge only) put the name of the job.
       - none    : remove all preceding pattern
   The '*--[no_]exec_in_exp_dir' option remove the executable from the log dir.
-  The '--[*no_]whitespace' option allow to put white space inside {{}}. I put this as an option as I don't remember the reason why their was this restriction.
+  The '--[*no_]whitespace' option allow to put white space inside {{}}.
+      I put this as an option as I don't remember why it was not allowed.
   The '--sort={generated*,random}' option allow to change the default order of jobs.
   
 bqtools, cluster, condor and sge option:
