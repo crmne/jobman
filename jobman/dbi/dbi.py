@@ -1280,11 +1280,12 @@ class DBISharcnet(DBIBase):
 
         if not self.test:
             task.set_scheduled_time()
-
+            print "[DBI] Executing: " + command
+            
             self.p = Popen(command, shell=True)
             self.p.wait()
             if self.p.returncode != 0:
-                raise DBIError("[DBI] ERROR: sqsub returned an error code of"+str(self.p.returncode))
+                raise DBIError("[DBI] ERROR: sqsub returned an error code of "+str(self.p.returncode))
         else:
             print '[DBI] Test mode, to manually submit, execute "'+command+'"'
 
