@@ -23,6 +23,7 @@ from runner import runner_registry
 from channel import StandardChannel, JobError
 import parse
 from sql import START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED
+from api0 import open_db
 
 ################################################################################
 ### Channels
@@ -142,33 +143,25 @@ class DBRSyncChannel(RSyncChannel):
 
     RESTART_PRIORITY = 2.0
 
-    def __init__(self, username, password, hostname, port, dbname, tablename, path, remote_root,
+    def __init__(self, db, path, remote_root,
             redirect_stdout = False, redirect_stderr = False,
             finish_up_after = None, save_interval = None):
-        self.username, self.password, self.hostname, self.port, self.dbname, self.tablename \
-            = username, password, hostname, port, dbname, tablename
 
-        self.db = sql.postgres_serial(
-            user = self.username,
-            password = self.password,
-            host = self.hostname,
-            port = self.port,
-            database = self.dbname,
-            table_prefix = self.tablename)
+        self.db = db
 
         self.dbstate = sql.book_dct_postgres_serial(self.db)
         if self.dbstate is None:
             raise JobError(JobError.NOJOB,
                            'No job was found to run.')
 
-        print "Selected job id=%d in table=%s in db=%s on host=%s:%i" % (self.dbstate.id,self.tablename, self.dbname, self.hostname, self.port)
+        print "Selected job id=%d in table=%s in db=%s"%(self.dbstate.id,self.db.tablename, self.db.dbname)
 
         try:
             state = expand(self.dbstate)
             if state.has_key("dbdict"):
                 state.jobman=state.dbdict
             experiment = resolve(state.jobman.experiment)
-            remote_path = os.path.join(remote_root, self.dbname, self.tablename, str(self.dbstate.id))
+            remote_path = os.path.join(remote_root, self.db.dbname, self.db.tablename, str(self.dbstate.id))
             super(DBRSyncChannel, self).__init__(path, remote_path, experiment, state,
                     redirect_stdout, redirect_stderr, finish_up_after, save_interval)
         except:
@@ -320,7 +313,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     permissions to create, read and modify tables on that database,
     tablepath should be of the following form:
 
-        postgres://user:pass@host[:port]/dbname/tablename
+        postgres://user:pass@host[:port]/dbname?table=tablename
 
     If no table is named `tablename`, one will be created
     automatically. The state corresponding to the experiment and
@@ -331,7 +324,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     command.
 
     Example use:
-        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host[:port]/dbname?table=tablename \\
             mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
@@ -340,19 +333,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
         you can use the jobman.experiments.example1 as a working 
         mymodule.my_experiment
     """
-
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    db = open_db(dbdescr, serial=True)
 
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
@@ -443,22 +424,9 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
       value, etc. If their is many segment, it will generate the
       cross-product of possible value between the segment.
     """
-
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr', e)
-
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    db = open_db(dbdescr, serial=True)
 
     ### resolve(experiment) # we try to load the function associated to the experiment
 
@@ -575,7 +543,7 @@ def runner_sql(options, dbdescr, exproot):
     permissions to create, read and modify tables on that database,
     tablepath should be of the following form:
 
-        postgres://user:pass@host[:port]/dbname/tablename
+        postgres://user:pass@host[:port]/dbname?table=tablename
 
     exproot can be a local path or a remote path. Examples of exproots:
         /some/local/path
@@ -593,23 +561,17 @@ def runner_sql(options, dbdescr, exproot):
 
     Example use:
         jobman sql \\
-            postgres://user:pass@host[:port]/dbname/tablename \\
+            postgres://user:pass@host[:port]/dbname?table=tablename \\
             ssh://central_host:myexperiments
     """
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-
+    db = open_db(dbdescr, serial=True)
     n = options.n if options.n else -1
     nrun = 0
     try:
         while n != 0:
             workdir = tempfile.mkdtemp()
             #print 'wdir', workdir
-            channel = DBRSyncChannel(username, password, hostname, port, dbname,
-                                     tablename,
+            channel = DBRSyncChannel(db,
                                      workdir,
                                      exproot,
                                      redirect_stdout = True,
@@ -659,36 +621,24 @@ def runner_sqlview(options, dbdescr, viewname):
     permissions to create, read and modify tables on that database,
     tablepath should be of the following form:
 
-        postgres://user:pass@host[:port]/dbname/tablename
+        postgres://user:pass@host[:port]/dbname?table=tablename
 
 
     Example use:
         That was executed and at least one exeperiment was finished.
-        jobman sqlschedule postgres://user:pass@host[:port]/dbname/tablename \\
+        jobman sqlschedule postgres://user:pass@host[:port]/dbname?table=tablename \\
             mymodule.my_experiment \\
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
         Now this will create a view with a columns for each parameter and 
         key=value set in the state by the jobs.
-        jobman sqlview postgres://user:pass@host[:port]/dbname/tablename viewname
+        jobman sqlview postgres://user:pass@host[:port]/dbname?table=tablename viewname
 
         you can use the jobman.experiments.example1 as a working 
         mymodule.my_experiment
     """
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    db = open_db(dbdescr, serial=True)
 
     if options.drop:
         db.dropView(viewname, not options.quiet)
@@ -752,26 +702,14 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
     Example use:
 
-        jobman sqlstatus postgres://user:pass@host[:port]/dbname/tablename 10 11
-
+        jobman sqlstatus postgres://user:pass@host[:port]/dbname?table=tablename 10 11
     """
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-
     #we don't want to remove all output when we change the db.
     if options.set_status and options.ret_nb_jobs:
         raise UsageError("The option --set_status and --ret_nb_jobs are mutually exclusive.")
 
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    db = open_db(dbdescr, serial=True)
+
     if options.set_status:
         try:
             new_status=to_status_number(options.set_status)
@@ -919,29 +857,16 @@ def runner_sqlreload(options, dbdescr, table_dir, *ids):
 
     Example use:
 
-        jobman sqlreload [--all] postgres://user:pass@host[:port]/dbname/tablename ~/expdir/dbname/tablename 10 11
-
+        jobman sqlreload [--all] postgres://user:pass@host[:port]/dbname?table=tablename ~/expdir/dbname/tablename 10 11
     """
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-
     if table_dir[-1]==os.path.sep:
         table_dir=table_dir[:-1]
 
-    assert os.path.split(table_dir)[-1]==tablename
-    assert os.path.split(os.path.split(table_dir)[0])[-1]==dbname
-    expdir = os.path.split(os.path.split(table_dir)[0])[0]
+    db = open_db(dbdescr, serial=True)
 
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    assert os.path.split(table_dir)[-1]==db.tablename
+    assert os.path.split(os.path.split(table_dir)[0])[-1]==db.dbname
+    expdir = os.path.split(os.path.split(table_dir)[0])[0]
 
     if options.all:
         assert len(ids)==0

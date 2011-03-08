@@ -290,7 +290,7 @@ def cachesync_runner(options, dir):
     To clarify the purpose of the cachesync command: when launching jobs, 
     working directories are created for each job. For example, when launching:
 
-    dbidispatch jobman sql 'postgres://user@gershwin/mydatabase/mytable' .
+    dbidispatch jobman sql 'postgres://user@gershwin/mydatabase?table=mytable' .
 
     A directory ``mydatabase`` with subdirectory ``mytable``.
 
@@ -317,19 +317,9 @@ def cachesync_runner(options, dir):
     dbdesc = options.sql
     all_jobs = None
     if dbdesc:
-        import sql
-        try:
-            username, password, hostname, port, dbname, tablename \
-                = sql.parse_dbstring(dbdesc)
-        except Exception, e:
-            raise UsageError('Wrong syntax for dbdescr',e)
-        db = sql.postgres_serial(
-            user = username,
-            password = password,
-            host = hostname,
-            port = port,
-            database = dbname,
-            table_prefix = tablename)
+        import api0
+        db = api0.open_db(dbdesc, serial=True)
+
         try:
             session = db.session()
             q = db.query(session)

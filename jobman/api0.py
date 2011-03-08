@@ -2,29 +2,30 @@
 This file defines class `DbHandle` and a few routines for creating instances of DbHandle.
 
 """
+import sqlalchemy.pool
 
-import sql
+from sqlalchemy import create_engine#, desc
+from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
+from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
+try:
+    from sqlalchemy import BigInteger
+except ImportError:
+    # for SQLAlchemy 0.5 (will not work with sqlite)
+    from sqlalchemy.databases.postgres import PGBigInteger as BigInteger
 
-if sql.sqlalchemy_ok:
-    import sqlalchemy.pool
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import mapper, relation, eagerload#backref
 
-    from sqlalchemy import create_engine#, desc
-    from sqlalchemy import Table, Column, MetaData, ForeignKeyConstraint #ForeignKey
-    from sqlalchemy import Integer, String, Float, DateTime, Text, Binary #Boolean
+#from sqlalchemy.engine.base import Connection
 
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy.orm import mapper, relation, eagerload#backref
+from sqlalchemy.sql import select #operators
+from sqlalchemy.sql.expression import column, not_ #outerjoin
 
-    from sqlalchemy.databases import postgres
-    #from sqlalchemy.engine.base import Connection
-
-    from sqlalchemy.sql import select #operators
-    from sqlalchemy.sql.expression import column, not_ #outerjoin
-else:
-    from jobman import fake_sqlalchemy as sqlalchemy
+from sqlalchemy.engine.url import make_url
 
 import time
 import random
+import os
 
 class Todo(Exception):
     # Here 'this' refers to the code where the exception is raised,
@@ -176,7 +177,7 @@ class DbHandle (object):
                     s.close()     #d_self -> detached
                 else:
                     s = session
-                    s.save(d_self)
+                    s.add(d_self)
 
             _forbidden_keys = set(['session'])
 
@@ -402,7 +403,7 @@ class DbHandle (object):
                 if not created:
                     created = h_self._KeyVal(key, val)
                     d_self._attrs.append(created)
-                session.save(created)
+                session.add(created)
 
         mapper(Dict, dict_table,
                 properties = {
@@ -677,8 +678,8 @@ class DbHandle (object):
         return rval
 
 
-
 def db_from_engine(engine,
+        dbname,
         table_prefix='DbHandle_default_',
         trial_suffix='trial',
         keyval_suffix='keyval'):
@@ -710,7 +711,7 @@ def db_from_engine(engine,
             Column('read', DateTime),
             Column('status', Integer),
             Column('priority', Float(53)),
-            Column('hash', postgres.PGBigInteger))
+            Column('hash', BigInteger))
 
     t_keyval = Table(table_prefix+keyval_suffix, metadata,
             Column('id', Integer, primary_key=True),
@@ -718,7 +719,7 @@ def db_from_engine(engine,
             Column('name', String(128), index=True, nullable=False), #name of attribute
             Column('type', String(1)),
             #Column('ntype', Boolean),
-            Column('ival', postgres.PGBigInteger),
+            Column('ival', BigInteger),
             Column('fval', Float(53)),
             Column('sval', Text),
             Column('bval', Binary),
@@ -730,24 +731,75 @@ def db_from_engine(engine,
     #warning: tables can exist, but have incorrect schema
     # see bug mentioned in DbHandle constructor
 
-    return DbHandle(Session, engine, t_trial, t_keyval)
+    db = DbHandle(Session, engine, t_trial, t_keyval)
+    db.tablename = table_prefix
+    db.dbname = dbname
+    return db
 
-def sqlite_memory_db(echo=False, **kwargs):
-    """Return a DbHandle backed by a memory-based database"""
-    engine = create_engine('sqlite:///:memory:', echo=False)
-    return db_from_engine(engine, **kwargs)
+def get_password(hostname, dbname):
+    """Return the current user's password for a given database
 
-def sqlite_file_db(filename, echo=False, **kwargs):
-    """Return a DbHandle backed by a file-based database"""
-    engine = create_engine('sqlite:///%s' % filename, echo=False)
-    return db_from_engine(engine, **kwargs)
-
-def postgres_db(user, password, host, port, database, echo=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
-    """Create an engine to access a postgres_dbhandle
+    :TODO: Replace this mechanism with a section in the pylearn
+           configuration file
     """
-    db_str ='postgres://%(user)s:%(password)s@%(host)s:%(port)i/%(database)s' % locals()
+    password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
+    try:
+        password = open(password_path).readline().rstrip('\r\n')
+    except:
+        raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+    return password
 
-    engine = create_engine(db_str, echo=echo, poolclass=poolclass)
+def parse_dbstring(dbstring):
+    """Unpacks a dbstring of the form postgres://username[:password]@hostname[:
+port]/dbname?table=tablename
 
-    return db_from_engine(engine, **kwargs)
+    :rtype: tuple of strings
+    :returns: username, password, hostname, port, dbname, tablename
+
+    :note: If the password is not given in the dbstring, this function
+           attempts to retrieve it using
+
+      >>> password = get_password(hostname, dbname)
+
+    :note: port defaults to 5432 (postgres default).
+    """
+    url = make_url(dbstring)
+    if 'table' not in url.query:
+        # support legacy syntax for postgres
+        if url.drivername == 'postgres':
+            db = url.database.split('/')
+            if len(db) == 2:
+                url.database = db[0]
+                url.query['table'] = db[1]
+        else:
+            raise ValueError('no table name provided (add ?table=tablename)')
+
+    if url.drivername == 'sqlite':
+        url.database = os.path.abspath(url.database)
+        url.query['dbname'] = 'SQLITE_DB'
+
+    if url.password is None and url.drivername != 'sqlite':
+        url.password = get_password(url.hostname, url.database)
+
+    return url
+
+def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool, **kwargs):
+    """Create an engine to access a DbHandle.
+    """
+    url = parse_dbstring(dbstr)
+
+    extra_opts = {}
+
+    if serial:
+        extra_opts['isolation_level'] = 'SERIALIZABLE'
+    
+    tablename = url.query.pop('table')
+    dbname = url.quere.pop('dbname', None)
+    if dbname == None:
+        dbname = url.database
+
+    engine = create_engine(url, echo=echo, poolclass=poolclass, **extra_opts)
+
+    return db_from_engine(engine, table_prefix=tablename,
+                          dbname=dbname, **kwargs)
 

@@ -4,7 +4,7 @@ import sys
 import logging
 
 from .tools import flatten
-from .sql import db as sql_db
+from .api0 import open_db as sql_db
 from .sql import HOST, HOST_WORKDIR, EXPERIMENT, FUCKED_UP
 from .sql import parse_dbstring, insert_dict, hash_state
 
@@ -169,7 +169,6 @@ def dbstring(dbstring, **kwargs):
 
 def main(argv, dbstring, exp_root, job_fn, job_dct_seq):
     db = sql_db(dbstring)
-    username, password, hostname, port, dbname, tablename = parse_dbstring(dbstring)
 
     job_dct_seq = tuple(job_dct_seq)
 
