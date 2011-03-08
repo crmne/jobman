@@ -2,8 +2,12 @@ import sys, os, copy, time, hashlib
 
 import random
 
-import sqlalchemy
-from sqlalchemy.orm import eagerload
+sqlalchemy_ok = True
+try:
+    import sqlalchemy
+    from sqlalchemy.orm import eagerload
+except ImportError:
+    sqlalchemy_ok = False
 
 JOBID = 'jobman.id'
 EXPERIMENT = 'jobman.experiment'

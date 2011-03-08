@@ -70,7 +70,7 @@ def warn_if_sql_failure():
     if len(sys.argv) >= 2 and sys.argv[1] == 'cmdline':
         return
     from jobman import sql
-    for module in ('sqlalchemy', 'psycopg2'):
+    for module in ('sqlalchemy',):#, 'psycopg2'):
         if not getattr(sql, '%s_ok' % module):
             # Note: we use `RuntimeWarning` instead of `ImportWarning` because
             # the latter are ignored by default, and we do not want it to be
