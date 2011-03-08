@@ -779,7 +779,7 @@ port]/dbname?table=tablename
         url.query['dbname'] = 'SQLITE_DB'
 
     if url.password is None and url.drivername != 'sqlite':
-        url.password = get_password(url.hostname, url.database)
+        url.password = get_password(url.host, url.database)
 
     return url
 
@@ -794,7 +794,7 @@ def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool,
         extra_opts['isolation_level'] = 'SERIALIZABLE'
     
     tablename = url.query.pop('table')
-    dbname = url.quere.pop('dbname', None)
+    dbname = url.query.pop('dbname', None)
     if dbname == None:
         dbname = url.database
 
