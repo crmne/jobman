@@ -188,7 +188,7 @@ def parse_dbstring(dbstring):
         password = r.group(2)
         hostname = r.group(3)
         port = int(r.group(4) or '5432')
-        database = r.group(5)
+        dbname = r.group(5)
         tablename = r.group(6)
         if password is None:
             password = get_password(hostname, dbname)
