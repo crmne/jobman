@@ -7,7 +7,7 @@ except ImportError:
         
 import re
 import os
-from tools import UsageError
+from tools import UsageError, reval
 
 
 def _convert(obj):
@@ -16,21 +16,24 @@ def _convert(obj):
     except (NameError, SyntaxError):
         return obj
 
-
+SPLITTER = re.compile('([^:=]*)(:=|=|::)(.*)')
 def standard(*strings, **kwargs):
     converter = kwargs.get('converter', _convert)
     d = {}
     for string in strings:
-        s1 = re.split(' *= *', string, 1)
-        s2 = re.split(' *:: *', string, 1)
-        if len(s1) == 1 and len(s2) == 1:
-            raise UsageError('Expected a keyword argument in place of "%s"' % s1[0])
-        elif len(s2) == 2:
-            k, v = s2
+        m = SPLITTER.match(string)
+        if m is None:
+            raise UsageError('Expected a keyword argument in place of "%s"' % (string,))
+        k = m.group(1).strip()
+        if m.group(2) == '=':
+            v = converter(m.group(3).strip())
+        elif m.group(2) == '::':
             k += '.__builder__'
-        elif len(s1) == 2:
-            k, v = s1
-            v = converter(v)
+            v = m.group(3).strip()
+        elif m.group(2) == ':=':
+            v = reval(m.group(3).strip())
+        else:
+            assert False # Forgot to add case to match re.
         d[k] = v
     return d
 
