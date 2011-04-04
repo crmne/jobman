@@ -561,6 +561,8 @@ parser_sql.add_option('--finish-up-after', action = 'store', dest = 'finish_up_a
 parser_sql.add_option('--save-every', action = 'store', dest = 'save_every',
                           default = None,
                           help = 'Interval (in seconds) between checkpoints. --save-every=3600 will tell the experiment to reach the next checkpoint and save (and go on) every hour')
+parser_sql.add_option('-w', '--workdir', action = 'store', dest = 'workdir', default = None,
+                      help = 'the working directory in which to run the experiment')
 
 def runner_sql(options, dbdescr, exproot):
     """
@@ -606,8 +608,11 @@ def runner_sql(options, dbdescr, exproot):
     nrun = 0
     try:
         while n != 0:
-            workdir = tempfile.mkdtemp()
-            #print 'wdir', workdir
+            if options.workdir:
+                workdir = options.workdir
+            else:
+                workdir = tempfile.mkdtemp()
+
             channel = DBRSyncChannel(username, password, hostname, port, dbname,
                                      tablename,
                                      workdir,
