@@ -2110,6 +2110,8 @@ class DBILocal(DBIBase):
         self.threads=[]
         self.mt = None
         self.started=0
+        self.nb_proc_file = ''
+
         try:
             self.nb_proc=int(self.nb_proc)
         except ValueError,e:
