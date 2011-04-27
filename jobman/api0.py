@@ -788,17 +788,27 @@ def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool,
     """
     url = parse_dbstring(dbstr)
 
-    extra_opts = {}
-
-    if serial:
-        extra_opts['isolation_level'] = 'SERIALIZABLE'
-    
     tablename = url.query.pop('table')
     dbname = url.query.pop('dbname', None)
     if dbname == None:
         dbname = url.database
 
-    engine = create_engine(url, echo=echo, poolclass=poolclass, **extra_opts)
+    if serial:
+        if sqlalchemy.__version__ >= '0.6':
+            engine = create_engine(url, echo=echo, poolclass=poolclass, isolation_level = 'SERIALIZABLE')
+        else:
+            import psycopg2.extensions
+            def connect():
+                c = psycopg2.connect(user=url.username, password=url.password, database=url.database, host=url.host)#, port=url.port)
+                c.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+                return c
+            engine = create_engine('postgres://'
+                                   ,creator=connect
+                                   ,poolclass=poolclass
+                                   )
+
+    else:
+        engine = create_engine(url, echo=echo, poolclass=poolclass)
 
     return db_from_engine(engine, table_prefix=tablename,
                           dbname=dbname, **kwargs)

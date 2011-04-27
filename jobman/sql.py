@@ -93,7 +93,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
             else:
                 # no jobs are left
                 keep_trying = False
-        except sqlalchemy.exc.DBAPIError:
+        except (sqlalchemy.exc.DBAPIError,sqlalchemy.orm.exc.StaleDataError):
             #either the first() or the commit() raised
             s.rollback() # docs say to do this (or close) after commit raises exception
             if verbose: print 'caught exception', e
