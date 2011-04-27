@@ -11,6 +11,7 @@ from distutils.core import setup
 setup(name='Jobman',
       version='hg',
       description='Facilitate handling of many jobs(especially jobs send on cluster)',
+      license='3-clause BSD'
       author='LISA laboratory, University of Montreal',
       author_email='theano-user@googlegroups.com',
       url='http://www.deeplearning.net/software/jobman',

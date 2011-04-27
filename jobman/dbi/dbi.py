@@ -115,13 +115,13 @@ class MultiThread:
         if maxThreads==-1:
             nb_thread=len(argsVector)
         elif isinstance(maxThreads,str):
-            self._lock_threadPool = Lock()
             self.maxThreads_file = maxThreads
             nb_thread = 0#Thread will be created when self.start() is called.
         elif maxThreads<=0:
             raise DBIError("[DBI] ERROR: you set %d concurrent jobs. Must be higher then 0!!"%(maxThreads))
         else:
             nb_thread=maxThreads
+        self._lock_threadPool = Lock()
         if nb_thread>len(argsVector):
             nb_thread=len(argsVector)
 
@@ -2110,6 +2110,8 @@ class DBILocal(DBIBase):
         self.threads=[]
         self.mt = None
         self.started=0
+        self.nb_proc_file = ''
+
         try:
             self.nb_proc=int(self.nb_proc)
         except ValueError,e:
