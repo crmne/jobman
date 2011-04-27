@@ -1,13 +1,10 @@
-#tested this script in ~/test_jobman
-#python ~/repos/Jobman/bin/jobman check 'postgres://ift6266h10:f0572cd63b@gershwin.iro.umontreal.ca/ift6266h10_sandbox_db/testing_fred'
-#job submitted from maggie46
-
 from subprocess import Popen,PIPE
 import os, time
 import sql
 from optparse import OptionParser
 from runner import runner_registry
 from tools import UsageError
+from api0 import open_db
 
 parse_check = OptionParser(usage = '%prog check <tablepath> ',
                            add_help_option=False)
@@ -23,18 +20,8 @@ def check_serve(options, dbdescr):
 
     """
 
-    try:
-        username, password, hostname, port, dbname, tablename \
-            = sql.parse_dbstring(dbdescr)
-    except Exception, e:
-        raise UsageError('Wrong syntax for dbdescr',e)
-    db = sql.postgres_serial(
-        user = username,
-        password = password,
-        host = hostname,
-        port = port,
-        database = dbname,
-        table_prefix = tablename)
+    db = open_db(dbdescr, serial=True)
+
     try:
         session = db.session()
         q = db.query(session)
