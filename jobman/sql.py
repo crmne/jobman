@@ -6,6 +6,11 @@ sqlalchemy_ok = True
 try:
     import sqlalchemy
     from sqlalchemy.orm import eagerload
+    try:
+        from sqlalchemy.orm.exc import StaleDataError as CONCURRENT_ERROR
+    except ImportError:
+        from sqlalchemy.orm.exc import ConcurrentModificationError as CONCURRENT_ERROR
+            
 except ImportError:
     sqlalchemy_ok = False
 
@@ -93,7 +98,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
             else:
                 # no jobs are left
                 keep_trying = False
-        except (sqlalchemy.exc.DBAPIError,sqlalchemy.orm.exc.StaleDataError):
+        except (sqlalchemy.exc.DBAPIError, CONCURRENT_ERROR), e:
             #either the first() or the commit() raised
             s.rollback() # docs say to do this (or close) after commit raises exception
             if verbose: print 'caught exception', e
