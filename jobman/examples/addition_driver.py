@@ -64,7 +64,7 @@ table='test_add'
 # 
 # Try typing 'python addition_driver.py help' in the shell for starters.
 mydriver.main(sys.argv,
-    'postgres://%s@%s/%s/%s'%(user, server, database, table),
+    'postgres://%s@%s/%s?table=%s'%(user, server, database, table),
     '/tmp',
     addition_example,
     jobs)

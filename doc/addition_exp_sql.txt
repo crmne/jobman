@@ -42,7 +42,7 @@ sqlschedule`` command. An example is given below:
 
 .. code-block:: bash
 
-    jobman sqlschedule postgres://user:pass@host/dbname/tablename \
+    jobman sqlschedule postgres://user:pass@host/dbname?table=tablename \
            path.to.experiment first=1 second=3
 
 This will insert a single experiment into the table ``<tablename>`` of database
@@ -56,7 +56,7 @@ parameter syntax to use is then:
 
 .. code-block:: bash
 
-    jobman sqlschedules postgres://user:pass@host/dbname/tablename \
+    jobman sqlschedules postgres://user:pass@host/dbname?table=tablename \
            path.to.experiment first={{1,2,3,4}} second=3 third={{3,5,6}}
 
 This will take all permutations of parameters ``first``, ``second`` and ``third``
@@ -81,13 +81,13 @@ You can then write the following code:
 .. code-block:: python
 
     from jobman.tools import DD, flatten
-    from jobman import sql
+    from jobman import api0, sql
     from jobman.examples.def_addition import addition_example
 
     TABLE_NAME='test_add_'
 
     # DB path...
-    db = sql.db('postgres://<user>:<pass>@<server>/<database>/'+TABLE_NAME)
+    db = api0.open_db('postgres://<user>:<pass>@<server>/<database>?table='+TABLE_NAME)
 
     state = DD()
     for first in 0,2,4,6,8,10:
@@ -127,7 +127,7 @@ Creating a View From the Command Line
 
 A view with name ``<viewname>`` can be created using the following::
 
-    jobman sqlview postgres://user:pass@host/dbname/tablename viewname
+    jobman sqlview postgres://user:pass@host/dbname?table=tablename viewname
 
 
 Creating a View From a Python Script
@@ -137,9 +137,9 @@ A view can be created using the following python code:
 
 .. code-block:: python
 
-    from jobman import sql
+    from jobman import api0
     TABLE_NAME='test_add_'
-    db = sql.db('postgres://<user>:<pass>@<server>/<database>/'+TABLE_NAME)
+    db = api0.open_db('postgres://<user>:<pass>@<server>/<database>?table='+TABLE_NAME)
     db.createView(TABLE_NAME + 'view')
 
 You can also simply add the last line at the end of the job-insertion script.
@@ -276,14 +276,14 @@ directory:
 
 .. code-block:: bash
 
-    jobman sql postgres://<user>:<pass>@<server>/<database>/<table> .
+    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> .
 
 You can also specify a distant path, if you want to gather results from
 jobs executed on different machines:
 
 .. code-block:: bash
 
-    jobman sql postgres://<user>:<pass>@<server>/<database>/<table> \
+    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> \
                ssh://<fileserver>:<some>/<path>
 
 The above commands will retrieve one job description among those with
@@ -293,13 +293,13 @@ other:
 
 .. code-block:: bash
 
-    jobman sql -n3 postgres://<user>:<pass>@<server>/<database>/<table> .
+    jobman sql -n3 postgres://<user>:<pass>@<server>/<database>?table=<table> .
 
 will execute 3 jobs, and
 
 .. code-block:: bash
 
-    jobman sql -n0 postgres://<user>:<pass>@<server>/<database>/<table> .
+    jobman sql -n0 postgres://<user>:<pass>@<server>/<database>?table=<table> .
 
 will keep on executing new jobs until all jobs are executed. You can
 launch this command on different computers, or several times on a
@@ -314,7 +314,7 @@ Canceling/Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlstatus [--all] [--print=KEY] [--print-keys] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://<user>:<pass>@<server>/<database>/<table> JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--all] [--print=KEY] [--print-keys] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://<user>:<pass>@<server>/<database>?table=<table> JOB_ID1, JOB_ID2, ...
 
 * Default: only print the current status of those jobs.
 * `--all`: add all jobs in the db to the list of jobs.

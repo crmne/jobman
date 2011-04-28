@@ -91,7 +91,7 @@ The following command
 
 .. code-block:: bash
 
-    jobman sqlschedule  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi \
+    jobman sqlschedule  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi \
                     mlp_jobman.experiment mlp_jobman.conf
 
 will 
@@ -127,7 +127,7 @@ The following command
 
 .. code-block:: bash
 
-    jobman sqlschedules  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi mlp_jobman.experiment\
+    jobman sqlschedules  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi mlp_jobman.experiment\
           mlp_jobman.conf 'n_hidden={{20,30}}'
 
 will populate the mlp_dumi table with values inferred from mlp_jobman.conf **and** the ones given on the command line. The n_hidden variable values are expanded, so the output is:
@@ -145,7 +145,7 @@ Create a view
 
 .. code-block:: bash
 
-    jobman sqlview postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi mlp_dumi_view
+    jobman sqlview postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi mlp_dumi_view
 
 This creates a virtual table called mlp_dumi_view for later viewing and
 interpreting results (see below). Note that each time a new field is
@@ -198,7 +198,7 @@ If you simply execute
 
 .. code-block:: bash
 
-    jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+    jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .
 
 at the command line, jobman connects to the database and retrieves a job that:
 
@@ -217,13 +217,13 @@ simple:
 
 .. code-block:: bash
 
-    jobdispatch --condor --repeat_jobs=3 jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+    jobdispatch --condor --repeat_jobs=3 jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .
 
 The different options mean:
 
  * `--condor`: will launch on the condor system (clusters and workstations seen as compute servers) at DIRO
- * `--repeat_jobs=3`: how many copies of ``jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .`` it should launch
- * `jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .` - the command to launch
+ * `--repeat_jobs=3`: how many copies of ``jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .`` it should launch
+ * `jobman sql 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .` - the command to launch
 
 This is perhaps slightly confusing. What should be understood is that
 ``jobdispatch`` has no knowledge of the job that should be executed. So, without
@@ -242,7 +242,7 @@ jobs from the database and run them sequentially.
 
 .. code-block:: bash
 
-    dbidispatch --condor --repeat_jobs=3 jobman sql -n 5 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi' .
+    dbidispatch --condor --repeat_jobs=3 jobman sql -n 5 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .
 
 Assuming that there are at least 15 tasks in the database, they will all be
 executed after a while. Note that if n<=0 then each task will run as many jobs
@@ -259,7 +259,7 @@ Canceling/Restarting jobs
 
 .. code-block:: bash
 
-   jobman sqlstatus [--all] [--print=KEY] [--print-keys] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/mlp_dumi JOB_ID1, JOB_ID2, ...
+   jobman sqlstatus [--all] [--print=KEY] [--print-keys] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi JOB_ID1, JOB_ID2, ...
 
 * Default: only print the current status of those jobs.
 * `--all`: add all jobs in the db to the list of jobs.

@@ -1,4 +1,4 @@
-from jobman import sql
+from jobman import api0, sql
 from jobman.tools import DD, flatten
 
 # Experiment function
@@ -6,7 +6,7 @@ from mlp_jobman import experiment
 
 # Database
 TABLE_NAME = 'mlp_dumi'
-db = sql.db('postgres://ift6266h10@gershwin/ift6266h10_sandbox_db/'+TABLE_NAME)
+db = api0.open_db('postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table='+TABLE_NAME)
 
 # Default values
 state = DD()
