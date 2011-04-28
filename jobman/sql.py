@@ -122,6 +122,13 @@ def book_dct_non_postgres(db):
 
     raise NotImplementedError()
 
+def db(dbstr):
+    """ DEPRECATED: call api0.open_db(dbstr), which has the same api """
+    import warnings
+    warnings.warn("sql.db is deprecated, call api0.open_db", DeprecationWarning)
+    import api0
+    return api0.open_db(dbstr)
+
 ###########
 # Queue
 ###########
