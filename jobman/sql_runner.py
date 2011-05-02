@@ -188,6 +188,7 @@ class DBRSyncChannel(RSyncChannel):
             for attempt in range(num_retries):
                 try:
                     self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
+                    break
                 except OperationalError, e:
                     print_err_and_wait(attempt,"setting jobman.status to ERR_SYNC")
                     
@@ -204,6 +205,7 @@ class DBRSyncChannel(RSyncChannel):
             for attempt in range(num_retries):
                 try:
                     self.dbstate.update_in_session(state_jobman, session)
+                    break
                 except OperationalError, e:
                     print_err_and_wait(attempt,"setting jobman.status back")
         finally:
