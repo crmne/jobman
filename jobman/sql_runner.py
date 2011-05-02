@@ -92,7 +92,7 @@ class RSyncChannel(StandardChannel):
                     attempt += 1
                     keep_trying = attempt < num_retries
                     # wait anywhere from 30s to [2,4,6] mins before retrying
-                    if keep_trying: 
+                    if keep_trying:
                         r = random.randint(30,attempt*120)
                         print >> os.sys.stderr, ('RSync Error at attempt %i/%i:'\
                                 +' sleeping %is') %(attempt,num_retries,r)
@@ -184,14 +184,14 @@ class DBRSyncChannel(RSyncChannel):
         session = self.db.session()
         try:
             # Test write access to DB
-            
+
             for attempt in range(num_retries):
                 try:
                     self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
                     break
                 except OperationalError, e:
                     print_err_and_wait(attempt,"setting jobman.status to ERR_SYNC")
-                    
+
             # save self.state in file current.state, and rsync
             super(DBRSyncChannel, self).save(num_retries=num_retries)
 
@@ -332,7 +332,7 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
 
-        you can use the jobman.experiments.example1 as a working 
+        you can use the jobman.experiments.example1 as a working
         mymodule.my_experiment
     """
     db = open_db(dbdescr, serial=True)
@@ -443,7 +443,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
         for cmd in commands:
             state = parser(*cmd)
             state['jobman.experiment'] = experiment
-            sql.add_experiments_to_db([state]*(options.repeat), 
+            sql.add_experiments_to_db([state]*(options.repeat),
                                       db, verbose = verbose, force_dup = True)
         if options.quiet:
             print "Added %d jobs to the db"%len(commands)
@@ -455,7 +455,7 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
             state['jobman.experiment'] = experiment
             ret = sql.add_experiments_to_db([state], db, verbose = verbose, force_dup = options.force)
             if ret[0][0]:
-                sql.add_experiments_to_db([state]*(options.repeat-1), db, 
+                sql.add_experiments_to_db([state]*(options.repeat-1), db,
                                           verbose = verbose, force_dup = True)
             else:
                 failed+=1
@@ -620,7 +620,7 @@ def runner_sqlview(options, dbdescr, viewname):
     Usage: jobman sqlview <tablepath> <viewname>
 
     The jobs should be scheduled first with the sqlschedule command.
-    Also, it is more interesting to execute it after some experiment have 
+    Also, it is more interesting to execute it after some experiment have
     finished.
 
     Assuming that a postgres database is running on port `port` of
@@ -638,11 +638,11 @@ def runner_sqlview(options, dbdescr, viewname):
             stopper::pylearn.stopper.nsteps \\ # use pylearn.stopper.nsteps
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
-        Now this will create a view with a columns for each parameter and 
+        Now this will create a view with a columns for each parameter and
         key=value set in the state by the jobs.
         jobman sqlview postgres://user:pass@host[:port]/dbname?table=tablename viewname
 
-        you can use the jobman.experiments.example1 as a working 
+        you can use the jobman.experiments.example1 as a working
         mymodule.my_experiment
     """
     db = open_db(dbdescr, serial=True)
@@ -793,7 +793,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
         # Remove all dictionaries from the session
         session.expunge_all()
 
-        ids = [int(id) for id in ids]               
+        ids = [int(id) for id in ids]
         ids = list(set(ids))
         ids.sort()
         nb_jobs = len(ids)
@@ -843,7 +843,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
     finally:
         session.close()
-        
+
     if options.ret_nb_jobs:
         print nb_jobs
 
@@ -881,14 +881,14 @@ def runner_sqlreload(options, dbdescr, table_dir, *ids):
 
     #make sure they are ints
     ids = [int(d) for d in ids]
-    
+
     try:
         session = db.session()
         for id in ids:
             # Get state dict from the file
             file_name = '%s/%i/current.conf' % (table_dir, id)
             file_state = parse.filemerge(file_name)
-            
+
             # Get state dict from the DB
             db_state = db.get(id)
             if db_state is None:
