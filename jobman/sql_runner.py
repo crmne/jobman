@@ -807,7 +807,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
                 continue
             try:
                 prio = job['jobman.sql.priority']
-            except:
+            except Exception:
                 prio = 'BrokenDB_priority_DontExist'
             try:
                 status = job['jobman.status']
