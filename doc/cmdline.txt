@@ -87,15 +87,31 @@ This outputs::
     self.value =  2
     jobman rules
 
-    
+``key:=<expression>``
+---------------------
+
+This form is similar to builders but is useful when you want the
+computed value to be recorded in the database.  The syntax for the
+expression is the same as for ``reval``, except you can't pass keyword
+arguments (so the ``%name`` thing won't work).
+
+Let's say you want a different random value for each experiment, but
+you want to know what the value was after for analysis.  You can use a
+config like::
+
+      value := @random.uniform(0, 100)
+
+The value from that expression is what will be recorded in the
+database and presented to you experiment via the state.
+
 path/to/file.conf
 -----------------
 
 Additionally, paths to configuration files may be passed in the ``<parameters>`` list.
 
-These files contain ``key=value`` and/or ``key::builder`` pairs, with one
-such statement per line. They may also contain relative paths to other
-configuration files to load.
+These files contain ``key=value``, ``key::builder`` and/or
+``key:=expression`` pairs, with one such statement per line. They may
+also contain relative paths to other configuration files to load.
 
 Flat files are particularly useful for storing default parameters. Parameters
 which the user wishes to vary in the context of a single-experiment can then be
