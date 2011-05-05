@@ -1416,6 +1416,8 @@ class DBICondor(DBIBase):
             self.env = self.env[1:-1]
 
         self.next_job_start_delay=int(self.next_job_start_delay)
+        self.ulimit_vm = int(self.ulimit_vm)
+
         self.add_commands(commands)
 
     def add_commands(self,commands):
