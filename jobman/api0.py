@@ -41,7 +41,7 @@ import os
 class Todo(Exception):
     # Here 'this' refers to the code where the exception is raised,
     # not the code of the 'Todo' exception itself!
-    """Replace this with some working code!""" 
+    """Replace this with some working code!"""
 
 class DbHandle (object):
     """
@@ -326,10 +326,10 @@ class DbHandle (object):
                         session.commit()
                         break
                     except Exception:
-                        #Commonly, an exception will come from sqlalchemy or psycopg2. 
+                        #Commonly, an exception will come from sqlalchemy or psycopg2.
                         # I don't want to hard-code psycopg2 into this file
                         # because other backends will raise different errors.
-                        # 
+                        #
                         # An exception that doesn't go away on subsequent tries
                         # will be raised eventually in the else-clause below.
                         _recommit_times -= 1
@@ -823,4 +823,3 @@ def open_db(dbstr, echo=False, serial=False, poolclass=sqlalchemy.pool.NullPool,
 
     return db_from_engine(engine, table_prefix=tablename,
                           dbname=dbname, **kwargs)
-
