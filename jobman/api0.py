@@ -304,7 +304,7 @@ class DbHandle (object):
                         d_self.update_simple(dct, session, **kwargs)
                         session.commit()
                         break
-                    except:
+                    except Exception:
                         _recommit_times -= 1
                         if _recommit_times:
                             time.sleep(random.randint(1, _recommit_waitsecs))
@@ -325,7 +325,7 @@ class DbHandle (object):
                         d_self.update_simple(dct, session, **kwargs)
                         session.commit()
                         break
-                    except:
+                    except Exception:
                         #Commonly, an exception will come from sqlalchemy or psycopg2. 
                         # I don't want to hard-code psycopg2 into this file
                         # because other backends will raise different errors.
@@ -756,7 +756,7 @@ def get_password(hostname, dbname):
     password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
     try:
         password = open(password_path).readline().rstrip('\r\n')
-    except:
+    except Exception:
         raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
     return password
 
