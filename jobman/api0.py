@@ -750,21 +750,17 @@ def db_from_engine(engine,
 def get_password(hostname, dbname):
     """Return the current user's password for a given database
 
-    :TODO: Deprecate this mechanism, and use the standard location for
+    If no password is found, return the empty string. That way
+    the ~/.pgpass will be used.
+
+    :TODO: Deprecate this mechanism, and only use the standard location for
            passwords for that database type (for instance, .pgpass for
            postgres)
     """
     password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
     if os.path.isfile(password_path):
-        try:
-            password = open(password_path).readline().rstrip('\r\n')
-        except Exception:
-            raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+        password = open(password_path).readline().rstrip('\r\n')
     else:
-        # Everything is fine, the password path is going to be deprecated anyway
-        # We return an empty password, so it signals to the underlying driver
-        # that it should try to load the password from wherever the that DB
-        # usually stores passwords.
         password = ''
     return password
 
