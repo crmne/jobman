@@ -367,7 +367,15 @@ elif search_file('cluster',PATH):
 elif search_file('sqsub',PATH):
     launch_cmd = 'Sharcnet'
 elif search_file('qsub',PATH):
-    launch_cmd = 'Sge'
+    p = Popen('qsub --version',shell=True, stdout=PIPE, stderr=PIPE)
+    ret = p.wait()
+    stdout = p.stdout.readlines()
+    if ret==0 and len(stdout)==0:
+        pass
+        raise NotImplementedError("No torque/pbs backend implemented!")
+    else:
+        # We suppose it is SGE.
+        launch_cmd = 'Sge'
 else:
     launch_cmd = 'Local'
 LOGDIR=os.getenv("JOBDISPATCH_LOGDIR")
