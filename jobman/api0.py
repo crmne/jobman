@@ -750,14 +750,22 @@ def db_from_engine(engine,
 def get_password(hostname, dbname):
     """Return the current user's password for a given database
 
-    :TODO: Replace this mechanism with a section in the pylearn
-           configuration file
+    :TODO: Deprecate this mechanism, and use the standard location for
+           passwords for that database type (for instance, .pgpass for
+           postgres)
     """
     password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
-    try:
-        password = open(password_path).readline().rstrip('\r\n')
-    except Exception:
-        raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+    if os.path.isfile(password_path):
+        try:
+            password = open(password_path).readline().rstrip('\r\n')
+        except Exception:
+            raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+    else:
+        # Everything is fine, the password path is going to be deprecated anyway
+        # We return an empty password, so it signals to the underlying driver
+        # that it should try to load the password from wherever the that DB
+        # usually stores passwords.
+        password = ''
     return password
 
 def parse_dbstring(dbstring):

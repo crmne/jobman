@@ -169,6 +169,8 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
         if PRIORITY not in job:
             job[PRIORITY] = priority
         rval = db.insert(job, session=s)
+        #TODO:
+        # rval[JOBID] = rval.id
         s.commit()
 
     if session is None:
