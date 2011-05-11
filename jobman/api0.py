@@ -750,14 +750,17 @@ def db_from_engine(engine,
 def get_password(hostname, dbname):
     """Return the current user's password for a given database
 
+    if no password found, return the empty string. That way
+    the ~/.pgpass will be used.
+
     :TODO: Replace this mechanism with a section in the pylearn
            configuration file
     """
     password_path = os.getenv('HOME')+'/.jobman_%s'%dbname
     try:
         password = open(password_path).readline().rstrip('\r\n')
-    except Exception:
-        raise ValueError('Failed to read password for db "%s" from %s' % (dbname, password_path))
+    except IOError:
+        return ""
     return password
 
 def parse_dbstring(dbstring):
