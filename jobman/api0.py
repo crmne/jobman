@@ -638,7 +638,7 @@ class DbHandle (object):
         main_query_sql = str(main_query) % quoted_params
 
         # Finally, the view creation command
-        create_view_sql = 'CREATE OR REPLACE VIEW %s AS %s'\
+        create_view_sql = 'CREATE VIEW %s AS %s'\
                 % (viewname, main_query_sql)
         if verbose:
             print 'Creating sql view with command:\n', create_view_sql
