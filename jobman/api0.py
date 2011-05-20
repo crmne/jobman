@@ -638,6 +638,7 @@ class DbHandle (object):
         main_query_sql = str(main_query) % quoted_params
 
         # Finally, the view creation command
+        # Do not add 'OR REPLACE', it will break sqlite
         create_view_sql = 'CREATE VIEW %s AS %s'\
                 % (viewname, main_query_sql)
         if verbose:
