@@ -173,41 +173,31 @@ class DBRSyncChannel(RSyncChannel):
         # If the DB is not writable, the rsync won't happen
         # If the DB is up, but rsync fails, the status will be ERR_SYNC,
         # but self.state will not be updated in the database.
-        def print_err_and_wait(attempt, msg):
-            r = random.randint(30,(attempt+1)*120)
-            print >> os.sys.stderr, ('Save Error when %s at attempt %i/%i:'
-                                     +' sleeping %is') %(msg,attempt,num_retries,r)
-            time.sleep(r)
 
-
-        #1st implementation of retry
         session = self.db.session()
         try:
             # Test write access to DB
-
-            for attempt in range(num_retries):
-                try:
-                    self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session)
-                    break
-                except OperationalError, e:
-                    print_err_and_wait(attempt,"setting jobman.status to ERR_SYNC")
+            # If it fails after num_retries trials, update_in_session will
+            # raise an Exception, so save() will exit, before the rsync.
+            self.dbstate.update_in_session({'jobman.status':self.ERR_SYNC}, session,
+                    _recommit_times=num_retries)
 
             # save self.state in file current.state, and rsync
+            # If the rsync fails after num_retries, an Exception will be
+            # raised, and save() will exit before 'jobman.status' is
+            # changed back.
             super(DBRSyncChannel, self).save(num_retries=num_retries)
 
             if self.sync_in_save:
                 # update DB
-                state_jobman = flatten(self.state)
+                self.dbstate.update_in_session(flatten(self.state), session,
+                        _recommit_times=num_retries)
             else:
                 # update only jobman.*
                 state_jobman = flatten({'jobman':self.state.jobman})
+                self.dbstate.update_in_session(state_jobman, session,
+                        _recommit_times=num_retries)
 
-            for attempt in range(num_retries):
-                try:
-                    self.dbstate.update_in_session(state_jobman, session)
-                    break
-                except OperationalError, e:
-                    print_err_and_wait(attempt,"setting jobman.status back")
         finally:
             session.close()
 
