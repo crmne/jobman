@@ -27,7 +27,7 @@ if sql.sqlalchemy_ok:
     #from sqlalchemy.engine.base import Connection
 
     from sqlalchemy.sql import select #operators
-    from sqlalchemy.sql.expression import column, not_ #outerjoin
+    from sqlalchemy.sql.expression import column, not_, literal_column #outerjoin
 
     from sqlalchemy.engine.url import make_url
 
@@ -617,10 +617,9 @@ class DbHandle (object):
 
             sub_query = select(
                     [kv.dict_id, column(val_type_string).label(safe_name)],
-                    kv.name == name)
+                    kv.name == literal_column("'%s'"%(name,)))
             sub_query = sub_query.alias(safe_name)
             sub_queries.append(sub_query)
-
 
         # Big "join" from which we select
         big_join = h_self._dict_table
