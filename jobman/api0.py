@@ -615,6 +615,9 @@ class DbHandle (object):
             cols.append(Column(safe_name, val_type))
             #print 'name =', name, ', type =', type
 
+            # SQL does not support binds in CREATE VIEW.
+            # it just happened to work with psycopg2 because binds are
+            # handled client-side.  Sqlite does it server-side.
             sub_query = select(
                     [kv.dict_id, column(val_type_string).label(safe_name)],
                     kv.name == literal_column("'%s'"%(name,)))
