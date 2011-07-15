@@ -52,9 +52,17 @@ Jobman depends on:
 * SQLAlchemy
 * psycopg2
 
-For Jobman to automatically connect to the database, you should also create
-the file ``~/.jobman_<dbname>`` in your home directory, which contains your
-database password in plain-text [1]_ (!)  Note that their must be only 1 line in that file and it must end with a new line.
+For Jobman to automatically connect to the database, you should also
+create the file ``~/.pgpass`` in your home directory, which contains
+line in this format ``hostname:port:database:username:password``. You
+can put ``*`` in any of those field. Example
+``psql.example.com:*:jobbase:jobmanager:53|<r37``. This will work for
+jobman and for psql.
+
+An old way of doing the same only for jobman is with the file
+``~/.jobman_<dbname>`` in your home directory, which contains your
+database password in plain-text [1]_ (!)  Note that their must be only
+1 line in that file and it must end with a new line.
 
 .. [1] For this reason, you may want to avoid using your normal everyday passwords...
 
