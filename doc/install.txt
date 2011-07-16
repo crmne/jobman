@@ -53,8 +53,8 @@ Jobman depends on:
 * psycopg2
 
 For Jobman to automatically connect to the database, you should also
-create the file ``~/.pgpass`` in your home directory, which contains
-line in this format ``hostname:port:database:username:password``. You
+create a `password file`_ named ``~/.pgpass`` in your home directory, which contains
+lines in this format: ``hostname:port:database:username:password``. You
 can put ``*`` in any of those field. Example
 ``psql.example.com:*:jobbase:jobmanager:53|<r37``. This will work for
 jobman and for psql.
@@ -65,5 +65,7 @@ database password in plain-text [1]_ (!)  Note that their must be only
 1 line in that file and it must end with a new line.
 
 .. [1] For this reason, you may want to avoid using your normal everyday passwords...
+
+.. _`password file`: http://developer.postgresql.org/pgdocs/postgres/libpq-pgpass.html
 
 .. TODO: Distribute a .tgz on pylearn.org? A .egg on PyPI?
