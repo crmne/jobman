@@ -4,3 +4,4 @@ html/*
 *.swp
 *~
 build/.sync
+.sync
