@@ -3,4 +3,4 @@ html/*
 *.pyc
 *.swp
 *~
-build/
+build/.sync
