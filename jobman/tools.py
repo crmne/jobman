@@ -75,7 +75,9 @@ def resolve(name, try_import=True):
                 builder = getattr(builder, sym)
             except AttributeError, e:
                 if try_import:
-                    __import__(builder.__name__, fromlist=[sym])
+                    # We need to convert it to a script as with EPD7.1-1
+                    # sym is a unicode string and __import__ don't accept it
+                    __import__(builder.__name__, fromlist=[str(sym)])
                     builder = getattr(builder, sym)
                 else:
                     raise e
