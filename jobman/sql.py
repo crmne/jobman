@@ -1,4 +1,10 @@
-import sys, os, copy, time, hashlib
+import sys, os, copy, time
+
+# Python 2.4 compatibility.
+try:
+    import hashlib
+except ImportError:
+    import md5 as hashlib
 
 import random
 

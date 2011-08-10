@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 import signal
 import sys
 import os
@@ -161,21 +159,29 @@ class SingleChannel(Channel):
         self.state.jobman.status = self.RUNNING
 
         v = self.ERR_RUN
-        with self: #calls __enter__ and then __exit__
+
+        # Python 2.4 compatibility: do not use `with` statement.
+        self.__enter__()
+        try:
             try:
                 v = self.experiment(self.state, self)
-            finally:
-                print "The experiment returned value is",v
-                if self.state.jobman.status is self.CANCELED:
-                    if v is self.COMPLETE:
-                        self.state.jobman.status = self.DONE
-                    #else we don't change the status
-                elif v is self.COMPLETE:
+            except Exception:
+                # The exception info will be passed to the __exit__ method
+                # which will raise it.
+                pass
+        finally:
+            print "The experiment returned value is",v
+            if self.state.jobman.status is self.CANCELED:
+                if v is self.COMPLETE:
                     self.state.jobman.status = self.DONE
-                elif v is self.INCOMPLETE:
-                    self.state.jobman.status = self.START
-                else: 
-                    self.state.jobman.status = self.ERR_RUN
+                #else we don't change the status
+            elif v is self.COMPLETE:
+                self.state.jobman.status = self.DONE
+            elif v is self.INCOMPLETE:
+                self.state.jobman.status = self.START
+            else: 
+                self.state.jobman.status = self.ERR_RUN
+        self.__exit__(*sys.exc_info())
 
         return v
 
@@ -252,9 +258,12 @@ class StandardChannel(SingleChannel):
     def save(self):
         sys.stdout.flush()
         sys.stderr.flush()
-        with open(os.path.join(self.path, 'current.conf'), 'w') as current:
+        current = open(os.path.join(self.path, 'current.conf'), 'w')
+        try:
             current.write(format_d(self.state))
             current.write('\n')
+        finally:
+            current.close()
 
     def __enter__(self):
         self.old_cwd = os.getcwd()
@@ -284,14 +293,25 @@ class StandardChannel(SingleChannel):
     def setup(self):
         if not os.path.isdir(self.path):
             os.makedirs(self.path)
-        with self:
+        # Python 2.4 compatibility: do not use `with` statement.
+        self.__enter__()
+        try:
             origf = os.path.join(self.path, 'orig.conf')
             if not os.path.isfile(origf):
-                with open(origf, 'w') as orig:
+                orig = open(origf, 'w')
+                try:
                     orig.write(format_d(self.state))
                     orig.write('\n')
+                finally:
+                    orig.close()
             currentf = os.path.join(self.path, 'current.conf')
             if os.path.isfile(currentf):
-                with open(currentf, 'r') as current:
-                    state = expand(parse.filemerge(*map(str.strip, current.readlines())))
-                    defaults_merge(self.state, state)
+                current_data = map(str.strip, open(currentf, 'r').readlines())
+                state = expand(parse.filemerge(*current_data))
+                defaults_merge(self.state, state)
+        except Exception:
+            # The exception info is passed to the __exit__ method which will
+            # raise it.
+            pass
+        self.__exit__(sys.exc_info())
+

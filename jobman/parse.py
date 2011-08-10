@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 try:
     from functools import partial
 except ImportError:
@@ -56,11 +54,11 @@ def filemerge(*strings, **kwargs):
         else:
             if cwd:
                 s = os.path.realpath(os.path.join(cwd, s))
-            with open(s) as f:
-                lines = [_comment_pattern.sub('', x) for x in map(str.strip, f.readlines())]
-                for line in lines:
-                    if line:
-                        process(line, os.path.split(s)[0], prefix)
+            f_data = map(str.strip, open(s).readlines())
+            lines = [_comment_pattern.sub('', x) for x in f_data]
+            for line in lines:
+                if line:
+                    process(line, os.path.split(s)[0], prefix)
     for s in strings:
         process(s)
     return state

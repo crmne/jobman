@@ -14,7 +14,11 @@ _logger = logging.getLogger('jobman.rsync_runner')
 #################
 # Salted hashing
 #################
-import hashlib
+# Python 2.4 compatibility.
+try:
+    import hashlib
+except ImportError:
+    import md5 as hashlib
 
 HASH_REPS = 2000 # some site said that this number could (should) be really high like 10K
 
@@ -92,18 +96,19 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         # will send back '?' to the client.
         self._lock.acquire()
         try:
-            srclist = os.listdir(os.path.join(self.exproot, self.todo))
-            if srclist:
-                srclist.sort()
-                choice = srclist[0] # the smallest value
-                os.rename(
-                        os.path.join(os.path.join(self.exproot, self.todo, choice)),
-                        os.path.join(os.path.join(self.exproot, self.done, choice)))
-            else:
+            try:
+                srclist = os.listdir(os.path.join(self.exproot, self.todo))
+                if srclist:
+                    srclist.sort()
+                    choice = srclist[0] # the smallest value
+                    os.rename(
+                            os.path.join(os.path.join(self.exproot, self.todo, choice)),
+                            os.path.join(os.path.join(self.exproot, self.done, choice)))
+                else:
+                    choice = ''
+            except (OSError,IOError), e:
+                _logger.error('Error booking ' + str(e))
                 choice = ''
-        except (OSError,IOError), e:
-            _logger.error('Error booking ' + str(e))
-            choice = ''
         finally:
             self._lock.release()
 

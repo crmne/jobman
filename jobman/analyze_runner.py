@@ -1,7 +1,7 @@
 import os
 import logging
 
-from .runner import runner_registry
+from jobman.runner import runner_registry
 from optparse import OptionParser
 
 _logger = logging.getLogger('jobman.analyze_runner')
