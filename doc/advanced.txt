@@ -139,6 +139,30 @@ channel is an object with the following important methods:
   channel.INCOMPLETE so it can be resumed later. This should be
   checked periodically or data loss may be incurred.
 
+	The following return values are meaningful:
+          * 'stop' -> the experiment must stop as soon as possible. It
+                      may save what it needs to save. This occurs when 
+                      SIGTERM or SIGINT are sent (or in user-defined 
+		      circumstances).
+          * 'finish-up' -> the experiment should continue until it
+                           reaches a point where it can be restarted 
+                           from (check-point), then save and exit.
+          * 'save' -> the experiment should continue until it reaches
+                      a check-point, then save(by calling channel.save()) 
+                      and continue.
+
+  Usage: jobman cmdline [options] <experiment> <parameters>
+
+  Options:
+  --finish-up-after=FINISH_UP_AFTER
+                        Duration (in seconds) after which the experiment will
+                        be told to "finish up", i.e., to reach the next
+                        checkpoint, save, and exit
+  --save-every=SAVE_EVERY
+                        Interval (in seconds) between checkpoints. --save-
+                        every=3600 will tell the experiment to reach the next
+                        checkpoint and save (and go on) every hour
+
 * channel.save() will save the current state. It is automatically
   called when the function returns, but it is a good idea to do it
   periodically.
