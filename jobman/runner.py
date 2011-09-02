@@ -137,7 +137,7 @@ def runner_cmdline(options, experiment, *strings):
             stopper.n=10000 \\ # the argument "n" of nsteps is 10000
             lr=0.03
 
-        you can use the jobman.experiments.example1 as a working 
+        you can use the jobman.experiments.example1 as a working
         mymodule.my_experiment
     """
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
@@ -218,7 +218,7 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 #         text.first=hello text.second=world \\
 #         number=12 numbers.a=55 numbers.b=56
 
-#     you can use the jobman.experiments.example1 as a working 
+#     you can use the jobman.experiments.example1 as a working
 #     mymodule.my_experiment
 #     """
 
@@ -434,11 +434,5 @@ def runner_help(options, topic = None):
     print format_help(helptext)
     if runner_registry.get(topic, [None])[0]:
         runner_registry.get(topic, [None])[0].print_help()
-    
+
 runner_registry['help'] = (None, runner_help)
-
-
-
-
-
-
