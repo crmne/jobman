@@ -116,10 +116,10 @@ parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workd
 
 parser_cmdline.add_option('--finish-up-after', action = 'store', dest = 'finish_up_after',
                           default = None,
-                          help = 'Duration (in seconds) after which the experiment will be told to "finish up", i.e., to reach the next checkpoint, save, and exit')
+                          help = 'Duration (in seconds) after which the call to channel.switch() will return "finish-up". Asks the experiment to reach the next checkpoint, save, and exit. It is up to the experimentto use channel.switch() and respect it.')
 parser_cmdline.add_option('--save-every', action = 'store', dest = 'save_every',
                           default = None,
-                          help = 'Interval (in seconds) between checkpoints. --save-every=3600 will tell the experiment to reach the next checkpoint and save (and go on) every hour')
+                          help = 'Interval (in seconds) after which the call to channel.switch() will return "save". Asks the experiment to save at the next checkpoint. It is up to the experiment use channel.switch() and respect it.')
 
 def runner_cmdline(options, experiment, *strings):
     """

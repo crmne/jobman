@@ -151,17 +151,19 @@ channel is an object with the following important methods:
                       a check-point, then save(by calling channel.save()) 
                       and continue.
 
-  Usage: jobman cmdline [options] <experiment> <parameters>
+  Two options allow to control the returned value when using "jobman cmdline" and "jobman sql":
 
-  Options:
-  --finish-up-after=FINISH_UP_AFTER
-                        Duration (in seconds) after which the experiment will
-                        be told to "finish up", i.e., to reach the next
-                        checkpoint, save, and exit
-  --save-every=SAVE_EVERY
-                        Interval (in seconds) between checkpoints. --save-
-                        every=3600 will tell the experiment to reach the next
-                        checkpoint and save (and go on) every hour
+  .. code-block:: text
+
+        --finish-up-after=FINISH_UP_AFTER
+                        Duration (in seconds) after which the call to channel.switch()
+			will return 'finish-up'. Asks the experiment to reach the next
+                        checkpoint, save, and exit. It is up to the experiment
+			to use channel.switch() and respect it.
+        --save-every=SAVE_EVERY
+                        Interval (in seconds) after which the call to channel.switch()
+			will return 'save'. Asks the experiment to save at the next checkpoint.
+			It is up to the experiment use channel.switch() and respect it.
 
 * channel.save() will save the current state. It is automatically
   called when the function returns, but it is a good idea to do it
