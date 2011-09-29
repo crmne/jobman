@@ -179,7 +179,7 @@ class SingleChannel(Channel):
                 self.state.jobman.status = self.DONE
             elif v is self.INCOMPLETE:
                 self.state.jobman.status = self.START
-            else: 
+            else:
                 self.state.jobman.status = self.ERR_RUN
         self.__exit__(*sys.exc_info())
 
@@ -314,4 +314,3 @@ class StandardChannel(SingleChannel):
             # raise it.
             pass
         self.__exit__(*sys.exc_info())
-
