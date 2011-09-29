@@ -313,5 +313,5 @@ class StandardChannel(SingleChannel):
             # The exception info is passed to the __exit__ method which will
             # raise it.
             pass
-        self.__exit__(sys.exc_info())
+        self.__exit__(*sys.exc_info())
 
