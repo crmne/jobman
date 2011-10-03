@@ -1277,6 +1277,11 @@ class DBISharcnet(DBIBase):
             command += ' -j ' + self.jobs_name
         if self.gpu:
             # TODO: support several GPUs per job?
+            # For this make --gpu=N as --nb_proc=N
+            if self.queue:
+                assert self.queue == 'gpu'
+            else:
+                command += ' -q gpu'
             command += ' --gpp=1'
 
         command += " '" + filename + "'"
