@@ -141,7 +141,9 @@ def flatten(obj):
                 raise TypeError('Cannot flatten object %s, of type %s, for prefix %s' % (str(obj), str(type(obj)), prefix))
             for k, v in subd.iteritems():
                 if prefix:
-                    pfx = '.'.join([prefix, k])
+                    # Note that we cast 'k' to a string as it may be something
+                    # else (like a numeric value).
+                    pfx = '.'.join([prefix, str(k)])
                 else:
                     pfx = k
                 helper(d, pfx, v)
