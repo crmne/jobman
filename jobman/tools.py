@@ -128,8 +128,20 @@ def flatten(obj):
     """nested dictionary -> flat dictionary with '.' notation """
     d = {}
     def helper(d, prefix, obj):
+        # Dictionaries that are not instances of `DD` and have keys which are
+        # not strings are not flattened: otherwise we would lose the unique
+        # mapping between the dictionary version and the flattened version.
+        prevent_flatten = False
+        if isinstance(obj, dict) and not isinstance(obj, DD):
+            for k in obj.iterkeys():
+                if not isinstance(k, basestring):
+                    prevent_flatten = True
+                    break
         # TODO: add numpy.floating, numpy.integer?
-        if isinstance(obj, (str, unicode, int, float, list, tuple)) or obj in (True, False, None):
+        if (prevent_flatten or
+            isinstance(obj, (str, unicode, int, float, list, tuple)) or
+            obj in (True, False, None)):
+            # We do not flatten these objects.
             d[prefix] = obj #convert(obj)
         else:
             if isinstance(obj, dict):
@@ -141,9 +153,7 @@ def flatten(obj):
                 raise TypeError('Cannot flatten object %s, of type %s, for prefix %s' % (str(obj), str(type(obj)), prefix))
             for k, v in subd.iteritems():
                 if prefix:
-                    # Note that we cast 'k' to a string as it may be something
-                    # else (like a numeric value).
-                    pfx = '.'.join([prefix, str(k)])
+                    pfx = '.'.join([prefix, k])
                 else:
                     pfx = k
                 helper(d, pfx, v)
