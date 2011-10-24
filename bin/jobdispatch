@@ -652,22 +652,24 @@ def generate_commands(sp):
 
     return (argscombination,args_modif)
 
-#generate the command
-if len(dbi_param["file"])>0:
-    commands=[]
+
+# Generate the commands.
+
+if len(dbi_param["file"]) > 0:
+    commands = []
     choise_args = []
     for file in dbi_param["file"]:
-        fd = open(file,'r')
+        fd = open(file, 'r')
         for line in fd.readlines():
             line = line.rstrip()
             if not line:
                 continue
             sp = line.split(" ")
-            (t1,t2)=generate_commands(sp)
+            (t1, t2) = generate_commands(sp)
             if not t2:
-                t2 = ['']*len(t1)            
-            commands+=t1
-            choise_args+=t2
+                t2 = [''] * len(t1)            
+            commands += t1
+            choise_args += t2
         fd.close()
 
 elif dbi_param["restart"]:
@@ -903,7 +905,7 @@ else:
     print "We generate the DBI object with %s command"%(len(commands))
     print time.ctime()
     t1=time.time()
-    jobs = DBI(commands,launch_cmd,**dbi_param)
+    jobs = DBI(commands, launch_cmd, **dbi_param)
     t2=time.time()
     error=False
     if verbose:

@@ -1425,7 +1425,7 @@ class DBICondor(DBIBase):
 
         self.add_commands(commands)
 
-    def add_commands(self,commands):
+    def add_commands(self, commands):
         if not isinstance(commands, list):
             commands=[commands]
 
@@ -1976,9 +1976,9 @@ class DBICondor(DBIBase):
 
         self.exec_pre_batch()
 
-        #set special environment variable
-        if len(self.tasks)==0:
-            return #no task to run
+        # set special environment variable
+        if len(self.tasks) == 0:
+            return # no task to run
 
         if self.set_special_env:
             # The value must be equivalent to $$(CPUS), but with dynamic partioning of node
