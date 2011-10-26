@@ -6,15 +6,23 @@ except ImportError:
 import re
 import os
 
-# We use numpy to de-serialize Inf and NaN.
-import numpy
+# We use Numpy to de-serialize Inf and NaN. If Numpy is not available then they
+# will be de-serialized as strings instead.
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 from tools import UsageError, reval
 
 
 def _convert(obj):
+    if numpy is None:
+        globals = {}
+    else:
+        globals = {'inf': numpy.inf, 'nan': numpy.nan}
     try:
-        return eval(obj, {'inf': numpy.inf, 'nan': numpy.nan}, {})
+        return eval(obj, globals, {})
     except (NameError, SyntaxError):
         return obj
 
