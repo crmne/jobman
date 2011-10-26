@@ -5,12 +5,16 @@ except ImportError:
         
 import re
 import os
+
+# We use numpy to de-serialize Inf and NaN.
+import numpy
+
 from tools import UsageError, reval
 
 
 def _convert(obj):
     try:
-        return eval(obj, {}, {})
+        return eval(obj, {'inf': numpy.inf, 'nan': numpy.nan}, {})
     except (NameError, SyntaxError):
         return obj
 
