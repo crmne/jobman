@@ -782,7 +782,7 @@ elif len(dbi_param["file"])==0:
     tmp+='_'+date_str.replace(' ','_').replace(':','-')
     dbi_param["log_dir"]=os.path.join(LOGDIR,tmp)
 else:
-    dbi_param["log_dir"]=os.path.join(LOGDIR,'_'.join(dbi_param["file"]))
+    dbi_param["log_dir"]=os.path.join(LOGDIR,'_'.join([os.path.split(f)[1] for f in dbi_param["file"]]))
 dbi_param["log_file"]=os.path.join(dbi_param["log_dir"],'log')
 
 n="base_tasks_log_file"
