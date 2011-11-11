@@ -59,7 +59,7 @@ class RSyncChannel(StandardChannel):
         # This is useful if we have to halt with short notice.
         self.sync_in_save = True
 
-    def rsync(self, direction, num_retries=3):
+    def rsync(self, direction, num_retries=3, exclusions=['*.no_sync']):
         """The directory at which experiment-related files are stored.
         """
         path = self.path
@@ -68,11 +68,12 @@ class RSyncChannel(StandardChannel):
         if self.host:
             remote_path = ':'.join([self.host, remote_path])
 
+        excludes = ' '.join('--exclude="%s"' % e for e in exclusions)
         # TODO: use something more portable than os.system
         if direction == 'push':
-            rsync_cmd = 'rsync -ac "%s/" "%s/"' % (path, remote_path)
+            rsync_cmd = 'rsync -ac %s "%s/" "%s/"' % (excludes, path, remote_path)
         elif direction == 'pull':
-            rsync_cmd = 'rsync -ac "%s/" "%s/"' % (remote_path, path)
+            rsync_cmd = 'rsync -ac %s "%s/" "%s/"' % (excludes, remote_path, path)
         else:
             raise RSyncException('invalid direction', direction)
 
