@@ -1,7 +1,17 @@
 try:
     from functools import partial
 except ImportError:
-    from theano.gof.python25 import partial
+    # Copied from theano.gof.python25, but not imported to avoid dependency on
+    # Theano.
+    def partial(func, *args, **keywords):
+        def newfunc(*fargs, **fkeywords):
+            newkeywords = keywords.copy()
+            newkeywords.update(fkeywords)
+            return func(*(args + fargs), **newkeywords)
+        newfunc.func = func
+        newfunc.args = args
+        newfunc.keywords = keywords
+        return newfunc
         
 import re
 import os
