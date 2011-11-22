@@ -363,14 +363,6 @@ if search_file('condor_submit',PATH):
     launch_cmd = 'Condor'
 elif search_file('bqsubmit',PATH):
     launch_cmd = 'Bqtools'
-elif search_file('cluster',PATH):
-    # The command cluster is not always the program we want
-    # The want the cluster command used at DIRO.
-    p = Popen('cluster --liste',shell=True, stdout=PIPE, stderr=PIPE)
-    ret = p.wait()
-    stderr = p.stderr.readlines()
-    if len(stderr) == 0:
-        launch_cmd = 'Cluster'
 elif search_file('sqsub',PATH):
     launch_cmd = 'Sharcnet'
 elif search_file('qsub',PATH):
@@ -385,7 +377,15 @@ elif search_file('qsub',PATH):
     else:
         # We suppose it is SGE.
         launch_cmd = 'Sge'
-else:
+elif search_file('cluster',PATH):
+    # The command cluster is not always the program we want
+    # The want the cluster command used at DIRO.
+    p = Popen('cluster --liste',shell=True, stdout=PIPE, stderr=PIPE)
+    ret = p.wait()
+    stderr = p.stderr.readlines()
+    if len(stderr) == 0:
+        launch_cmd = 'Cluster'
+if launch_cmd is None:
     launch_cmd = 'Local'
 LOGDIR=os.getenv("JOBDISPATCH_LOGDIR")
 if not LOGDIR:
