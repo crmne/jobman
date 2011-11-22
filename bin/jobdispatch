@@ -371,9 +371,9 @@ elif search_file('cluster',PATH):
     stderr = p.stderr.readlines()
     if len(stderr) == 0:
         launch_cmd = 'Cluster'
-if launch_cmd is None and search_file('sqsub',PATH):
+elif search_file('sqsub',PATH):
     launch_cmd = 'Sharcnet'
-elif launch_cmd is None and search_file('qsub',PATH):
+elif search_file('qsub',PATH):
     # qsub command is used by torque/pds and Sun Grid Engine
     # that take different input.
     p = Popen('qsub --version',shell=True, stdout=PIPE, stderr=PIPE)
