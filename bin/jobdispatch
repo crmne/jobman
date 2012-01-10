@@ -407,7 +407,7 @@ for argv in to_parse:
     if argv == "--help" or argv == "-h":
         print LongHelp
         sys.exit(0)
-    #--nodbilog should be allowed do to bug in old version that requested it with _.
+    #--nodbilog should be allowed due to bug in old version that requested it with _.
     elif argv == "--no_dbilog" or argv == "--nodbilog":
         dbi_param["dolog"]=False
     elif argv == "--dbilog":
