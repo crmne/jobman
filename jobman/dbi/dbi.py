@@ -1218,6 +1218,7 @@ class DBITorque(DBIBase):
         DBIBase.__init__(self, commands, **args)
 
         self.jobs_per_node = int(self.jobs_per_node)
+        assert self.jobs_per_node <= 1
         self.cores_per_node = int(self.cores_per_node)
         self.mem_per_node = int(self.mem_per_node)
 
@@ -1424,12 +1425,15 @@ class DBITorque(DBIBase):
                 ## Number of CPU (on the same node) per job
                 #$ -pe %(pe)s %(cores_per_node)i
                 ## Execute as many jobs as needed
-                #PBS -t 1-%(n_tasks)i:%(jobs_per_node)i
+                #PBS -t 1-%(n_tasks)i
                 '''
         else:
+            if self.jobs_per_node != 1 and self.jobs_per_node != 0:
+                raise ValueError("DBITorque only supports jobs_per_node of 1"
+                        "but its value is "+str(self.jobs_per_node))
             submit_sh_template += '''
                 ## Execute as many jobs as needed
-                #$ -t 1-%(n_tasks)i:1
+                #PBS -t 1-%(n_tasks)i
                 '''
 
             if self.cpu > 0:
