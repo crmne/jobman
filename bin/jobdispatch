@@ -372,8 +372,7 @@ elif search_file('qsub',PATH):
     ret = p.wait()
     stdout = p.stdout.readlines()
     if ret==0 and len(stdout)==0:
-        pass
-        raise NotImplementedError("No torque/pbs backend implemented!")
+	launch_cmd = 'Torque'
     else:
         # We suppose it is SGE.
         launch_cmd = 'Sge'

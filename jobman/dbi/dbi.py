@@ -128,7 +128,7 @@ class MultiThread:
         self.update_nb_thread(nb_thread, False)
 
     def parse_maxThreads_file( self ):
-        """ return the number of Thread to use give in a file        
+        """ return the number of Thread to use give in a file
         """
         f = open( self.maxThreads_file )
         nb_thread = f.readlines()
@@ -142,8 +142,8 @@ class MultiThread:
             :type nb_thread: int
             :param nb_thread: The number of threads wanted
             :type by_running_threads: bool
-            :param by_running_threads: Must be True when called from a 
-                                       Thread in the pool 
+            :param by_running_threads: Must be True when called from a
+                                       Thread in the pool
         """
         try:
             self._lock_threadPool.acquire()
@@ -164,7 +164,7 @@ class MultiThread:
                     #-1 as we reuse the current thread
                     nb_thread-=1
 
-            
+
             if nb_thread != len( self._threadPool ):
                 if nb_thread < len( self._threadPool ):
                     if by_running_threads:
@@ -172,7 +172,7 @@ class MultiThread:
                         #seam to end a thread too early.
                         #If we raise the number of thread after
                         #we end up with too much thread in the pool
-                        #But next time we start the pool, we will 
+                        #But next time we start the pool, we will
                         #resize it correctly.
                         #self._threadPool.remove(currentThread())
                         pass
@@ -209,7 +209,7 @@ class MultiThread:
         if self.maxThreads_file:
         #update the number of thread
             self.update_nb_thread(self.parse_maxThreads_file(), False)
-                    
+
         for thread in self._threadPool:
             # necessary to give other threads a chance to run
             time.sleep( self.sleep_time )
@@ -287,7 +287,7 @@ class DBIBase:
         elif self.mem[-1] in ['K', 'k']:
             self.mem = int(self.mem[:-1])/1024
         else: self.mem = int(self.mem)
-            
+
         self.cpu = int(self.cpu)
         # If some arguments aren't lists, put them in a list
         if not isinstance(commands, list):
@@ -319,7 +319,7 @@ class DBIBase:
             return (self.stdouts[n], self.stderrs[n])
 
         return (base + '.out',base + '.err')
-            
+
 
     def get_redirection(self,stdout_file,stderr_file):
         """Compute the needed redirection based of the objects attribute.
@@ -408,7 +408,7 @@ class DBIBase:
                                " is too long, so the jobs will fail. Maybe"+
                                " use the --tasks_filename option to change those name.\n"+
                                "The full bad path: "+p+"\n"+"The bad part: "+pp)
-                
+
 
 
 class Task:
@@ -700,7 +700,7 @@ class DBIBqtools(DBIBase):
         self.set_special_env = True
         self.env = ""
         DBIBase.__init__(self, commands, **args)
-        
+
         self.nb_proc = int(self.nb_proc)
         self.micro = int(self.micro)
         self.nano = int(self.nano)
@@ -745,7 +745,9 @@ class DBIBqtools(DBIBase):
                                    self.post_tasks,self.dolog,id,False,
                                    self.args))
             id+=1
+
     def run(self):
+
         pre_batch_command = ';'.join( self.pre_batch );
         post_batch_command = ';'.join( self.post_batch );
 
@@ -832,7 +834,7 @@ class DBIBqtools(DBIBase):
             bqsubmit_dat.write('''concurrentJobs = %d\n'''%(p))
         if self.raw:
             bqsubmit_dat.write(self.raw+"\n")
-            
+
         print self.unique_id
         if self.clean_up:
             bqsubmit_dat.write('postBatch = rm -rf dbi_batch*.BQ ; rm -f logfiles tasks launcher bqsubmit.dat ;\n')
@@ -848,7 +850,7 @@ class DBIBqtools(DBIBase):
                 t.set_scheduled_time()
             self.p = Popen( 'bqsubmit', shell=True)
             self.p.wait()
-            
+
             if self.p.returncode!=0:
                 raise DBIError("[DBI] ERROR: bqsubmit returned an error code of"+str(self.p.returncode))
         else:
@@ -882,11 +884,11 @@ class DBISge(DBIBase):
         self.mem_per_node = 0
         self.pe = 'default'
         DBIBase.__init__(self, commands, **args)
-        
+
         self.jobs_per_node = int(self.jobs_per_node)
         self.cores_per_node = int(self.cores_per_node)
         self.mem_per_node = int(self.mem_per_node)
-        
+
         # Compute the number of jobs to put per node.
         jobs_per_node = -1
         if self.cores_per_node > 0:
@@ -905,14 +907,14 @@ class DBISge(DBIBase):
                 jobs_per_node = jobs_per_node_
             else:
                 jobs_per_node = min(jobs_per_node, jobs_per_node_)
-                
+
         if self.jobs_per_node != 0 and jobs_per_node != self.jobs_per_node:
             print """[DBI] WARNING: you specified the number of jobs
             per nodes as %d, but we computed that %d would be
             better. We use your number."""%(self.jobs_per_node, jobs_per_node)
         assert jobs_per_node != 0
         if self.jobs_per_node == 0 and jobs_per_node > 0:
-            self.jobs_per_node = jobs_per_node                
+            self.jobs_per_node = jobs_per_node
 
         if self.jobs_per_node > 0:
             assert self.cores_per_node > 0
@@ -1008,7 +1010,7 @@ class DBISge(DBIBase):
                 '''))
         for task in self.tasks:
             launcher.write("'" + ';'.join(task.commands) + "'\n")
-            
+
         (output_file, error_file)=self.get_file_redirection(0)
         launcher.write(dedent('''\
                 )
@@ -1057,14 +1059,14 @@ class DBISge(DBIBase):
         pre_batch_command = ';'.join( self.pre_batch )
         post_batch_command = ';'.join( self.post_batch )
         #TODO exec pre and post batch command
-        
+
         submit_sh_template = '''\
                 #!/bin/bash
 
                 ## Reasonable default values
                 # Execute the job from the current working directory.
                 #$ -cwd
-                # Send "warning" signals to a running job prior to sending the signals themselves. 
+                # Send "warning" signals to a running job prior to sending the signals themselves.
                 ##$ -notify
 
                 ## Mandatory arguments
@@ -1097,7 +1099,7 @@ class DBISge(DBIBase):
                 ## Execute as many jobs as needed
                 #$ -t 1-%(n_tasks)i:1
                 '''
-        
+
             if self.cpu > 0:
                 submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
@@ -1108,7 +1110,7 @@ class DBISge(DBIBase):
                 ## Memory size (on the same node) per job
                 #$ -l ml=%sM
                 '''%str(self.mem)
-            
+
         if self.queue:
             submit_sh_template += '''
                 ## Queue name
@@ -1182,7 +1184,339 @@ class DBISge(DBIBase):
         else:
             print "[DBI] Test mode, we generated all files, but will not execute qsub"
             print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
-            
+
+            if self.dolog:
+                print "[DBI] The scheduling time will not be logged when you submit the generated file"
+
+        # Execute post-batchs
+        self.exec_post_batch()
+
+    def clean(self):
+        pass
+
+    def wait(self):
+        print "[DBI] WARNING cannot wait until all jobs are done for SGE, use qstat"
+
+###############################
+# Torque
+# (used on briaree)
+###############################
+
+class DBITorque(DBIBase):
+    def __init__(self, commands, **args):
+        self.jobs_name = ''
+        self.queue = ''
+        self.duree = '23:59:59'
+        self.project = 'jvb-000-ab'
+        self.env = ''
+        self.set_special_env = True
+        self.nb_proc = -1
+        self.jobs_per_node = 0
+        self.cores_per_node = 0
+        self.mem_per_node = 0
+        self.pe = 'default'
+        DBIBase.__init__(self, commands, **args)
+
+        self.jobs_per_node = int(self.jobs_per_node)
+        self.cores_per_node = int(self.cores_per_node)
+        self.mem_per_node = int(self.mem_per_node)
+
+        # Compute the number of jobs to put per node.
+        jobs_per_node = -1
+        if self.cores_per_node > 0:
+            jobs_per_node = self.cores_per_node // self.cpu
+            assert jobs_per_node != 0, "Requested more cores per node then available"
+            if self.cores_per_node % self.cpu != 0 and self.jobs_per_node == 0:
+                print """[DBI] WARNING: You requested %d cores per jobs
+                and told there is %d cores per nodes. This could be
+                wastefull as this leave %d cores not used per node."""%(
+                    self.cpu, self.cores_per_node,
+                    self.cores_per_node - (jobs_per_node*self.cpu))
+        if self.mem_per_node > 0 and self.mem > 0:
+            jobs_per_node_ = self.mem_per_node // self.mem
+            assert jobs_per_node_ != 0, "Requested more memory per node then available"
+            if jobs_per_node == -1:
+                jobs_per_node = jobs_per_node_
+            else:
+                jobs_per_node = min(jobs_per_node, jobs_per_node_)
+
+        if self.jobs_per_node != 0 and jobs_per_node != self.jobs_per_node:
+            print """[DBI] WARNING: you specified the number of jobs
+            per nodes as %d, but we computed that %d would be
+            better. We use your number."""%(self.jobs_per_node, jobs_per_node)
+        assert jobs_per_node != 0
+        if self.jobs_per_node == 0 and jobs_per_node > 0:
+            self.jobs_per_node = jobs_per_node
+
+        if self.jobs_per_node > 0:
+            assert self.cores_per_node > 0
+
+        self.nb_proc = int(self.nb_proc)
+        self.tmp_dir = os.path.abspath(self.tmp_dir)
+        self.log_dir = os.path.abspath(self.log_dir)
+        if not self.jobs_name:
+            #self.jobs_name = os.path.split(self.log_dir)[1]
+            self.jobs_name = 'dbi_'+self.unique_id[1:12]
+        ## No TMP_DIR needed for the moment
+        ##if not os.path.exists(self.tmp_dir):
+        ##    os.makedirs(self.tmp_dir)
+        ##print "[DBI] All SGE file will be in ", self.tmp_dir
+        ##os.chdir(self.tmp_dir)
+        self.args = args
+        self.add_commands(commands)
+
+        # Warn for not implemented features
+        if self.nb_proc != -1:
+            sge_root = os.getenv("SGE_ROOT")
+            if not sge_root:
+                print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. Can't determine the version of sge that is running.", self.nb_proc
+            elif os.path.split(sge_root)[1].startswith('ge'):
+                if os.path.split(sge_root)[1][2:]<'6.2u4':
+                    print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. We found version '%s' to be running."%(sge_root[2:]), self.nb_proc
+            else:
+                print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. Can't determine the version of sge that is running.", self.nb_proc
+
+
+    def add_commands(self,commands):
+        if not isinstance(commands, list):
+            commands=[commands]
+
+        # create the information about the tasks
+        for command in commands:
+            id=len(self.tasks)+1
+            self.tasks.append(Task(
+                command = command,
+                tmp_dir = self.tmp_dir,
+                log_dir = self.log_dir,
+                time_format = self.time_format,
+                pre_tasks = self.pre_tasks,
+                post_tasks = self.post_tasks,
+                dolog = self.dolog,
+                id = id,
+                gen_unique_id = False,
+                args = self.args))
+            id+=1
+
+    def create_separate_jobs_submit_files(self):
+        """ We suppose SGE will launch the jobs separatly"""
+        launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
+        launcher.write(dedent('''\
+                #!/bin/bash -l
+                # Bash is needed because we use its "array" data structure
+                # the -l flag means it will act like a login shell,
+                # and source the .profile, .bashrc, and so on
+
+                # List of all tasks to execute
+                tasks=(
+                '''))
+        for task in self.tasks:
+            launcher.write("'" + ';'.join(task.commands) + "'\n")
+        launcher.write(dedent('''\
+                )
+
+                # The index in 'tasks' array starts at 0,
+                # but SGE_TASK_ID starts at 1...
+                ID=$(($PBS_ARRAYID - 1))
+
+                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
+                # These signals are emitted by SGE before (respectively)
+                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
+                ##trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+
+                # Execute the task
+                ${tasks[$ID]}
+                '''))
+
+
+    def create_full_node_submit_files(self):
+        """We reserve a full node and ourself we some jobs on it """
+        launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
+        launcher.write(dedent('''\
+                #!/bin/bash -l
+                # Bash is needed because we use its "array" data structure
+                # the -l flag means it will act like a login shell,
+                # and source the .profile, .bashrc, and so on
+
+                # List of all tasks to execute
+                tasks=(
+                '''))
+        for task in self.tasks:
+            launcher.write("'" + ';'.join(task.commands) + "'\n")
+
+        (output_file, error_file)=self.get_file_redirection(0)
+        launcher.write(dedent('''\
+                )
+
+                echo "IN LAUNCHER"
+                echo "PBS_ARRAYID=${PBS_ARRAYID}"
+                # The index in 'tasks' array starts at 0,
+                # but SGE_TASK_ID starts at 1...
+                ID=$(($PBS_ARRAYID - 1))
+                echo "ID=$ID"
+                JOBS_PER_NODE=%i
+                NB_TASKS=%i
+                echo "python -c \\"print min(${ID} + ${JOBS_PER_NODE} - 1, ${JOBS_PER_NODE} 1)\\""
+                UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
+                echo "UPPER_LIMIT=$UPPER_LIMIT"
+                echo "seq start"
+                seq ${ID} ${UPPER_LIMIT}
+                echo "seq end"
+
+                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
+                # These signals are emitted by SGE before (respectively)
+                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
+                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+
+                # Execute the task
+                echo "Before we launch the jobs on this node"
+                date
+                for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
+                    echo "Launching task id = ${TASK_ID}"
+                    ${tasks[${TASK_ID}]} > %s 2> %s &
+                done
+                wait
+                echo "All jobs finished on this node"
+                date
+                '''%(self.jobs_per_node, len(self.tasks),
+                     output_file, error_file)))
+
+    def run(self):
+
+        (output_file, error_file)=self.get_file_redirection(0)
+        if self.jobs_per_node > 0:
+            self.create_full_node_submit_files()
+        else:
+            self.create_separate_jobs_submit_files()
+
+        pre_batch_command = ';'.join( self.pre_batch )
+        post_batch_command = ';'.join( self.post_batch )
+        #TODO exec pre and post batch command
+
+        submit_sh_template = '''\
+                #!/bin/bash
+
+                ## Reasonable default values
+                # Execute the job from the current working directory.
+                #$ -cwd
+                # Send "warning" signals to a running job prior to sending the signals themselves.
+                ##$ -notify
+
+                ## Mandatory arguments
+                #Specifies  the  project (RAPI number from CCDB) to  which this job is assigned.
+                #$ -P %(project)s
+                #All jobs must be submitted with an estimated run time
+                #PBS -l walltime=%(duree)s
+
+                ## Job name
+                #$ -N %(name)s
+
+                ## log out/err files
+                ##$ -o%(output_file)s The SGE_TASK_id do not get expanded
+                ##$ -e (error_file)s So we do it ourself.
+
+                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
+                # These signals are emitted by SGE before (respectively)
+                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
+                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
+                '''
+        if self.jobs_per_node > 0:
+            submit_sh_template += '''
+                ## Number of CPU (on the same node) per job
+                #$ -pe %(pe)s %(cores_per_node)i
+                ## Execute as many jobs as needed
+                #PBS -t 1-%(n_tasks)i:%(jobs_per_node)i
+                '''
+        else:
+            submit_sh_template += '''
+                ## Execute as many jobs as needed
+                #$ -t 1-%(n_tasks)i:1
+                '''
+
+            if self.cpu > 0:
+                submit_sh_template += '''
+                ## Number of CPU (on the same node) per job
+                #$ -pe smp %(cpu)i
+                '''
+            if self.mem > 0:
+                submit_sh_template += '''
+                ## Memory size (on the same node) per job
+                #$ -l ml=%sM
+                '''%str(self.mem)
+
+        if self.queue:
+            submit_sh_template += '''
+                ## Queue name
+                #$ -q %(queue)s
+                '''
+
+        if self.nb_proc>0:
+            submit_sh_template += '''
+                ## Maximum of concurrent jobs need sge 6.2u4 or more recent.
+                #$ -tc %s
+                '''%self.nb_proc
+
+        env = self.env
+        if self.set_special_env and self.cpu>0:
+            if not env:
+                env = '""'
+            env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
+        if env:
+            submit_sh_template += '''
+                ## Variable to put into the environment
+                #$ -v %s
+                '''%(','.join(env.split()))
+
+        if self.raw:
+            submit_sh_template += '''%s
+                '''%self.raw
+
+        submit_sh_template += '''
+                ## Execute the 'launcher' script in bash
+                # Bash is needed because we use its "array" data structure
+                # the -l flag means it will act like a login shell,
+                # and source the .profile, .bashrc, and so on
+                /bin/bash -l -e %(log_dir)s/launcher > %(node_out)s.out 2> %(node_out)s.err
+                '''
+
+        submit_sh = open(os.path.join(self.log_dir, 'submit.sh'), 'w')
+        submit_sh.write(dedent(
+            submit_sh_template % dict(
+                project = self.project,
+                output_file = output_file,
+                error_file = error_file,
+                duree = self.duree,
+                name = self.jobs_name,
+                log_dir = self.log_dir,
+                n_tasks = len(self.tasks),
+                cpu = self.cpu,
+                queue = self.queue,
+                jobs_per_node = self.jobs_per_node,
+                cores_per_node = self.cores_per_node,
+                node_out = os.path.join(os.path.dirname(output_file), "Node.${PBS_ARRAYID}"),
+                pe = self.pe,
+            )))
+
+        submit_sh.close()
+
+        # Execute pre-batch
+        self.exec_pre_batch()
+
+        print "[DBI] All logs will be in the directory: ", self.log_dir
+        # Launch qsub
+        submit_command = 'qsub ' + os.path.join(self.log_dir, 'submit.sh')
+        if not self.test:
+            for t in self.tasks:
+                t.set_scheduled_time()
+
+            self.p = Popen(submit_command, shell=True)
+            self.p.wait()
+
+            if self.p.returncode!=0:
+                raise DBIError("[DBI] ERROR: qsub returned an error code of"+str(self.p.returncode))
+        else:
+            print "[DBI] Test mode, we generated all files, but will not execute qsub"
+            print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
+
             if self.dolog:
                 print "[DBI] The scheduling time will not be logged when you submit the generated file"
 
@@ -1289,7 +1623,7 @@ class DBISharcnet(DBIBase):
         if not self.test:
             task.set_scheduled_time()
             print "[DBI] Executing: " + command
-            
+
             self.p = Popen(command, shell=True)
             self.p.wait()
             if self.p.returncode != 0:
@@ -1386,7 +1720,7 @@ class DBICondor(DBIBase):
             # Default to 950 to be close to 1G, but account for condor rounding.
             # We want to put a default as we need some sensible value for
             # condor dynamic partition.
-            self.mem = 950 
+            self.mem = 950
 
         if self.debug:
             self.condor_submit_exec+=" -debug"
@@ -1409,7 +1743,7 @@ class DBICondor(DBIBase):
                 raise Exception("Can't find the os code used by condor on this computer.\n Is condor installed on this computer?\n return code=%d, \n%s"%(p.returncode,"\n".join(err)))
             self.os=out[0].strip()
         else: self.os = self.os.upper()
-        
+
         if not os.path.exists(self.log_dir):
             os.mkdir(self.log_dir) # condor log are always generated
 
@@ -1530,7 +1864,7 @@ class DBICondor(DBIBase):
     def get_pkdilly_var(self, out):
 
 #the ssh is to have a renewed and cleaned kerberos ticket
-#the +P is to have only the KRV* var, 
+#the +P is to have only the KRV* var,
 #the +P don't need a condor_submit_file
 #ssh HOSTNAME pkdilly +P
 
@@ -1584,7 +1918,7 @@ class DBICondor(DBIBase):
                           bash_exec, seconds=3600):
         def line_header():
             return "[DBICondor] "+str(datetime.datetime.now())+" "+str(os.getpid())+" "
-        
+
         cmd="condor_wait -wait "+str(seconds)+" "+self.condor_wait_file
         pid=os.fork()
         if pid==0:#in the childreen
@@ -1597,7 +1931,7 @@ class DBICondor(DBIBase):
                 if os.path.isfile(self.log_file):
                     found=True
                     break
-                #we do this as in some case(with dagman) the log file can 
+                #we do this as in some case(with dagman) the log file can
                 #take a few seconds to be created. So we let it enought time to create it.
                 time.sleep(15)
             if not found:
@@ -1637,23 +1971,23 @@ class DBICondor(DBIBase):
                                   "generated "+str(len(kerb_vars))+" kerberos variables. The file size is "+str(s)+".\n")
                     else:
                         out.write("We have not been able to renew kerberos ticket! Their is 0 kerberos variables!")
-                        
+
                 out.flush()
-                #we do this as in some case(with dagman) the log file can 
+                #we do this as in some case(with dagman) the log file can
                 #take a few seconds to be created. So we don't loop too fast
                 #for no good reason.
                 time.sleep(60)
             out.close()
             sys.exit()
         else:
-            #parent, we pkboost the childreen in case we connect with ssh 
+            #parent, we pkboost the childreen in case we connect with ssh
             # then log out. Not sure if this is really need or not.
-            
+
             os.system("pkboost +d "+str(pid))
 
     def make_kerb_script(self, fd, second_lauch_file, nb_try=3, out=None):
         for i in range(nb_try):
-            ##we try 3 times to get the keys as sometimes this fail.                                                    
+            ##we try 3 times to get the keys as sometimes this fail.
             vars=self.get_pkdilly_var(out)
             if len(vars)>0:
                 break
@@ -1664,7 +1998,7 @@ class DBICondor(DBIBase):
         fd.write(dedent('''\
                     #!/bin/sh
                     '''))
-            
+
         for g in vars:
             fd.write("export "+g+"\n")
         fd.write(dedent('''
@@ -1674,8 +2008,8 @@ class DBICondor(DBIBase):
         return vars
 
     def make_launch_script(self, bash_exec):
-            
-        #we write in a temp file then move it to be sure no jobs will 
+
+        #we write in a temp file then move it to be sure no jobs will
         # read a partially writed file when we renew the file.
 
         dbi_file=os.path.join(get_jobmandir(),"dbi","dbi.py")
@@ -1691,7 +2025,7 @@ class DBICondor(DBIBase):
                     overwrite_launch_file=True
         if self.pkdilly:
             overwrite_launch_file = True
-                    
+
         if self.copy_local_source_file:
             source_file_dest = os.path.join(self.log_dir,
                                             os.path.basename(self.source_file))
@@ -1704,7 +2038,7 @@ class DBICondor(DBIBase):
         if not os.path.exists(self.launch_file) or overwrite_launch_file:
             self.temp_files.append(self.launch_file)
             fd = open(launch_tmp_file,'w')
-            
+
             if self.pkdilly:
                 self.second_lauch_file = self.launch_file+"2.sh"
                 kerb_vars=self.make_kerb_script(fd, self.second_lauch_file)
@@ -1750,7 +2084,7 @@ class DBICondor(DBIBase):
                     echo "Running: command: \\"$@\\"" 1>&2
                     echo "ulimit cmd: %s"
                     %s
-                    [ -x "$1" ];echo "Can execute the cmd? " $? 1>&2 
+                    [ -x "$1" ];echo "Can execute the cmd? " $? 1>&2
                     %s
                     ret=$?
                     rm -f echo ${KRB5CCNAME:5}
@@ -1858,7 +2192,7 @@ class DBICondor(DBIBase):
             transfer_executable     = True
             when_to_transfer_output = ON_EXIT
             """))
-        
+
     def run_dag(self):
         if self.to_all:
             raise DBIError("[DBI] ERROR: condor backend don't support the option --to_all and a maximum number of process")
@@ -1866,7 +2200,7 @@ class DBICondor(DBIBase):
         condor_submit_fd = open( self.condor_submit_file, 'w' )
 
         self.print_common_condor_submit(condor_submit_fd, "$(stdout)", "$(stderr)","$(args)")
-        
+
         condor_submit_fd.write("\nqueue\n")
         condor_submit_fd.close()
 
@@ -1881,7 +2215,7 @@ class DBICondor(DBIBase):
             condor_dag_fd.write('VARS %d args="%s"\n'%(id,argstring))
             condor_dag_fd.write('VARS %d stdout="%s"\n'%(id,stdout_file))
             condor_dag_fd.write('VARS %d stderr="%s"\n\n'%(id,stderr_file))
-            
+
         for i in range(len(self.tasks)):
             task=self.tasks[i]
             print_task(i,task,*self.get_file_redirection(task.id))
@@ -1914,7 +2248,7 @@ class DBICondor(DBIBase):
 
 
         condor_submit_fd = open( self.condor_submit_file, 'w' )
-            
+
         #DIFFER IN DAG VERSION
         #self.print_common_condor_submit(condor_submit_fd, "$(stdout)", "$(stderr)","$(args)")
         self.print_common_condor_submit(condor_submit_fd, self.log_dir+"/$(Process).out", self.log_dir+"/$(Process).error")
@@ -2018,7 +2352,7 @@ class DBICondor(DBIBase):
             assert len(self.no_machine)==0
             for idx,m in enumerate(self.machine):
                 self.tasks_req[idx] = self.req+'&&(Machine=="'+m+'")'
-        
+
         for m in self.machines:
             machine_choice.append('regexp("'+m+'", Machine)')
 
@@ -2078,7 +2412,7 @@ class DBICondor(DBIBase):
             self.temp_files.append(configobj_file)
             os.chmod(configobj_file, 0755)
 
-            
+
         #launch the jobs
         if self.test == False:
             print "[DBI] Executing: " + cmd
