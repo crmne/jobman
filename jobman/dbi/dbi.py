@@ -852,7 +852,8 @@ class DBIBqtools(DBIBase):
             self.p.wait()
 
             if self.p.returncode!=0:
-                raise DBIError("[DBI] ERROR: bqsubmit returned an error code of"+str(self.p.returncode))
+                raise DBIError("[DBI] ERROR: bqsubmit returned an error code "
+                               "of " + str(self.p.returncode))
         else:
             print "[DBI] Test mode, we generated all files, but will not execute bqsubmit"
             if self.dolog:
@@ -1179,8 +1180,9 @@ class DBISge(DBIBase):
             self.p = Popen(submit_command, shell=True)
             self.p.wait()
 
-            if self.p.returncode!=0:
-                raise DBIError("[DBI] ERROR: qsub returned an error code of"+str(self.p.returncode))
+            if self.p.returncode != 0:
+                raise DBIError("[DBI] ERROR: qsub returned an error code "
+                               "of " + str(self.p.returncode))
         else:
             print "[DBI] Test mode, we generated all files, but will not execute qsub"
             print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
@@ -1515,8 +1517,9 @@ class DBITorque(DBIBase):
             self.p = Popen(submit_command, shell=True)
             self.p.wait()
 
-            if self.p.returncode!=0:
-                raise DBIError("[DBI] ERROR: qsub returned an error code of"+str(self.p.returncode))
+            if self.p.returncode != 0:
+                raise DBIError("[DBI] ERROR: qsub returned an error code "
+                               "of " + str(self.p.returncode))
         else:
             print "[DBI] Test mode, we generated all files, but will not execute qsub"
             print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
@@ -1631,7 +1634,8 @@ class DBISharcnet(DBIBase):
             self.p = Popen(command, shell=True)
             self.p.wait()
             if self.p.returncode != 0:
-                raise DBIError("[DBI] ERROR: sqsub returned an error code of "+str(self.p.returncode))
+                raise DBIError("[DBI] ERROR: qsub returned an error code "
+                               "of " + str(self.p.returncode))
         else:
             print '[DBI] Test mode, to manually submit, execute "'+command+'"'
 
@@ -1877,9 +1881,14 @@ class DBICondor(DBIBase):
         self.p.wait()
         l = self.p.stdout.readline()
         if l!="":
-            DBIError("pkdilly returned something on the stdout, this should not happen:\n"+l+"\n"+self.p.stdout.readlines())
-        if self.p.returncode!=0:
-            DBIError("pkdilly returned an error code of "+str(self.p.returncode)+":\n"+self.p.stderr.readlines()+"\n"+self.p.stdout.readlines())
+            raise DBIError("pkdilly returned something on the stdout, this "
+                           "should not happen:\n" + l + "\n" +
+                           self.p.stdout.readlines())
+        if self.p.returncode != 0:
+            raise DBIError("pkdilly returned an error code of " +
+                           str(self.p.returncode) + ":\n" +
+                           self.p.stderr.readlines() + "\n" +
+                           self.p.stdout.readlines())
 
 #example de sortie de pkdilly
 #La tache a soumettre est dans: /tmp/soumet_12368_Qbr7Av
