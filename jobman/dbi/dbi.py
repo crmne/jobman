@@ -1477,6 +1477,11 @@ class DBITorque(DBIBase):
                 '''%self.raw
 
         submit_sh_template += '''
+                # Move to directory jobdispatch was run from.
+                cd %s
+                ''' % os.path.realpath(os.getcwd())
+
+        submit_sh_template += '''
                 ## Execute the 'launcher' script in bash
                 # Bash is needed because we use its "array" data structure
                 # the -l flag means it will act like a login shell,
