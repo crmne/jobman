@@ -876,7 +876,7 @@ class DBISge(DBIBase):
         self.jobs_name = ''
         self.queue = ''
         self.duree = '23:59:59'
-        self.project = 'jvb-000-ab'
+        self.project = ''
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
@@ -1060,7 +1060,11 @@ class DBISge(DBIBase):
         pre_batch_command = ';'.join( self.pre_batch )
         post_batch_command = ';'.join( self.post_batch )
         #TODO exec pre and post batch command
-
+        if not self.project:
+            raise Exception("Sge need a project number. Specify it with the"
+                            " --project paramter. You can use the env variable"
+                            " JOBDISPATCH_DEFAULT_OPTION to set it by defautl.")
+        
         submit_sh_template = '''\
                 #!/bin/bash
 
