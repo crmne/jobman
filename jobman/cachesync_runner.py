@@ -221,7 +221,7 @@ def perform_sync(dir_path, conf):
     with cachesync_lock(remote_host, remote_dir):
         manualtest_will_perform_sync()
 
-        rsync_command = 'rsync -ac "%s" "%s"' % (host_string, dir_path)
+        rsync_command = 'rsync -a "%s" "%s"' % (host_string, dir_path)
         print rsync_command
 
         return_code = os.system(rsync_command)

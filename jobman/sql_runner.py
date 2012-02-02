@@ -71,9 +71,9 @@ class RSyncChannel(StandardChannel):
         excludes = ' '.join('--exclude="%s"' % e for e in exclusions)
         # TODO: use something more portable than os.system
         if direction == 'push':
-            rsync_cmd = 'rsync -ac %s "%s/" "%s/"' % (excludes, path, remote_path)
+            rsync_cmd = 'rsync -a %s "%s/" "%s/"' % (excludes, path, remote_path)
         elif direction == 'pull':
-            rsync_cmd = 'rsync -ac %s "%s/" "%s/"' % (excludes, remote_path, path)
+            rsync_cmd = 'rsync -a %s "%s/" "%s/"' % (excludes, remote_path, path)
         else:
             raise RSyncException('invalid direction', direction)
 
