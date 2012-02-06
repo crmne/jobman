@@ -19,7 +19,7 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
 <common options>:
         [--help|-h]
         [--[*no_]dbilog]
-        [--condor[=N]|--bqtools[=N]|--cluster[=N]|--local[=N]|--sge[=N]|--sharcnet|--ssh[=N]i]
+        [--condor[=N]|--bqtools[=N]|--cluster[=N]|--local[=N]|--sge[=N]|--sharcnet|--ssh[=N]|--torque[=N]]
         [--[*no_]test]
         [--[*no_]testdbi]
         [--[*no_]nb_proc=N]
@@ -36,17 +36,17 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
                                                  clusterid(condor,sge only),
                                                  processid(condor,sge only),
                                                  jobname(sge only)}+]
-    bqtools, cluster, condor, sge, sharcnet options:
+    bqtools, cluster, condor, sge, sharcnet, torque options:
                               [--cpu=nb_cpu_per_node]
                               [--mem=N]
-    bqtools, cluster, sge, sharcnet option:
+    bqtools, cluster, sge, sharcnet, torque option:
                               [--duree=X]
-    bqtools, condor, sge options:
+    bqtools, condor, sge, torque options:
                               [--env=VAR=VALUE[ VAR2=VALUE2]]  (must be quoted into the shell!)
                               [*--[no_]set_special_env]
                               [--raw=STRING[\nSTRING]]
     cluster, condor options  :[--32|--64|--3264] [--os=X]
-    bqtools, sge, sharcnet options:
+    bqtools, sge, sharcnet, torque options:
                               [--queue=X] [--jobs_name=X]
     condor and sharcnet options:
                               [--[no_]gpu]
@@ -77,7 +77,7 @@ ShortHelp='''Usage: jobdispatch <common options> <back-end parameters> {--file=F
           It support the option cpu, mem, queue, jobs_name and gpu, duree.
           It support all common option except --nb_proc
           Do it support --[no_]dbilog?
-    
+
     (Note: SGE support is in beta.)
 
 An * after '[', '{' or ',' signals the default value.
@@ -114,8 +114,10 @@ common options:
     --cluster=N is the same as --cluster --nb_proc=N
     --bqtools=N is the same as --bqtools --nb_proc=N
     --ssh=N is the same as --ssh --nb_proc=N
-    --condor=N  is the same as --condor --nb_proc=N
-    condor and bqtools default -1. Cluster default 32.  local and ssh default 1
+    --condor=N is the same as --condor --nb_proc=N
+    --torque=N is the same as --torque --nb_proc=N
+    condor, bqtools and torque default to -1. Cluster defaults to 32. local and
+    ssh default to 1.
 
     --local=FILE_PATH is accepted. The file should contain only the number of
     threads wanted. This allows dynamically changing the number of threads. 
@@ -164,8 +166,8 @@ common options:
   The '--[*no_]whitespace' option allow to put white space inside {{}}.
       I put this as an option as I don't remember why it was not allowed.
   The '--sort={generated*,random}' option allow to change the default order of jobs.
-  
-bqtools, cluster, condor and sge option:
+
+bqtools, cluster, condor, sge and torque option:
   The '--cpu=nb_cpu_per_node' option determine the number of cpu(cores) that 
     will be reserved for each job.(default=1, -1 won't set it)
   The '--mem=X' speficify the number of ram in meg the program need to execute.
@@ -173,13 +175,13 @@ bqtools, cluster, condor and sge option:
     with multiple of 1024. Default to don't specify it for all except on 
     condor where it default to 950.
 
-bqtools, cluster and sge option:
+bqtools, cluster, sge and torque option:
   The '--duree' option specifies the maximum duration of the jobs. The syntax 
     depends on the back-end. For the cluster syntax, see 'cluster --help'. 
     For bqtools and sge, the syntax is '--duree=12:13:15', giving 12 hours, 
     13 minutes and 15 seconds.
 
-bqtools, condor and sge options:
+bqtools, condor, sge and torque options:
   The '--env=VAR=VALUE' option will set in the environment of the executing
     jobs the variable VAR with value VALUE. To pass many variable you can:
       1) use one --env option and separ the pair by ' '(don't forget to quote)
@@ -197,7 +199,7 @@ cluster and condor options:
     Condor default to the same as the submit host and --os=FC7,FC9 
     tell to use FC7 or FC9 hosts.
 
-bqtools, sge and sharcnet options:
+bqtools, sge, sharcnet and torque options:
   The '--queue=X' tell on witch queue the jobs will be launched.
   The '--jobs_name=X' option give the X as the jobs name to bqtools or sge.
     Default, random.
@@ -218,7 +220,7 @@ bqtools only options:
   The '--nano=X' add nanoJobs=X in the submit file.
   The '--submit_options=X' X is appended to the submitOptions in the submit file.
   The '--[no_]m32G' option tell to use node with 32G of RAM. Usefull on mammouth-serie2 only.
-  
+
 cluster only options:
   The '--[no_]cwait' is transfered to cluster. 
     This must be enabled if there is not nb_proc available nodes. Otherwise 
@@ -366,13 +368,13 @@ elif search_file('bqsubmit',PATH):
 elif search_file('sqsub',PATH):
     launch_cmd = 'Sharcnet'
 elif search_file('qsub',PATH):
-    # qsub command is used by torque/pds and Sun Grid Engine
+    # qsub command is used by torque/pbs and Sun Grid Engine
     # that take different input.
     p = Popen('qsub --version',shell=True, stdout=PIPE, stderr=PIPE)
     ret = p.wait()
     stdout = p.stdout.readlines()
     if ret==0 and len(stdout)==0:
-	launch_cmd = 'Torque'
+        launch_cmd = 'Torque'
     else:
         # We suppose it is SGE.
         launch_cmd = 'Sge'
@@ -412,7 +414,7 @@ for argv in to_parse:
     elif argv == "--dbilog":
         dbi_param["dolog"]=True
     elif argv.split('=')[0] in ["--bqtools","--cluster","--local","--condor",
-                                "--ssh", "--sge", "--sharcnet"]:
+                                "--ssh", "--sge", "--sharcnet", "--torque"]:
         launch_cmd = argv[2].upper()+argv.split('=')[0][3:]
         if len(argv.split('='))>1:
             dbi_param["nb_proc"]=argv.split('=')[1]
@@ -554,6 +556,9 @@ elif launch_cmd=="Sge":
                         ]
 elif launch_cmd=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu"] #"env, "set_special_env", "raw" ?
+elif launch_cmd == "Torque":
+    valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
+                        "set_special_env", "raw"]
 
 # Only valid for condor
 if launch_cmd == 'Condor':

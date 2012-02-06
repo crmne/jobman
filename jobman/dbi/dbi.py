@@ -1064,7 +1064,7 @@ class DBISge(DBIBase):
             raise Exception("Sge need a project number. Specify it with the"
                             " --project paramter. You can use the env variable"
                             " JOBDISPATCH_DEFAULT_OPTION to set it by defautl.")
-        
+
         submit_sh_template = '''\
                 #!/bin/bash
 
@@ -1212,76 +1212,19 @@ class DBITorque(DBIBase):
     def __init__(self, commands, **args):
         self.jobs_name = ''
         self.queue = ''
-        self.duree = '23:59:59'
-        self.project = 'jvb-000-ab'
+        self.duree = '47:59:59'
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
-        self.jobs_per_node = 0
-        self.cores_per_node = 0
-        self.mem_per_node = 0
-        self.pe = 'default'
         DBIBase.__init__(self, commands, **args)
-
-        self.jobs_per_node = int(self.jobs_per_node)
-        assert self.jobs_per_node <= 1
-        self.cores_per_node = int(self.cores_per_node)
-        self.mem_per_node = int(self.mem_per_node)
-
-        # Compute the number of jobs to put per node.
-        jobs_per_node = -1
-        if self.cores_per_node > 0:
-            jobs_per_node = self.cores_per_node // self.cpu
-            assert jobs_per_node != 0, "Requested more cores per node then available"
-            if self.cores_per_node % self.cpu != 0 and self.jobs_per_node == 0:
-                print """[DBI] WARNING: You requested %d cores per jobs
-                and told there is %d cores per nodes. This could be
-                wastefull as this leave %d cores not used per node."""%(
-                    self.cpu, self.cores_per_node,
-                    self.cores_per_node - (jobs_per_node*self.cpu))
-        if self.mem_per_node > 0 and self.mem > 0:
-            jobs_per_node_ = self.mem_per_node // self.mem
-            assert jobs_per_node_ != 0, "Requested more memory per node then available"
-            if jobs_per_node == -1:
-                jobs_per_node = jobs_per_node_
-            else:
-                jobs_per_node = min(jobs_per_node, jobs_per_node_)
-
-        if self.jobs_per_node != 0 and jobs_per_node != self.jobs_per_node:
-            print """[DBI] WARNING: you specified the number of jobs
-            per nodes as %d, but we computed that %d would be
-            better. We use your number."""%(self.jobs_per_node, jobs_per_node)
-        assert jobs_per_node != 0
-        if self.jobs_per_node == 0 and jobs_per_node > 0:
-            self.jobs_per_node = jobs_per_node
-
-        if self.jobs_per_node > 0:
-            assert self.cores_per_node > 0
 
         self.nb_proc = int(self.nb_proc)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
         self.log_dir = os.path.abspath(self.log_dir)
         if not self.jobs_name:
-            #self.jobs_name = os.path.split(self.log_dir)[1]
             self.jobs_name = 'dbi_'+self.unique_id[1:12]
-        ## No TMP_DIR needed for the moment
-        ##if not os.path.exists(self.tmp_dir):
-        ##    os.makedirs(self.tmp_dir)
-        ##print "[DBI] All SGE file will be in ", self.tmp_dir
-        ##os.chdir(self.tmp_dir)
         self.args = args
         self.add_commands(commands)
-
-        # Warn for not implemented features
-        if self.nb_proc != -1:
-            sge_root = os.getenv("SGE_ROOT")
-            if not sge_root:
-                print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. Can't determine the version of sge that is running.", self.nb_proc
-            elif os.path.split(sge_root)[1].startswith('ge'):
-                if os.path.split(sge_root)[1][2:]<'6.2u4':
-                    print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. We found version '%s' to be running."%(sge_root[2:]), self.nb_proc
-            else:
-                print "[DBI] WARNING: DBISge need sge 6.2u4 or higher to work for nb_proc!=-1 to work. Can't determine the version of sge that is running.", self.nb_proc
 
 
     def add_commands(self,commands):
@@ -1305,7 +1248,6 @@ class DBITorque(DBIBase):
             id+=1
 
     def create_separate_jobs_submit_files(self):
-        """ We suppose SGE will launch the jobs separatly"""
         launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
         launcher.write(dedent('''\
                 #!/bin/bash -l
@@ -1321,159 +1263,73 @@ class DBITorque(DBIBase):
         launcher.write(dedent('''\
                 )
 
-                # The index in 'tasks' array starts at 0,
-                # but SGE_TASK_ID starts at 1...
-                ID=$(($PBS_ARRAYID - 1))
-
-                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
-                # These signals are emitted by SGE before (respectively)
-                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                ##trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
-
                 # Execute the task
-                ${tasks[$ID]}
+                ${tasks[$PBS_ARRAYID]}
                 '''))
 
-
-    def create_full_node_submit_files(self):
-        """We reserve a full node and ourself we some jobs on it """
-        launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
-        launcher.write(dedent('''\
-                #!/bin/bash -l
-                # Bash is needed because we use its "array" data structure
-                # the -l flag means it will act like a login shell,
-                # and source the .profile, .bashrc, and so on
-
-                # List of all tasks to execute
-                tasks=(
-                '''))
-        for task in self.tasks:
-            launcher.write("'" + ';'.join(task.commands) + "'\n")
-
-        (output_file, error_file)=self.get_file_redirection(0)
-        launcher.write(dedent('''\
-                )
-
-                echo "IN LAUNCHER"
-                echo "PBS_ARRAYID=${PBS_ARRAYID}"
-                # The index in 'tasks' array starts at 0,
-                # but SGE_TASK_ID starts at 1...
-                ID=$(($PBS_ARRAYID - 1))
-                echo "ID=$ID"
-                JOBS_PER_NODE=%i
-                NB_TASKS=%i
-                echo "python -c \\"print min(${ID} + ${JOBS_PER_NODE} - 1, ${JOBS_PER_NODE} 1)\\""
-                UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
-                echo "UPPER_LIMIT=$UPPER_LIMIT"
-                echo "seq start"
-                seq ${ID} ${UPPER_LIMIT}
-                echo "seq end"
-
-                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
-                # These signals are emitted by SGE before (respectively)
-                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
-
-                # Execute the task
-                echo "Before we launch the jobs on this node"
-                date
-                for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
-                    echo "Launching task id = ${TASK_ID}"
-                    ${tasks[${TASK_ID}]} > %s 2> %s &
-                done
-                wait
-                echo "All jobs finished on this node"
-                date
-                '''%(self.jobs_per_node, len(self.tasks),
-                     output_file, error_file)))
 
     def run(self):
 
-        (output_file, error_file)=self.get_file_redirection(0)
-        if self.jobs_per_node > 0:
-            self.create_full_node_submit_files()
-        else:
-            self.create_separate_jobs_submit_files()
+        self.create_separate_jobs_submit_files()
 
         pre_batch_command = ';'.join( self.pre_batch )
         post_batch_command = ';'.join( self.post_batch )
         #TODO exec pre and post batch command
 
         submit_sh_template = '''\
-                #!/bin/bash
+                #!/bin/sh
 
                 ## Reasonable default values
                 # Execute the job from the current working directory.
-                #$ -cwd
-                # Send "warning" signals to a running job prior to sending the signals themselves.
-                ##$ -notify
+                #PBS -d %(cwd)s
 
-                ## Mandatory arguments
-                #Specifies  the  project (RAPI number from CCDB) to  which this job is assigned.
-                #$ -P %(project)s
                 #All jobs must be submitted with an estimated run time
                 #PBS -l walltime=%(duree)s
 
                 ## Job name
-                #$ -N %(name)s
+                #PBS -N %(name)s
 
                 ## log out/err files
-                ##$ -o%(output_file)s The SGE_TASK_id do not get expanded
-                ##$ -e (error_file)s So we do it ourself.
+                # We cannot use output_file and error_file here for now.
+                # We will use dbi_...out-id and dbi_...err-id instead
+                #PBS -o %(log_dir)s/%(name)s.out
+                #PBS -e %(log_dir)s/%(name)s.err
 
-                ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
-                # These signals are emitted by SGE before (respectively)
-                # SIGSTOP and SIGKILL (typically 60 s before on colosse)
-                #trap "echo signal trapped by $0 >&2" SIGUSR1 SIGUSR2
-                '''
-        if self.jobs_per_node > 0:
-            submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
-                #$ -pe %(pe)s %(cores_per_node)i
+                #PBS -l nodes=1:ppn=%(cpu)i
+
                 ## Execute as many jobs as needed
-                #PBS -t 1-%(n_tasks)i
+                '''
+        if self.nb_proc > 0:
+            submit_sh_template += '''
+                #PBS -t 0-%(n_tasks_m1)i%%%(nb_proc)i
                 '''
         else:
-            if self.jobs_per_node != 1 and self.jobs_per_node != 0:
-                raise ValueError("DBITorque only supports jobs_per_node of 1"
-                        "but its value is "+str(self.jobs_per_node))
             submit_sh_template += '''
-                ## Execute as many jobs as needed
-                #PBS -t 1-%(n_tasks)i
+                #PBS -t 0-%(n_tasks_m1)i
                 '''
 
-            if self.cpu > 0:
-                submit_sh_template += '''
-                ## Number of CPU (on the same node) per job
-                #$ -pe smp %(cpu)i
-                '''
-            if self.mem > 0:
-                submit_sh_template += '''
+        if self.mem > 0:
+            submit_sh_template += '''
                 ## Memory size (on the same node) per job
-                #$ -l ml=%sM
-                '''%str(self.mem)
+                #PBS -l mem=%smb
+            '''%str(self.mem)
 
         if self.queue:
             submit_sh_template += '''
                 ## Queue name
-                #$ -q %(queue)s
+                #PBS -q %(queue)s
                 '''
-
-        if self.nb_proc>0:
-            submit_sh_template += '''
-                ## Maximum of concurrent jobs need sge 6.2u4 or more recent.
-                #$ -tc %s
-                '''%self.nb_proc
 
         env = self.env
         if self.set_special_env and self.cpu>0:
             if not env:
-                env = '""'
+                env = ''
             env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
         if env:
             submit_sh_template += '''
                 ## Variable to put into the environment
-                #$ -v %s
+                #PBS -v %s
                 '''%(','.join(env.split()))
 
         if self.raw:
@@ -1481,34 +1337,25 @@ class DBITorque(DBIBase):
                 '''%self.raw
 
         submit_sh_template += '''
-                # Move to directory jobdispatch was run from.
-                cd %s
-                ''' % os.path.realpath(os.getcwd())
-
-        submit_sh_template += '''
                 ## Execute the 'launcher' script in bash
                 # Bash is needed because we use its "array" data structure
                 # the -l flag means it will act like a login shell,
                 # and source the .profile, .bashrc, and so on
-                /bin/bash -l -e %(log_dir)s/launcher > %(node_out)s.out 2> %(node_out)s.err
+                /bin/bash -l -e %(log_dir)s/launcher
                 '''
 
         submit_sh = open(os.path.join(self.log_dir, 'submit.sh'), 'w')
         submit_sh.write(dedent(
             submit_sh_template % dict(
-                project = self.project,
-                output_file = output_file,
-                error_file = error_file,
+                cwd = os.path.realpath(os.getcwd()),
                 duree = self.duree,
                 name = self.jobs_name,
                 log_dir = self.log_dir,
-                n_tasks = len(self.tasks),
+                n_tasks_m1 = (len(self.tasks) - 1),
                 cpu = self.cpu,
+                mem = self.mem,
+                nb_proc = self.nb_proc,
                 queue = self.queue,
-                jobs_per_node = self.jobs_per_node,
-                cores_per_node = self.cores_per_node,
-                node_out = os.path.join(os.path.dirname(output_file), "Node.${PBS_ARRAYID}"),
-                pe = self.pe,
             )))
 
         submit_sh.close()
@@ -1543,7 +1390,7 @@ class DBITorque(DBIBase):
         pass
 
     def wait(self):
-        print "[DBI] WARNING cannot wait until all jobs are done for SGE, use qstat or qmon(need X11)"
+        print "[DBI] WARNING cannot wait until all jobs are done for Torque, use qstat"
 
 
 
