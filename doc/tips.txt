@@ -1,5 +1,3 @@
-.. index:: Tips
-
 .. _tips:
 
 Tips
