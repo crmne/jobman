@@ -42,7 +42,7 @@ sqlschedule`` command. An example is given below:
 
 .. code-block:: bash
 
-    jobman sqlschedule postgres://user:pass@host/dbname?table=tablename \
+    jobman sqlschedule postgres://user[:pass]@host/dbname?table=tablename \
            path.to.experiment first=1 second=3
 
 This will insert a single experiment into the table ``<tablename>`` of database
@@ -51,16 +51,35 @@ do not exist, they will be created through this command. Note that by default,
 duplicate jobs are not inserted in the DB. To force insertion of a duplicate
 job, use the ``-f`` flag.
 
+``jobman sqlschedule`` also support the ``key=value``, ``key::builder`` and/or ``key:=expression`` syntax that :ref:`jobman cmdline <cmdline>` support.
+
+.. code-block:: bash
+
+   # Example
+   jobman sqlschedules postgres://user[:pass]@host/dbname?table=tablename \
+          jobman.experiments.print_state first=3 \
+	  "uniform:=@random.uniform(0, 100)" "gaussian:=@random.random()"
+
+   # To run them(explained later):
+   jobman sql -n 4 postgres://user[:pass]@host/dbname?table=tablename .
+
+Multiple jobs
+.............
+
 The ``sqlschedules`` command may be used to insert many jobs at once. The
 parameter syntax to use is then:
 
 .. code-block:: bash
 
-    jobman sqlschedules postgres://user:pass@host/dbname?table=tablename \
-           path.to.experiment first={{1,2,3,4}} second=3 third={{3,5,6}}
+    jobman sqlschedules postgres://user[:pass]@host/dbname?table=tablename \
+           path.to.experiment first="{{1,2,3,4}}" second=3 third="{{3,5,6}}" \
+	   "uniform:=@random.uniform(0, 100)" "gaussian:=@random.random()"
 
-This will take all permutations of parameters ``first``, ``second`` and ``third``
-and insert 12 jobs in the table.
+This will take all permutations of parameters ``first``, ``second``
+and ``third`` and insert 12 jobs in the table. The ``{{}}``, must be
+quoted, otherwise the shell will interpret itself the outer ``{}``.
+
+This syntax can be fixed with the previous syntax.
 
 For more details, see ``jobman help sqlschedule`` and ``jobman help sqlschedules``.
 
@@ -100,6 +119,53 @@ You can then write the following code:
 
 That would insert 30 jobs into the database.
 
+Executing the jobs
+------------------
+
+Once the specifications of the job (the experiment function and its
+arguments) are inserted into the database, they can be retrieved and
+executed on any machine with access to this database.
+
+The files that will be produced during the execution will be placed in a
+unique subdirectory of the experiment root path, provided when launching
+the job. For instance, if you want the experiment root to be the current
+directory:
+
+.. code-block:: bash
+
+    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> .
+
+You can also specify a distant path, if you want to gather results from
+jobs executed on different machines:
+
+.. code-block:: bash
+
+    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> \
+               ssh://<fileserver>:<some>/<path>
+
+The above commands will retrieve one job description among those with
+highest priority, and that have not been started yet, and execute
+it. You can also ask for several jobs to be executed one after the
+other:
+
+.. code-block:: bash
+
+    jobman sql -n3 postgres://<user>:<pass>@<server>/<database>?table=<table> .
+
+will execute 3 jobs, and
+
+.. code-block:: bash
+
+    jobman sql -n0 postgres://<user>:<pass>@<server>/<database>?table=<table> .
+
+will keep on executing new jobs until all jobs are executed. You can
+launch this command on different computers, or several times on a
+cluster, to have jobs executed in parallel.
+
+For more information::
+
+    jobman sql help
+
 Querying the database
 ---------------------
 
@@ -127,7 +193,7 @@ Creating a View From the Command Line
 
 A view with name ``<viewname>`` can be created using the following::
 
-    jobman sqlview postgres://user:pass@host/dbname?table=tablename viewname
+    jobman sqlview postgres://user[:pass]@host/dbname?table=tablename viewname
 
 
 Creating a View From a Python Script
@@ -262,52 +328,6 @@ error while starting the job, 4 that there was en error while doing the rsync of
 the job working directory, 5 that the job did not return COMPLETE or INCOMPLETE
 (it can have raised an error) and -1 that the job have been canceled.
 
-Executing the jobs
-------------------
-
-Once the specifications of the job (the experiment function and its
-arguments) are inserted into the database, they can be retrieved and
-executed on any machine with access to this database.
-
-The files that will be produced during the execution will be placed in a
-unique subdirectory of the experiment root path, provided when launching
-the job. For instance, if you want the experiment root to be the current
-directory:
-
-.. code-block:: bash
-
-    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> .
-
-You can also specify a distant path, if you want to gather results from
-jobs executed on different machines:
-
-.. code-block:: bash
-
-    jobman sql postgres://<user>:<pass>@<server>/<database>?table=<table> \
-               ssh://<fileserver>:<some>/<path>
-
-The above commands will retrieve one job description among those with
-highest priority, and that have not been started yet, and execute
-it. You can also ask for several jobs to be executed one after the
-other:
-
-.. code-block:: bash
-
-    jobman sql -n3 postgres://<user>:<pass>@<server>/<database>?table=<table> .
-
-will execute 3 jobs, and
-
-.. code-block:: bash
-
-    jobman sql -n0 postgres://<user>:<pass>@<server>/<database>?table=<table> .
-
-will keep on executing new jobs until all jobs are executed. You can
-launch this command on different computers, or several times on a
-cluster, to have jobs executed in parallel.
-
-For more information::
-
-    jobman sql help
 
 Canceling/Restarting jobs
 -------------------------

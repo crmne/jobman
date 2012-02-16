@@ -36,6 +36,35 @@ Examples:
 |c.d="hello" | state.c.d <- "hello" |
 +------------+----------------------+
 
+.. code-block:: bash
+
+      # Working Example:
+      jobman cmdline jobman.experiments.print_state param1=42 param2=a_string param2=2.2
+
+
+``key:=<expression>``
+---------------------
+
+This form is similar to builders but is useful when you want the
+computed value to be recorded in the database.  The syntax for the
+expression is the same as for ``reval``, except you can't pass keyword
+arguments (so the ``%name`` thing won't work).
+
+Let's say you want a different random value for each experiment, but
+you want to know what the value was after for analysis.  You can use a
+config like::
+
+.. code-block:: bash
+
+      value := @random.uniform(0, 100)
+
+The value from that expression is what will be recorded in the
+database and presented to you experiment via the state.
+
+.. code-block:: bash
+
+      # Working Example:
+      jobman cmdline jobman.experiments.print_state "param_uniform:=@random.uniform(0, 100)" "param_gaussian:=@random.random()"
 
 ``key::<builder>``
 -------------------
@@ -87,22 +116,6 @@ This outputs::
     self.value =  2
     jobman rules
 
-``key:=<expression>``
----------------------
-
-This form is similar to builders but is useful when you want the
-computed value to be recorded in the database.  The syntax for the
-expression is the same as for ``reval``, except you can't pass keyword
-arguments (so the ``%name`` thing won't work).
-
-Let's say you want a different random value for each experiment, but
-you want to know what the value was after for analysis.  You can use a
-config like::
-
-      value := @random.uniform(0, 100)
-
-The value from that expression is what will be recorded in the
-database and presented to you experiment via the state.
 
 path/to/file.conf
 -----------------
