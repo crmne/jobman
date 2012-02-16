@@ -56,4 +56,11 @@ def example_numpy(state, channel):
     state.ndarray = numpy.zeros(4)
     print "end of example_numpy"
     return channel.COMPLETE
-    
+
+
+#This example fail for now. I will try to make it work later.
+def print_state(state, channel):
+    print "start of print_state"
+    print state
+    print "end of print_state"
+    return channel.COMPLETE
