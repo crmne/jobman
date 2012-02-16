@@ -53,7 +53,6 @@ does the optimization:
         state.test_score = test_score
         state.minutes_trained = minutes_trained
         state.iter = iter
-
         return channel.COMPLETE
 
 
@@ -139,6 +138,19 @@ will populate the mlp_dumi table with values inferred from mlp_jobman.conf **and
     ADDING   {'n_iter': 10, 'jobman.experiment': 'mlp_jobman.experiment', 'jobman.status': 0, 'jobman.sql.priority': 1.0, 'L1_reg': 0.0, 'learning_rate': 0.01, 'n_hidden': 30, 'batch_size': 20, 'L2_reg': 0.0001}
 
 This shows how to keep default values for the parameters in a .conf file and add jobs corresponding to multiple values of a given (set of) hyperparameter(s).
+
+
+Scheduling with random value
+............................
+
+If you to do random search of the hyper-paramter, you can do if with the key:=value syntax like this:
+
+.. code-block:: bash
+
+    jobman sqlschedules  postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi mlp_jobman.experiment\
+          mlp_jobman.conf 'n_hidden={{20,30}}' "learning_rate:=@numpy.random.uniform(1e-6, 1e-1)"
+
+
 
 Create a view
 .............
