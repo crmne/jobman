@@ -63,6 +63,15 @@ def example_numpy(state, channel):
     return channel.COMPLETE
 
 
+def example_save(state, channel):
+    import numpy
+    size = getattr(state, "size", 10 * 1024 * 1024)  # 10M
+    n_iter = getattr(state, "n_iter", 1000)
+    for i in range(n_iter):
+        numpy.save("zeros.npy", numpy.zeros(size, dtype="uint8"))
+        channel.save()
+
+
 def print_state(state, channel):
     print "start of print_state"
     print state
