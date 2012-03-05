@@ -691,7 +691,10 @@ class DBIBqtools(DBIBase):
         self.clean_up = True
         self.micro = 0
         self.nano = 0
-        self.queue = "qwork@ms"
+        if os.getenv("BQMAMMOUTH", False) == "mp2":
+            self.queue = "qwork@mp2"
+        else:
+            self.queue = "qwork@ms"
         self.long = False
         self.duree = "120:00:00"
         self.submit_options = ""
