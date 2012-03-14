@@ -43,7 +43,7 @@ master_doc = 'contents'
 
 # General substitutions.
 project = 'Jobman'
-copyright = '2008--2011, LISA lab'
+copyright = '2008--2012, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.

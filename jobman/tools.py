@@ -160,11 +160,10 @@ def flatten(obj):
     helper(d, '', obj)
     return d
 
-def expand(d):
+
+def expand(d, dict_type=DD):
     """inverse of flatten()"""
-    #def dd():
-        #return DD(dd)
-    struct = DD()
+    struct = dict_type()
     for k, v in d.iteritems():
         if k == '':
             raise NotImplementedError()
@@ -172,8 +171,8 @@ def expand(d):
             keys = k.split('.')
         current = struct
         for k2 in keys[:-1]:
-            current = current.setdefault(k2, DD())
-        current[keys[-1]] = v #convert(v)
+            current = current.setdefault(k2, dict_type())
+        current[keys[-1]] = v  # convert(v)
     return struct
 
 def realize(d):
