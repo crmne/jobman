@@ -1,10 +1,52 @@
 .. _addition_exp_sql:
 
-Use Case: using PostgreSQL
+Use Case: using SQL
 ==========================
 
 This chapter outlines how to use Jobman in conjunction with a PostgreSQL
-database, for storing both hyperparameters and results.
+or SQLite database, for storing both hyperparameters and results.
+
+Note that if you want to share the database with more than one machine
+you must use PostgreSQL.  Do not attempt to share a sqlite database
+over NFS or any other file-sharing system.  To quote the SQLite
+documentation:
+
+  A good rule of thumb is that you should avoid using SQLite in
+  situations where the same database will be accessed simultaneously
+  from many computers over a network filesystem.
+
+URL syntax
+----------
+
+The generic URL syntax is
+
+.. code-block:: console
+
+   driver://[user[:pass]@]host/dbname?table=tablename
+
+where you supply your own ``driver``, ``user``, ``pass``, ``host``,
+``dbname`` and ``tablename``.
+
+More specifically, for PostgreSQL you would use:
+
+.. code-block:: console
+
+   postgres://[user[:pass]@]host/dbname?table=tablename
+
+and for SQLite (for a relative database path):
+
+.. code-block:: console
+
+   sqlite:///path/to/db?table=tablename
+
+or (for an absolute path):
+
+.. code-block:: console
+
+   sqlite:////path/to/db?table=tablename
+
+The rest of this document will use PostgreSQL urls in the examples
+since it is, most of the time, the right choice.
 
 The ``experiment`` function
 ---------------------------

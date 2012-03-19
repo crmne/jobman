@@ -21,7 +21,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`install` -- Installation instructions.
 * :ref:`intro` -- The basics of Jobman.
 * :ref:`cmdline` -- Learn how to use Jobman on the command line.
-* :ref:`addition_exp_sql` -- Become familiar with PostgreSQL queries.
+* :ref:`addition_exp_sql` -- Become familiar with SQL queries.
 * :ref:`mlp_jobman` -- A complete example, from start to end.
 * :ref:`dbarch` -- Quick tour of the database architecture underlying Jobman.
 * :ref:`advanced` -- Advanced topics.
