@@ -14,13 +14,14 @@ except ImportError:
 
 setup(name='Jobman',
       version='hg',
-      description='Facilitate handling of many jobs(especially jobs send on cluster)',
+      description=('Facilitate handling of many jobs'
+                   '(especially jobs send on cluster)'),
       license='3-clause BSD',
       author='LISA laboratory, University of Montreal',
       author_email='theano-user@googlegroups.com',
       url='http://www.deeplearning.net/software/jobman',
       packages=['jobman', 'jobman.examples', 'jobman.analyze', 'jobman.dbi',
                 ],
-      scripts=['bin/jobman','bin/jobdispatch']
+      scripts=['bin/jobman', 'bin/jobdispatch']
 
            )
