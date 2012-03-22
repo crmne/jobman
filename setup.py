@@ -5,8 +5,12 @@
 #   * Add back in installation requirements
 #   * Add download_url
 
-
-from distutils.core import setup
+#To enable "python setup.py develop --prefix=~/.local"
+#We need to import setuptools
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 setup(name='Jobman',
       version='hg',
