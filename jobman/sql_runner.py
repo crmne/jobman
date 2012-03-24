@@ -567,16 +567,7 @@ def runner_sql(options, dbdescr, exproot):
             if options.workdir:
                 workdir = options.workdir
             else:
-                # The behavior of tempfile is bizarre. It will only use environment variables
-                # if tempfile.tempdir is unset. We thus explicitely set it to None when the
-                # user has specified the proper env. variables.
-                tempdir_backup = tempfile.tempdir
-                if os.getenv('TMPDIR') or os.getenv('TEMP') or os.getenv('TMP'):
-                    tempfile.tempdir = None
-                try:
-                    workdir = tempfile.mkdtemp()
-                finally:
-                    tempfile.tempdir = tempdir_backup
+                workdir = tempfile.mkdtemp()
 
             channel = DBRSyncChannel(db,
                                      workdir,
