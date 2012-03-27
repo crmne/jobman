@@ -58,7 +58,7 @@ def parse_args(to_parse, dbi_param, substitute_gpu=False):
             if len(argv)>7:
                 assert(argv[7]=="=")
                 dbi_param["micro"]=argv[8:]
-        elif argv in  ["--force", "--interruptible", "--long", 
+        elif argv in  ["--force", "--interruptible", "--long",
                        "--getenv", "--cwait", "--clean_up" ,"--nice",
                        "--set_special_env", "--abs_path", "--pkdilly", "--to_all",
                        "--m32G", "--keep_failed_jobs_in_queue", "--restart",
@@ -553,7 +553,7 @@ class Task:
             self.log_file = os.path.join(log_dir, self.unique_id) + ".log"
 
         if self.add_unique_id:
-                command = command + ' unique_id=' + self.unique_id
+            command = command + ' unique_id=' + self.unique_id
         #self.before_commands = []
         #self.user_defined_before_commands = []
         #self.user_defined_after_commands = []
