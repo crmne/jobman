@@ -32,7 +32,7 @@ STATUS_INIT = 3
 MAX_FILENAME_SIZE=255
 
 
-def parse_args(to_parse, dbi_param, substitute_gpu=False):
+def parse_args(to_parse, dbi_param):
     command_argv = to_parse[:]
     for argv in to_parse:
         if argv == "--help" or argv == "-h":
