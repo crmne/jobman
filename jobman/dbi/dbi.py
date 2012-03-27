@@ -31,6 +31,110 @@ STATUS_WAITING = 2
 STATUS_INIT = 3
 MAX_FILENAME_SIZE=255
 
+
+def parse_args(to_parse, dbi_param, substitute_gpu=False):
+    command_argv = to_parse[:]
+    for argv in to_parse:
+        if argv == "--help" or argv == "-h":
+            print LongHelp
+            sys.exit(0)
+    #--nodbilog should be allowed due to bug in old version that requested it with _.
+        elif argv == "--no_dbilog" or argv == "--nodbilog":
+            dbi_param["dolog"]=False
+        elif argv == "--dbilog":
+            dbi_param["dolog"]=True
+        elif argv.split('=')[0] in ["--bqtools","--cluster","--local","--condor",
+                                    "--ssh", "--sge", "--sharcnet", "--torque"]:
+            launch_cmd = argv[2].upper()+argv.split('=')[0][3:]
+            if len(argv.split('='))>1:
+                dbi_param["nb_proc"]=argv.split('=')[1]
+            if argv.startswith("--ssh"):
+                dbi_param["file_redirect_stdout"]=False
+                dbi_param["file_redirect_stderr"]=False
+        elif argv in ["--32","--64","--3264"]:
+            dbi_param["arch"]=argv[2:]
+        elif argv.startswith("--micro"):
+            dbi_param["micro"]=20
+            if len(argv)>7:
+                assert(argv[7]=="=")
+                dbi_param["micro"]=argv[8:]
+        elif argv in  ["--force", "--interruptible", "--long", 
+                       "--getenv", "--cwait", "--clean_up" ,"--nice",
+                       "--set_special_env", "--abs_path", "--pkdilly", "--to_all",
+                       "--m32G", "--keep_failed_jobs_in_queue", "--restart",
+                       "--debug", "--local_log_file", "--exec_in_exp_dir", "--fast", "--whitespace",
+                       "--gpu", "--gpu_enabled",
+                   ]:
+            dbi_param[argv[2:]]=True
+        elif argv in ["--no_force", "--no_interruptible", "--no_long",
+                      "--no_getenv", "--no_cwait", "--no_clean_up" , "--no_nice",
+                      "--no_set_special_env", "--no_abs_path", "--no_pkdilly",
+                      "--no_m32G", "--no_keep_failed_jobs_in_queue", "--no_restart",
+                      "--no_debug", "--no_local_log_file", "--no_exec_in_exp_dir",
+                      "--no_fast", "--no_whitespace",
+                      "--no_gpu", "--no_gpu_enabled",
+                      ]:
+            dbi_param[argv[5:]]=False
+        elif argv=="--testdbi":
+            dbi_param["test"]=True
+        elif argv=="--no_testdbi":
+            dbi_param["test"]=False
+        elif argv=="--test":
+            dbi_param[argv[2:]]=True
+            testmode=True
+        elif argv=="--no_test":
+            dbi_param[argv[2:]]=True
+            testmode=False
+        elif argv.split('=')[0] in ["--duree","--cpu","--mem","--os","--nb_proc",
+                                    "--req", "--files", "--raw", "--rank", "--env",
+                                    "--universe", "--exp_dir", "--machine", "--machines",
+                                    "--queue", "--nano", "--submit_options",
+                                    "--jobs_name", "--file", "--tasks_filename",
+                                    "--only_n_first", "--no_machine",
+                                    "--max_file_size", "--next_job_start_delay",
+                                    "--repeat_jobs", "--sort", "--ulimit_vm",
+                                    "--project", "--jobs_per_node",
+                                    "--cores_per_node", "--mem_per_node",
+                                    "--pe"
+                                    ]:
+            sp = argv.split('=',1)
+            param=sp[0][2:]
+            val = sp[1]
+            if param in ["req", "files", "rank"]:
+            #param that we happend to if defined more then one time
+                dbi_param[param]+='&&('+val+')'
+            elif param == "raw":
+                dbi_param[param]+='\n'+val
+            elif param=="env":
+                dbi_param[param] += ' '+val
+            elif param=="file":
+                dbi_param[param].append(val)
+            elif param in ["machine", "machines", "no_machine", "tasks_filename"]:
+                dbi_param[param]+=val.split(",")
+            else:
+            #otherwise we erase the old value
+                dbi_param[param]=val
+        elif argv=="--server" or argv=="--no_server" \
+                or argv=='--prefserver' or argv=="--no_prefserver":
+            if argv.find('prefserver')!=-1:
+                param='rank'
+            else:
+                param='req'
+            if argv.find('no_')==-1:
+                dbi_param[param]+='&&(SERVER=?=True)'
+            else:
+                dbi_param[param]+='&&(SERVER=?=False || SERVER =?= UNDEFINED )'
+        elif argv[0:1] == '-':
+            print "Unknow option (%s)"%argv
+            print ShortHelp
+            sys.exit(1)
+        else:
+            break
+        command_argv.remove(argv)
+    return command_argv
+
+
+
 class DBIError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -272,6 +376,7 @@ class DBIBase:
         self.raw = ''
         self.cpu = 1
         self.mem = "0"
+        self.substitute_gpu = False
 
         for key in args.keys():
             self.__dict__[key] = args[key]
@@ -300,6 +405,15 @@ class DBIBase:
             self.post_tasks = [self.post_tasks]
         if not isinstance(self.post_batch, list):
             self.post_batch = [self.post_batch]
+
+        if self.substitute_gpu and self.gpu:
+            gpu_param = os.getenv("JOBDISPATCH_GPU_PARAM", None)
+            if not gpu_param:
+                raise Exception("This back-end need that the env variable JOBDISPATCH_GPU_PARAM is specified with the param to set to use the GPU.")
+            params = {}
+            parse_args(gpu_param.split(), params)
+            for key in params.keys():
+                self.__dict__[key] = params[key]
 
     def n_avail_machines(self): raise NotImplementedError, "DBIBase.n_avail_machines()"
 
@@ -1219,7 +1333,8 @@ class DBITorque(DBIBase):
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
-        DBIBase.__init__(self, commands, **args)
+        self.gpu = False
+        DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
