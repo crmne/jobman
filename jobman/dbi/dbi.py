@@ -1437,7 +1437,7 @@ class DBITorque(DBIBase):
             submit_sh_template += '''
                 ## Queue name
                 #PBS -q %(queue)s
-                '''
+'''
 
         env = self.env
         if self.set_special_env and self.cpu>0:
@@ -1445,10 +1445,17 @@ class DBITorque(DBIBase):
                 env = ''
             env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
         if env:
+            vs = []
+            # torque don't ALWAYS split variable at "," in #PBS -v
+            # So we can't have "," in variable value.
+            # So we define them outside and tell torque to get the value.
+            for v in env.split():
+                submit_sh_template += 'export %s\n' % v
+                vs.append(v.split('=', 1)[0])
             submit_sh_template += '''
                 ## Variable to put into the environment
                 #PBS -v %s
-                '''%(','.join(env.split()))
+                '''%(','.join(vs))
 
         if self.raw:
             submit_sh_template += '''%s
