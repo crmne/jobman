@@ -1528,10 +1528,8 @@ class DBISharcnet(DBIBase):
         self.jobs_name = ''
         self.queue = ''
         self.duree = '7d'
-
-        #TODO:
-        # self.env
-        # self.set_special_env
+        self.env = ''
+        self.set_special_env = True
 
         DBIBase.__init__(self, commands, **args)
 
@@ -1577,6 +1575,17 @@ class DBISharcnet(DBIBase):
         filename = os.path.join(self.tmp_dir, task.unique_id)
         filename = os.path.abspath(filename)
         f = open(filename, 'w')
+
+        env = self.env
+        if self.set_special_env and self.cpu>0:
+            if not env:
+                env = ''
+            env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(
+                self.cpu, self.cpu, self.cpu)
+        if env:
+            for v in env.split():
+                f.write('export %s\n' % v)
+
         f.write(remote_command)
         f.write('\n')
         f.close()
