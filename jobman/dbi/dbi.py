@@ -1542,7 +1542,6 @@ class DBISharcnet(DBIBase):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         print "[DBI] All temporary files will be in ", self.tmp_dir
-        os.chdir(self.tmp_dir)
 
         args['tmp_dir'] = self.tmp_dir
         self.args = args
