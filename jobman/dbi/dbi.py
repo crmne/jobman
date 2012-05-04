@@ -1609,7 +1609,7 @@ class DBISharcnet(DBIBase):
             # TODO: support several GPUs per job?
             # For this make --gpu=N as --nb_proc=N
             if self.queue:
-                assert self.queue == 'gpu'
+                assert self.queue == 'gpu' or self.queue.startswith("NRAP")
             else:
                 command += ' -q gpu'
             command += ' --gpp=1'
