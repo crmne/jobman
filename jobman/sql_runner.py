@@ -222,9 +222,16 @@ class DBRSyncChannel(RSyncChannel):
 
         self.state.jobman.sql.host_name = socket.gethostname()
 
+        def state_del(state, keys):
+            # Delete from the state the following key if present
+            for key in keys:
+                if hasattr(state, key):
+                    del state[key]
+
         #put jobs scheduler info into the state
         condor_slot = os.getenv("_CONDOR_SLOT")
         sge_task_id = os.getenv('SGE_TASK_ID')
+        pbs_task_id = os.getenv('PBS_JOBID')
         if condor_slot:
             self.state.jobman.sql.condor_slot = condor_slot
             job_ad_file = os.getenv("_CONDOR_JOB_AD", None)
@@ -242,13 +249,17 @@ class DBRSyncChannel(RSyncChannel):
                             self.state.jobman.sql.condor_origiwd = line.split('=')[1].strip()[1:-1]
                 finally:
                     f.close()
-            if hasattr(self.state, 'jobman.sql.sge_task_id'):
-                del sef.state['jobman.sql.sge_task_id']
         elif sge_task_id:
             self.state.jobman.sql.sge_task_id = sge_task_id
             self.state.jobman.sql.job_id = os.getenv('JOB_ID')
             self.state.jobman.sql.sge_stdout = os.getenv('SGE_STDOUT_PATH')
             self.state.jobman.sql.sge_stderr = os.getenv('SGE_STDERR_PATH')
+        elif pbs_task_id:
+            self.state.jobman.sql.pbs_task_id = pbs_task_id
+            self.state.jobman.sql.pbs_queue = os.getenv('PBS_QUEUE')
+            self.state.jobman.sql.pbs_arrayid = os.getenv('PBS_ARRAYID')
+            self.state.jobman.sql.pbs_num_ppn = os.getenv('PBS_NUM_PPN')
+
         #delete old jobs scheduler info into the state
         #this is needed in case we move a job to a different system.
         #to know where it is running now.
@@ -264,6 +275,11 @@ class DBRSyncChannel(RSyncChannel):
                                'jobman.sql.job_id',
                                'jobman.sql.sge_stdout',
                                'self.state.jobman.sql.sge_stderr'])
+        if not pbs_task_id:
+            key_to_del.extend(['jobman.sql.pbs_task_id',
+                               'jobman.sql.pbs_queue',
+                               'jobman.sql.pbs_arrayid',
+                               'jobman.sql.pbs_num_ppn'])
 
         flattened_state = flatten(self.state)
         deleted = False
