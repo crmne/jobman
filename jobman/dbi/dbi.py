@@ -5,31 +5,33 @@ import re
 import shutil
 import string
 import subprocess
-from subprocess import Popen,PIPE,STDOUT
+from subprocess import Popen, PIPE, STDOUT
 import sys
 from textwrap import dedent
-from threading import Lock,Thread
+from threading import Lock, Thread
 import time
 from time import sleep
 import traceback
 
-from utils import get_condor_platform, get_config_value, get_jobmandir, get_new_sid, set_config_value, truncate
+from utils import (get_condor_platform, get_config_value, get_jobmandir,
+                   get_new_sid, set_config_value, truncate)
 
 try:
     from random import shuffle
 except ImportError:
     import whrandom
+
     def shuffle(list):
         l = len(list)
-        for i in range(0,l-1):
-            j = whrandom.randint(i+1,l-1)
+        for i in range(0, l - 1):
+            j = whrandom.randint(i + 1, l - 1)
             list[i], list[j] = list[j], list[i]
 
 STATUS_FINISHED = 0
 STATUS_RUNNING = 1
 STATUS_WAITING = 2
 STATUS_INIT = 3
-MAX_FILENAME_SIZE=255
+MAX_FILENAME_SIZE = 255
 
 ScriptName = "launchjob.py"
 ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file=FILEPATH | <command-template>|--[*no_]restart condor_jobs_number... }
@@ -366,7 +368,7 @@ quotes around the {{}} as they are for the shell and if the command is
 in the file, it is not interpreted by the shell.
 
 
-"""%{'ShortHelp':ShortHelp,'ScriptName':ScriptName}
+""" % {'ShortHelp': ShortHelp, 'ScriptName': ScriptName}
 
 
 def parse_args(to_parse, dbi_param):
@@ -375,94 +377,108 @@ def parse_args(to_parse, dbi_param):
         if argv == "--help" or argv == "-h":
             print LongHelp
             sys.exit(0)
-    #--nodbilog should be allowed due to bug in old version that requested it with _.
+    #--nodbilog should be allowed due to bug in old version that
+    #  --requested it with _.
         elif argv == "--no_dbilog" or argv == "--nodbilog":
-            dbi_param["dolog"]=False
+            dbi_param["dolog"] = False
         elif argv == "--dbilog":
-            dbi_param["dolog"]=True
-        elif argv.split('=')[0] in ["--bqtools","--cluster","--local","--condor",
-                                    "--ssh", "--sge", "--sharcnet", "--torque"]:
-            dbi_param['launch_cmd'] = argv[2].upper()+argv.split('=')[0][3:]
-            if len(argv.split('='))>1:
-                dbi_param["nb_proc"]=argv.split('=')[1]
+            dbi_param["dolog"] = True
+        elif argv.split('=')[0] in ["--bqtools", "--cluster",
+                                    "--local", "--condor",
+                                    "--ssh", "--sge",
+                                    "--sharcnet", "--torque"]:
+            dbi_param['launch_cmd'] = argv[2].upper() + argv.split('=')[0][3:]
+            if len(argv.split('=')) > 1:
+                dbi_param["nb_proc"] = argv.split('=')[1]
             if argv.startswith("--ssh"):
-                dbi_param["file_redirect_stdout"]=False
-                dbi_param["file_redirect_stderr"]=False
-        elif argv in ["--32","--64","--3264"]:
-            dbi_param["arch"]=argv[2:]
+                dbi_param["file_redirect_stdout"] = False
+                dbi_param["file_redirect_stderr"] = False
+        elif argv in ["--32", "--64", "--3264"]:
+            dbi_param["arch"] = argv[2:]
         elif argv.startswith("--micro"):
-            dbi_param["micro"]=20
-            if len(argv)>7:
-                assert(argv[7]=="=")
-                dbi_param["micro"]=argv[8:]
+            dbi_param["micro"] = 20
+            if len(argv) > 7:
+                assert(argv[7] == "=")
+                dbi_param["micro"] = argv[8:]
         elif argv in  ["--force", "--interruptible", "--long",
-                       "--getenv", "--cwait", "--clean_up" ,"--nice",
-                       "--set_special_env", "--abs_path", "--pkdilly", "--to_all",
+                       "--getenv", "--cwait", "--clean_up", "--nice",
+                       "--set_special_env", "--abs_path",
+                       "--pkdilly", "--to_all",
                        "--m32G", "--keep_failed_jobs_in_queue", "--restart",
-                       "--debug", "--local_log_file", "--exec_in_exp_dir", "--fast", "--whitespace",
+                       "--debug", "--local_log_file",
+                       "--exec_in_exp_dir", "--fast", "--whitespace",
                        "--gpu", "--gpu_enabled",
                    ]:
-            dbi_param[argv[2:]]=True
+            dbi_param[argv[2:]] = True
         elif argv in ["--no_force", "--no_interruptible", "--no_long",
-                      "--no_getenv", "--no_cwait", "--no_clean_up" , "--no_nice",
+                      "--no_getenv", "--no_cwait",
+                      "--no_clean_up", "--no_nice",
                       "--no_set_special_env", "--no_abs_path", "--no_pkdilly",
-                      "--no_m32G", "--no_keep_failed_jobs_in_queue", "--no_restart",
-                      "--no_debug", "--no_local_log_file", "--no_exec_in_exp_dir",
+                      "--no_m32G", "--no_keep_failed_jobs_in_queue",
+                      "--no_restart",
+                      "--no_debug", "--no_local_log_file",
+                      "--no_exec_in_exp_dir",
                       "--no_fast", "--no_whitespace",
                       "--no_gpu", "--no_gpu_enabled",
                       ]:
-            dbi_param[argv[5:]]=False
-        elif argv=="--testdbi":
-            dbi_param["test"]=True
-        elif argv=="--no_testdbi":
-            dbi_param["test"]=False
-        elif argv=="--test":
-            dbi_param[argv[2:]]=True
-            testmode=True
-        elif argv=="--no_test":
-            dbi_param[argv[2:]]=True
-            testmode=False
-        elif argv.split('=')[0] in ["--duree","--cpu","--mem","--os","--nb_proc",
-                                    "--req", "--files", "--raw", "--rank", "--env",
-                                    "--universe", "--exp_dir", "--machine", "--machines",
+            dbi_param[argv[5:]] = False
+        elif argv == "--testdbi":
+            dbi_param["test"] = True
+        elif argv == "--no_testdbi":
+            dbi_param["test"] = False
+        elif argv == "--test":
+            dbi_param[argv[2:]] = True
+            testmode = True
+        elif argv == "--no_test":
+            dbi_param[argv[2:]] = True
+            testmode = False
+        elif argv.split('=')[0] in ["--duree", "--cpu", "--mem",
+                                    "--os", "--nb_proc",
+                                    "--req", "--files",
+                                    "--raw", "--rank", "--env",
+                                    "--universe", "--exp_dir",
+                                    "--machine", "--machines",
                                     "--queue", "--nano", "--submit_options",
-                                    "--jobs_name", "--file", "--tasks_filename",
+                                    "--jobs_name", "--file",
+                                    "--tasks_filename",
                                     "--only_n_first", "--no_machine",
-                                    "--max_file_size", "--next_job_start_delay",
+                                    "--max_file_size",
+                                    "--next_job_start_delay",
                                     "--repeat_jobs", "--sort", "--ulimit_vm",
                                     "--project", "--jobs_per_node",
                                     "--cores_per_node", "--mem_per_node",
                                     "--pe"
                                     ]:
-            sp = argv.split('=',1)
-            param=sp[0][2:]
+            sp = argv.split('=', 1)
+            param = sp[0][2:]
             val = sp[1]
             if param in ["req", "files", "rank"]:
             #param that we happend to if defined more then one time
-                dbi_param[param]+='&&('+val+')'
+                dbi_param[param] += '&&(' + val + ')'
             elif param == "raw":
-                dbi_param[param]+='\n'+val
-            elif param=="env":
-                dbi_param[param] += ' '+val
-            elif param=="file":
+                dbi_param[param] += '\n' + val
+            elif param == "env":
+                dbi_param[param] += ' ' + val
+            elif param == "file":
                 dbi_param[param].append(val)
-            elif param in ["machine", "machines", "no_machine", "tasks_filename"]:
-                dbi_param[param]+=val.split(",")
+            elif param in ["machine", "machines", "no_machine",
+                           "tasks_filename"]:
+                dbi_param[param] += val.split(",")
             else:
             #otherwise we erase the old value
-                dbi_param[param]=val
-        elif argv=="--server" or argv=="--no_server" \
-                or argv=='--prefserver' or argv=="--no_prefserver":
-            if argv.find('prefserver')!=-1:
-                param='rank'
+                dbi_param[param] = val
+        elif argv == "--server" or argv == "--no_server" \
+                or argv == '--prefserver' or argv == "--no_prefserver":
+            if argv.find('prefserver') != -1:
+                param = 'rank'
             else:
-                param='req'
-            if argv.find('no_')==-1:
-                dbi_param[param]+='&&(SERVER=?=True)'
+                param = 'req'
+            if argv.find('no_') == -1:
+                dbi_param[param] += '&&(SERVER=?=True)'
             else:
-                dbi_param[param]+='&&(SERVER=?=False || SERVER =?= UNDEFINED )'
+                dbi_param[param] += '&&(SERVER=?=False || SERVER =?= UNDEFINED )'
         elif argv[0:1] == '-':
-            print "Unknow option (%s)"%argv
+            print "Unknow option (%s)" % argv
             print ShortHelp
             sys.exit(1)
         else:
@@ -471,18 +487,18 @@ def parse_args(to_parse, dbi_param):
     return command_argv
 
 
-
 class DBIError(Exception):
     """Base class for exceptions in this module."""
     pass
 
+
 #original version from: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/196618
 class LockedIterator:
-    def __init__( self, iterator ):
-        self._lock     = Lock()
+    def __init__(self, iterator):
+        self._lock = Lock()
         self._iterator = iterator
 
-    def __iter__( self ):
+    def __iter__(self):
         return self
 
     def get(self):
@@ -492,48 +508,49 @@ class LockedIterator:
         finally:
             self._lock.release()
 
-    def nb_left( self ):
+    def nb_left(self):
         try:
             self._lock.acquire()
             return self._iterator.__length_hint__()
         finally:
             self._lock.release()
 
-    def next( self ):
+    def next(self):
         try:
             self._lock.acquire()
             return self._iterator.next()
         finally:
             self._lock.release()
 
-class LockedListIter:
-    def __init__( self, list ):
-        self._lock     = Lock()
-        self._list     = list
-        self._last     = -1
 
-    def __iter__( self ):
+class LockedListIter:
+    def __init__(self, list):
+        self._lock = Lock()
+        self._list = list
+        self._last = -1
+
+    def __iter__(self):
         return self
 
     def next(self):
         try:
             self._lock.acquire()
-            self._last+=1
-            if len(self._list)>self._last:
+            self._last += 1
+            if len(self._list) > self._last:
                 return
             else:
                 return self._list[self._last]
         finally:
             self._lock.release()
 
-    def nb_left( self ):
+    def nb_left(self):
         try:
             self._lock.acquire()
             return len(self._list) - self._last - 1
         finally:
             self._lock.release()
 
-    def append( self, a ):
+    def append(self, a):
         try:
             self._lock.acquire()
             list.append(a)
@@ -541,40 +558,42 @@ class LockedListIter:
             self._lock.release()
 
 
-#original version from: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/196618
+#original from: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/196618
 class MultiThread:
-    def __init__( self, function, argsVector, maxThreads=5, print_when_finished=None, sleep_time = 0):
-        self._function     = function
-        self._argsIterator = LockedIterator( iter( argsVector ) )
-        self._threadPool   = []
+    def __init__(self, function, argsVector, maxThreads=5,
+                 print_when_finished=None, sleep_time=0):
+        self._function = function
+        self._argsIterator = LockedIterator(iter(argsVector))
+        self._threadPool = []
         self.maxThreads_file = None
         self.print_when_finish = print_when_finished
         self.running = 0
         self.init_len_list = len(argsVector)
         self.sleep_time = sleep_time
 
-        if maxThreads==-1:
-            nb_thread=len(argsVector)
-        elif isinstance(maxThreads,str):
+        if maxThreads == -1:
+            nb_thread = len(argsVector)
+        elif isinstance(maxThreads, str):
             self.maxThreads_file = maxThreads
-            nb_thread = 0#Thread will be created when self.start() is called.
-        elif maxThreads<=0:
-            raise DBIError("[DBI] ERROR: you set %d concurrent jobs. Must be higher then 0!!"%(maxThreads))
+            nb_thread = 0  # Thread will be created when self.start() is called
+        elif maxThreads <= 0:
+            raise DBIError("[DBI] ERROR: you set %d concurrent jobs."
+                           " Must be higher then 0!!" % (maxThreads))
         else:
-            nb_thread=maxThreads
+            nb_thread = maxThreads
         self._lock_threadPool = Lock()
-        if nb_thread>len(argsVector):
-            nb_thread=len(argsVector)
+        if nb_thread > len(argsVector):
+            nb_thread = len(argsVector)
 
         self.update_nb_thread(nb_thread, False)
 
-    def parse_maxThreads_file( self ):
+    def parse_maxThreads_file(self):
         """ return the number of Thread to use give in a file
         """
-        f = open( self.maxThreads_file )
+        f = open(self.maxThreads_file)
         nb_thread = f.readlines()
         f.close()
-        return int( nb_thread[0] )
+        return int(nb_thread[0])
 
     def update_nb_thread(self, nb_thread, by_running_threads):
         """ Update the thread pool to the good number of thread
@@ -589,25 +608,24 @@ class MultiThread:
         try:
             self._lock_threadPool.acquire()
             left = self._argsIterator.nb_left()
-            if nb_thread==-1:
-                if left<=0:
+            if nb_thread == -1:
+                if left <= 0:
                     return False
                 else:
-                    nb_thread = len( self._threadPool ) + left
+                    nb_thread = len(self._threadPool) + left
                     if by_running_threads:
                     #-1 as we reuse the current thread
-                        nb_thread-=1
+                        nb_thread -= 1
 
-            elif nb_thread > (len( self._threadPool )+ left):
+            elif nb_thread > (len(self._threadPool) + left):
                 #we don't generate more new thread then the nuber of jobs left
-                nb_thread = len( self._threadPool ) + left
+                nb_thread = len(self._threadPool) + left
                 if by_running_threads:
                     #-1 as we reuse the current thread
-                    nb_thread-=1
+                    nb_thread -= 1
 
-
-            if nb_thread != len( self._threadPool ):
-                if nb_thread < len( self._threadPool ):
+            if nb_thread != len(self._threadPool):
+                if nb_thread < len(self._threadPool):
                     if by_running_threads:
                         #I don't remove the thread from the pool as this
                         #seam to end a thread too early.
@@ -621,49 +639,52 @@ class MultiThread:
                         self._threadPool = self._threadPool[:nb_thread]
                     return False
                 else:
-                    for i in range( nb_thread - len( self._threadPool ) ):
-                        self._threadPool.append( Thread( target=self._tailRecurse ) )
+                    for i in range(nb_thread - len(self._threadPool)):
+                        self._threadPool.append(Thread(
+                            target=self._tailRecurse))
                         if by_running_threads:
-                            time.sleep( self.sleep_time )
-                            self.running+=1
+                            time.sleep(self.sleep_time)
+                            self.running += 1
                             self._threadPool[-1].start()
             return True
         finally:
             self._lock_threadPool.release()
 
-
-    def _tailRecurse( self ):
+    def _tailRecurse(self):
         for args in self._argsIterator:
-            self._function( args )
+            self._function(args)
             if self.maxThreads_file:
                 ret = self.update_nb_thread(self.parse_maxThreads_file(), True)
                 if not ret:
                     break
-        self.running-=1
+        self.running -= 1
         if self.print_when_finish:
             if callable(self.print_when_finish):
-                print self.print_when_finish(),"left running: %d/%d"%(self.running,self.init_len_list)
+                print self.print_when_finish(), "left running: %d/%d" % (
+                    self.running, self.init_len_list)
             else:
-                print self.print_when_finish,"left running: %d/%d"%(self.running,self.init_len_list)
+                print self.print_when_finish, "left running: %d/%d" % (
+                    self.running, self.init_len_list)
 
-    def start( self  ):
+    def start(self):
         if self.maxThreads_file:
         #update the number of thread
             self.update_nb_thread(self.parse_maxThreads_file(), False)
 
         for thread in self._threadPool:
             # necessary to give other threads a chance to run
-            time.sleep( self.sleep_time )
-            self.running+=1
+            time.sleep(self.sleep_time)
+            self.running += 1
             thread.start()
 
-    def join( self, timeout=None ):
+    def join(self, timeout=None):
         for thread in self._threadPool:
-            thread.join( timeout )
+            thread.join(timeout)
+
 
 class DBIBase:
 
-    def __init__(self, commands, **args ):
+    def __init__(self, commands, **args):
         #generate a new unique id
         self.unique_id = get_new_sid('')
 
@@ -673,10 +694,11 @@ class DBIBase:
         # if all machines are full, run the jobs one by one on the localhost
         self_use_localhost_if_full = 1
 
-        # the( human readable) time format used in log file
+        # the(human readable) time format used in log file
         self.time_format = "%Y-%m-%d/%H:%M:%S"
 
-        # Commands to be executed once before the entire batch on the submit node
+        # Commands to be executed once before the entire batch on the
+        # submit node
         self.pre_batch = []
         # Commands to be executed before every task in tasks
         self.pre_tasks = []
@@ -684,12 +706,13 @@ class DBIBase:
         self.tasks = []
         # Commands to be executed after each task in tasks
         self.post_tasks = []
-        # Commands to be executed once after the entire batch on the submit node
+        # Commands to be executed once after the entire batch on the
+        # submit node
         self.post_batch = []
 
         # the default directory where to keep all the log files
-        self.log_dir = os.path.join( 'LOGS', self.unique_id )
-        self.log_file = os.path.join( self.log_dir, 'log' )
+        self.log_dir = os.path.join('LOGS', self.unique_id)
+        self.log_file = os.path.join(self.log_dir, 'log')
 
         # the default directory where file generated by dbi will be stored
         # It should not take the "" or " " value. Use "." instead.
@@ -791,7 +814,7 @@ class DBIBase:
     def exec_pre_batch(self):
         # Execute pre-batch
         if len(self.pre_batch)>0:
-            pre_batch_command = ';'.join( self.pre_batch )
+            pre_batch_command = ';'.join(self.pre_batch)
             if not self.test:
                 (output,error)=self.get_redirection(self.log_file + '.out',self.log_file + '.err')
                 self.pre = Popen(pre_batch_command, shell=True, stdout=output, stderr=error)
@@ -801,7 +824,7 @@ class DBIBase:
     def exec_post_batch(self):
         # Execute post-batch
         if len(self.post_batch)>0:
-            post_batch_command = ';'.join( self.post_batch )
+            post_batch_command = ';'.join(self.post_batch)
             if not self.test:
                 (output,error)=self.get_redirection(self.log_file + '.out',self.log_file + '.err')
                 self.post = Popen(post_batch_command, shell=True, stdout=output, stderr=error)
@@ -881,10 +904,10 @@ class Task:
             self.__dict__[key] = args[key]
         self.dolog = dolog
 
-        formatted_command = re.sub( '[^a-zA-Z0-9]', '_', command );
+        formatted_command = re.sub('[^a-zA-Z0-9]', '_', command);
         if gen_unique_id:
             self.unique_id = get_new_sid('')#compation intense
-            self.log_file = truncate( os.path.join(log_dir, self.unique_id +'_'+ formatted_command), 200) + ".log"
+            self.log_file = truncate(os.path.join(log_dir, self.unique_id +'_'+ formatted_command), 200) + ".log"
         else:
             self.unique_id = formatted_command[:200]+'_'+str(datetime.datetime.now()).replace(' ','_').replace(':','-')
             self.log_file = os.path.join(log_dir, self.unique_id) + ".log"
@@ -898,7 +921,7 @@ class Task:
 
         self.commands = []
         if len(pre_tasks) > 0:
-            self.commands.extend( pre_tasks )
+            self.commands.extend(pre_tasks)
 
         if self.dolog == True:
             self.commands.append(utils_file + ' set_config_value '+
@@ -908,8 +931,8 @@ class Task:
                 string.join([self.log_file,'LAUNCH_TIME',time_format],' '))
 
 
-        self.commands.append( command )
-        self.commands.extend( post_tasks )
+        self.commands.append(command)
+        self.commands.extend(post_tasks)
         if self.dolog == True:
             self.commands.append(utils_file + ' set_config_value '+
                 string.join([self.log_file,'STATUS',str(STATUS_FINISHED)],' '))
@@ -979,7 +1002,7 @@ class Task:
 
 class DBICluster(DBIBase):
 
-    def __init__(self, commands, **args ):
+    def __init__(self, commands, **args):
         self.duree=None
         self.arch=None
         self.cwait=True
@@ -1137,7 +1160,7 @@ class DBICluster(DBIBase):
 
 class DBIBqtools(DBIBase):
 
-    def __init__( self, commands, **args ):
+    def __init__(self, commands, **args):
         self.nb_proc = -1
         self.clean_up = True
         self.micro = 0
@@ -1202,17 +1225,17 @@ class DBIBqtools(DBIBase):
 
     def run(self):
 
-        pre_batch_command = ';'.join( self.pre_batch );
-        post_batch_command = ';'.join( self.post_batch );
+        pre_batch_command = ';'.join(self.pre_batch);
+        post_batch_command = ';'.join(self.post_batch);
 
         # create one (sh) script that will launch the appropriate ~~command~~
         # in the right environment
 
 
-        launcher = open( 'launcher', 'w' )
-        bq_cluster_home = os.getenv( 'BQ_CLUSTER_HOME', '$HOME' )
-        bq_shell_cmd = os.getenv( 'BQ_SHELL_CMD', '/bin/sh -c' )
-        launcher.write( dedent('''\
+        launcher = open('launcher', 'w')
+        bq_cluster_home = os.getenv('BQ_CLUSTER_HOME', '$HOME')
+        bq_shell_cmd = os.getenv('BQ_SHELL_CMD', '/bin/sh -c')
+        launcher.write(dedent('''\
                 #!/bin/sh
 
                 HOME=%s
@@ -1222,25 +1245,25 @@ class DBIBqtools(DBIBase):
                 cd ../../../../
                 (%s '~~task~~')'''
                 % (bq_cluster_home, self.env, bq_shell_cmd)
-                ) )
+               ))
 
         if int(self.file_redirect_stdout):
-            launcher.write( ' >> ~~logfile~~.out' )
+            launcher.write(' >> ~~logfile~~.out')
         if int(self.file_redirect_stderr):
-            launcher.write( ' 2>> ~~logfile~~.err' )
+            launcher.write(' 2>> ~~logfile~~.err')
         launcher.close()
 
         # create a file containing the list of commands, one per line
         # and another one containing the log_file name associated
-        tasks_file = open( 'tasks', 'w' )
-        logfiles_file = open( 'logfiles', 'w' )
+        tasks_file = open('tasks', 'w')
+        logfiles_file = open('logfiles', 'w')
         assert len(self.stdouts)==len(self.stderrs)==0
         for task in self.tasks:
             #-4 as we will append .err or .out.
             base=self.get_file_redirection(task.id)[0][:-4]
             self.check_path(base)
-            tasks_file.write( ';'.join(task.commands) + '\n' )
-            logfiles_file.write( base + '\n' )
+            tasks_file.write(';'.join(task.commands) + '\n')
+            logfiles_file.write(base + '\n')
 
         tasks_file.close()
         logfiles_file.close()
@@ -1267,8 +1290,8 @@ class DBIBqtools(DBIBase):
             batchName = "dbi_"+self.unique_id[1:12]
 
         # Create the bqsubmit.dat, with
-        bqsubmit_dat = open( 'bqsubmit.dat', 'w' )
-        bqsubmit_dat.write( dedent('''\
+        bqsubmit_dat = open('bqsubmit.dat', 'w')
+        bqsubmit_dat.write(dedent('''\
                 batchName = %s
                 command = sh launcher
                 templateFiles = launcher
@@ -1302,7 +1325,7 @@ class DBIBqtools(DBIBase):
         if not self.test:
             for t in self.tasks:
                 t.set_scheduled_time()
-            self.p = Popen( 'bqsubmit', shell=True)
+            self.p = Popen('bqsubmit', shell=True)
             self.p.wait()
 
             if self.p.returncode!=0:
@@ -1511,8 +1534,8 @@ class DBISge(DBIBase):
         else:
             self.create_separate_jobs_submit_files()
 
-        pre_batch_command = ';'.join( self.pre_batch )
-        post_batch_command = ';'.join( self.post_batch )
+        pre_batch_command = ';'.join(self.pre_batch)
+        post_batch_command = ';'.join(self.post_batch)
         #TODO exec pre and post batch command
         if not self.project:
             raise Exception("Sge need a project number. Specify it with the"
@@ -1727,8 +1750,8 @@ class DBITorque(DBIBase):
 
         self.create_separate_jobs_submit_files()
 
-        pre_batch_command = ';'.join( self.pre_batch )
-        post_batch_command = ';'.join( self.post_batch )
+        pre_batch_command = ';'.join(self.pre_batch)
+        post_batch_command = ';'.join(self.post_batch)
         #TODO exec pre and post batch command
 
         submit_sh_template = '''\
@@ -2010,7 +2033,7 @@ def condor_dag_escape_argument(argstring):
 
 class DBICondor(DBIBase):
 
-    def __init__( self, commands, **args ):
+    def __init__(self, commands, **args):
         self.getenv = False
         self.nice = False
         # in Meg for initialization for consistency with cluster
@@ -2069,7 +2092,7 @@ class DBICondor(DBIBase):
 
         if not self.os:
             #if their is not required os, condor launch on the same os.
-            p=Popen( "condor_config_val OpSyS", shell=True, stdout=PIPE, stderr=PIPE)
+            p=Popen("condor_config_val OpSyS", shell=True, stdout=PIPE, stderr=PIPE)
             p.wait()
             out=p.stdout.readlines()
             err=p.stderr.readlines()
@@ -2203,7 +2226,7 @@ class DBICondor(DBIBase):
 #ssh HOSTNAME pkdilly +P
 
         cmd="pkdilly -S "+self.condor_submit_file
-        self.p = Popen( cmd, shell=True, stdout=PIPE, stderr=PIPE)
+        self.p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
         self.p.wait()
         l = self.p.stdout.readline()
         if l!="":
@@ -2225,7 +2248,7 @@ class DBICondor(DBIBase):
         if not pkdilly_file:
             raise DBIError("[DBI] ERROR: pkdilly didn't returned a good string")
 
-        pkdilly_fd = open( pkdilly_file, 'r' )
+        pkdilly_fd = open(pkdilly_file, 'r')
         lines = pkdilly_fd.readlines()
         pkdilly_fd.close()
         if self.clean_up:
@@ -2279,7 +2302,7 @@ class DBICondor(DBIBase):
                 out.close()
                 sys.exit()
             while True:
-                p = Popen( cmd, shell=True, stdout=out, stderr=STDOUT)
+                p = Popen(cmd, shell=True, stdout=out, stderr=STDOUT)
                 ret = p.wait()
                 assert ret==p.returncode
                 out.write(line_header()+"condor_wait return code "+
@@ -2368,7 +2391,7 @@ class DBICondor(DBIBase):
         if self.copy_local_source_file:
             source_file_dest = os.path.join(self.log_dir,
                                             os.path.basename(self.source_file))
-            shutil.copy( self.source_file, source_file_dest)
+            shutil.copy(self.source_file, source_file_dest)
             self.temp_files.append(source_file_dest)
             os.chmod(source_file_dest, 0755)
             self.source_file=source_file_dest
@@ -2470,14 +2493,14 @@ class DBICondor(DBIBase):
     def print_common_condor_submit(self, fd, output, error, arguments=None):
         #check that their is some host with those requirement
         cmd="""condor_status -const '%s' -tot |wc"""%self.req
-        p=Popen( cmd, shell=True,stdout=PIPE)
+        p=Popen(cmd, shell=True,stdout=PIPE)
         p.wait()
         lines=p.stdout.readlines()
         if p.returncode != 0 or lines==['      1       0       1\n']:
             raise DBIError("Their is no compute node with those requirement: %s."%self.req)
 
 
-        fd.write( dedent('''\
+        fd.write(dedent('''\
                 executable     = %s
                 universe       = %s
                 requirements   = %s
@@ -2501,7 +2524,7 @@ class DBICondor(DBIBase):
             fd.write('ImageSize      = %d\n'%(self.imagesize))#need to be in k.
 
         if self.files: #ON_EXIT_OR_EVICT
-            fd.write( dedent('''\
+            fd.write(dedent('''\
                 when_to_transfer_output = ON_EXIT
                 should_transfer_files   = Yes
                 transfer_input_files    = %s
@@ -2509,9 +2532,9 @@ class DBICondor(DBIBase):
         if self.env:
             fd.write('environment    = "'+self.env+'"\n')
         if self.raw:
-            fd.write( self.raw+'\n')
+            fd.write(self.raw+'\n')
         if self.rank:
-            fd.write( dedent('''\
+            fd.write(dedent('''\
                 rank = %s
                 ''' %(self.rank)))
 
@@ -2536,7 +2559,7 @@ class DBICondor(DBIBase):
         if self.to_all:
             raise DBIError("[DBI] ERROR: condor backend don't support the option --to_all and a maximum number of process")
 
-        condor_submit_fd = open( self.condor_submit_file, 'w' )
+        condor_submit_fd = open(self.condor_submit_file, 'w')
 
         self.print_common_condor_submit(condor_submit_fd, "$(stdout)", "$(stderr)","$(args)")
 
@@ -2544,7 +2567,7 @@ class DBICondor(DBIBase):
         condor_submit_fd.close()
 
         condor_dag_file = self.condor_submit_file+".dag"
-        condor_dag_fd = open( condor_dag_file, 'w' )
+        condor_dag_fd = open(condor_dag_file, 'w')
 
         def print_task(id, task, stdout_file, stderr_file):
             argstring =condor_dag_escape_argument(' ; '.join(task.commands))
@@ -2580,13 +2603,13 @@ class DBICondor(DBIBase):
                 self.temp_files.append(condor_data)
                 param_dat = open(condor_data, 'w')
 
-                param_dat.write( dedent('''\
+                param_dat.write(dedent('''\
                 #!/bin/bash
                 %s''' %('\n'.join(task.commands))))
                 param_dat.close()
 
 
-        condor_submit_fd = open( self.condor_submit_file, 'w' )
+        condor_submit_fd = open(self.condor_submit_file, 'w')
 
         #DIFFER IN DAG VERSION
         #self.print_common_condor_submit(condor_submit_fd, "$(stdout)", "$(stderr)","$(args)")
@@ -2739,14 +2762,14 @@ class DBICondor(DBIBase):
         #why are they needed?
         utils_file = os.path.join(self.tmp_dir, 'utils.py')
         if not os.path.exists(utils_file):
-            shutil.copy( os.path.join(get_jobmandir(),"dbi","utils.py"),
+            shutil.copy(os.path.join(get_jobmandir(),"dbi","utils.py"),
                          utils_file)
             self.temp_files.append(utils_file)
             os.chmod(utils_file, 0755)
 
         configobj_file = os.path.join(self.tmp_dir, 'configobj.py')
         if not os.path.exists('configobj.py'):
-            shutil.copy( os.path.join(get_jobmandir(),"dbi","configobj.py"),
+            shutil.copy(os.path.join(get_jobmandir(),"dbi","configobj.py"),
                          configobj_file)
             self.temp_files.append(configobj_file)
             os.chmod(configobj_file, 0755)
@@ -2757,7 +2780,7 @@ class DBICondor(DBIBase):
             print "[DBI] Executing: " + cmd
             for task in self.tasks:
                 task.set_scheduled_time()
-            self.p = Popen( cmd, shell=True)
+            self.p = Popen(cmd, shell=True)
             self.p.wait()
             if self.p.returncode != 0:
                 print "[DBI] submission failed! We can't stard the jobs (Hint: Check if their is a condor_schedd deamon running on the computer(ps -elf|grep condor_schedd) if not, you can't submit from this computer)"
@@ -2783,7 +2806,7 @@ class DBICondor(DBIBase):
 
 class DBILocal(DBIBase):
 
-    def __init__( self, commands, **args ):
+    def __init__(self, commands, **args):
         self.nb_proc=1
         DBIBase.__init__(self, commands, **args)
         self.args=args
@@ -3031,7 +3054,7 @@ def cmp_ssh_hosts(h1, h2):
 
 class DBISsh(DBIBase):
 
-    def __init__(self, commands, **args ):
+    def __init__(self, commands, **args):
         print "[DBI] WARNING: The SSH DBI is not fully implemented!"
         print "[DBI] Use at your own risk!"
         self.nb_proc=1
