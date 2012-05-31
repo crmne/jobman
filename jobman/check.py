@@ -69,6 +69,57 @@ def check_running_pbs_jobs(r, now):
                " state in the queue '%s'" % (r.id, state_str))
 
 
+def check_running_sge_jobs(r, now):
+    p = Popen('qstat', shell=True, stdout=PIPE)
+    ret = p.wait()
+    lines = p.stdout.readlines()
+    """
+                qstat output:
+
+                job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID
+                -----------------------------------------------------------------------------------------------------------------
+                 776410 0.50000 dbi_6a5f45 bastienf     r     10/18/2010 13:26:46 smp@r106-n72                       1 1
+                  776410 0.50000 dbi_6a5f45 bastienf     r     10/18/2010 13:26:46 smp@r106-n72                       1 2
+                   776415 0.00000 dbi_5381a1 bastienf     qw    10/18/2010 13:30:21                                    1 1,2
+    """
+    if len(lines) == 0:
+        print "E: Job %d marked as a SGE job, but `qstat` on this host tell that their is no job running." % r.id
+        return
+
+    assert lines[0] == 'job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID \n'
+    assert lines[1] == '-----------------------------------------------------------------------------------------------------------------\n'
+    run_time = str_time(now - r["jobman.sql.start_time"])
+    if now - int(r["jobman.sql.start_time"]) > (24 * 60 * 60):
+        print "W: Job %d is running for more then 24h. The current colosse max run time is 24h. Run time %s" % (r.id, run_time)
+
+    found = False
+    for line in lines[2:]:
+        sp = line.split()
+        ta_sp = sp[9].split(',')
+        if len(sp) != 10:
+            print "W: Job %d. Don't understant one line of qstat output's. Can't tell reliably if it is still running or not" % r.id
+            print "qstat output: ", line
+        if (sp[0] == r["jobman.sql.job_id"] and
+            r["jobman.sql.sge_task_id"] in ta_sp):
+            if sp[4] == 'r':
+                pass
+            elif sp[4] == 'qw':
+                print "E: Job %d is running in the db on sge with job id %s and task id %s, but it is waiting in the sge queue. Run time %s" % (
+                   r.id, r["jobman.sql.job_id"],
+                   r["jobman.sql.sge_task_id"], run_time)
+            elif sp[4] == 't':
+                print "W: Job %d is running in the db, but it is marked as ended in the sge queue. This can be synchonization issue. Retry in 1 minutes. Run time %s." % (
+                   r.id, run_time)
+            else:
+                print "W: Job %d is running in the db and in the sge queue, but we don't understant the state it is in the queue:", sp[4]
+                found = True  # in the sge queue
+                break
+    if not found:
+        print "E: Job %d marked as running in the db on sge with job id %s and task id %s, but not in sge queue. Run time %s." % (
+           r.id, r["jobman.sql.job_id"],
+           r["jobman.sql.sge_task_id"], run_time)
+
+
 def check_serve(options, dbdescr):
     """Check that all jobs marked as running in the db are marked as
     running in some cluster jobs scheduler.
@@ -142,51 +193,7 @@ def check_serve(options, dbdescr):
 
             #check that the job is still running.
             if sge_job:
-                p = Popen('qstat', shell=True, stdout=PIPE)
-                ret = p.wait()
-                lines = p.stdout.readlines()
-                s = """
-                qstat output:
-
-                job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID
-                -----------------------------------------------------------------------------------------------------------------
-                 776410 0.50000 dbi_6a5f45 bastienf     r     10/18/2010 13:26:46 smp@r106-n72                       1 1
-                  776410 0.50000 dbi_6a5f45 bastienf     r     10/18/2010 13:26:46 smp@r106-n72                       1 2
-                   776415 0.00000 dbi_5381a1 bastienf     qw    10/18/2010 13:30:21                                    1 1,2
-                """
-                if len(lines) == 0:
-                    print "E: Job %d marked as a SGE job, but `qstat` on this host tell that their is no job running."%r.id
-                    continue
-
-                #assert lines[0]=="job-ID  prior   name       user         state submit/start at     queue                          master ja-task-ID task-ID state cpu        mem     io      stat failed \n"
-                #assert lines[1]=='-----------------------------------------------------------------------------------------------------------------------------------------------------------------------\n'
-                assert lines[0]=='job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID \n'
-                assert lines[1]=='-----------------------------------------------------------------------------------------------------------------\n'
-                run_time = str_time(now - r["jobman.sql.start_time"])
-                if now - int(r["jobman.sql.start_time"]) > (24 * 60 * 60):
-                    print "W: Job %d is running for more then 24h. The current colosse max run time is 24h. Run time %s"%(r.id,run_time)
-
-                found = False
-                for line in lines[2:]:
-                    sp = line.split()
-                    ta_sp = sp[9].split(',')
-                    if len(sp) != 10:
-                        print "W: Job %d. Don't understant one line of qstat output's. Can't tell reliably if it is still running or not"%r.id
-                        print "qstat output: ", line
-                    if (sp[0] == r["jobman.sql.job_id"] and
-                        r["jobman.sql.sge_task_id"] in ta_sp):
-                        if sp[4] == 'r':
-                            pass
-                        elif sp[4] == 'qw':
-                            print "E: Job %d is running in the db on sge with job id %s and task id %s, but it is waiting in the sge queue. Run time %s"%(r.id,r["jobman.sql.job_id"],r["jobman.sql.sge_task_id"],run_time)
-                        elif sp[4] == 't':
-                            print "W: Job %d is running in the db, but it is marked as ended in the sge queue. This can be synchonization issue. Retry in 1 minutes. Run time %s."%(r.id,run_time)
-                        else:
-                            print "W: Job %d is running in the db and in the sge queue, but we don't understant the state it is in the queue:",sp[4]
-                        found = True  # in the sge queue
-                        break
-                if not found:
-                    print "E: Job %d marked as running in the db on sge with job id %s and task id %s, but not in sge queue. Run time %s."%(r.id,r["jobman.sql.job_id"],r["jobman.sql.sge_task_id"],run_time)
+                check_running_sge_jobs(r, now)
                 continue
 
             if pbs_job:
