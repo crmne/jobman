@@ -29,13 +29,13 @@ dbi_param_orig = dbi_param.copy()
 testmode=False
 
 PATH=os.getenv('PATH')
-launch_cmd = None
+dbi_param['launch_cmd'] = None
 if search_file('condor_submit',PATH):
-    launch_cmd = 'Condor'
+    dbi_param['launch_cmd'] = 'Condor'
 elif search_file('bqsubmit',PATH):
-    launch_cmd = 'Bqtools'
+    dbi_param['launch_cmd'] = 'Bqtools'
 elif search_file('sqsub',PATH):
-    launch_cmd = 'Sharcnet'
+    dbi_param['launch_cmd'] = 'Sharcnet'
 elif search_file('qsub',PATH):
     # qsub command is used by torque/pbs and Sun Grid Engine
     # that take different input.
@@ -43,10 +43,10 @@ elif search_file('qsub',PATH):
     ret = p.wait()
     stdout = p.stdout.readlines()
     if ret==0 and len(stdout)==0:
-        launch_cmd = 'Torque'
+        dbi_param['launch_cmd'] = 'Torque'
     else:
         # We suppose it is SGE.
-        launch_cmd = 'Sge'
+        dbi_param['launch_cmd'] = 'Sge'
 elif search_file('cluster',PATH):
     # The command cluster is not always the program we want
     # The want the cluster command used at DIRO.
@@ -54,9 +54,10 @@ elif search_file('cluster',PATH):
     ret = p.wait()
     stderr = p.stderr.readlines()
     if len(stderr) == 0:
-        launch_cmd = 'Cluster'
-if launch_cmd is None:
-    launch_cmd = 'Local'
+        dbi_param['launch_cmd'] = 'Cluster'
+if dbi_param['launch_cmd'] is None:
+    dbi_param['launch_cmd'] = 'Local'
+
 LOGDIR=os.getenv("JOBDISPATCH_LOGDIR")
 if not LOGDIR:
     LOGDIR=os.getenv("DBIDISPATCH_LOGDIR")
@@ -74,13 +75,13 @@ to_parse.extend(sys.argv[1:])
 command_argv = parse_args(to_parse, dbi_param)
 
 if len(dbi_param["tasks_filename"])==0:
-    if launch_cmd == "Cluster":
+    if dbi_param['launch_cmd'] == "Cluster":
         dbi_param["tasks_filename"] = ["clusterid", "processid", "compact"]
-    elif launch_cmd == "Sge":
+    elif dbi_param['launch_cmd'] == "Sge":
         dbi_param["tasks_filename"] = ["jobname", "clusterid", "processid"]
     else:
         dbi_param["tasks_filename"] = ["nb0", "compact"]
-if launch_cmd == "Sge":
+if dbi_param['launch_cmd'] == "Sge":
     if set(['compact','explicit','nb0','nb1','sh']).intersection(dbi_param["tasks_filename"]):
         print "Error --tasks_filename for Sge don't support compact,explicit,nb0,nb1,sh"
         sys.exit(1)
@@ -104,10 +105,10 @@ valid_dbi_param=["clean_up", "test", "dolog", "nb_proc", "exp_dir", "file",
                  "tasks_filename", "exec_in_exp_dir", "repeat_jobs",
                  "whitespace", "sort",
                  ]
-if launch_cmd=="Cluster":
+if dbi_param['launch_cmd']=="Cluster":
     valid_dbi_param +=["cwait","force","arch","interruptible",
                        "duree","cpu","mem","os"]
-elif launch_cmd=="Condor":
+elif dbi_param['launch_cmd']=="Condor":
     valid_dbi_param +=["req", "arch", "getenv", "nice", "files", "rank", "env",
                        "raw", "os", "set_special_env", "mem", "cpu", "pkdilly",
                        "universe", "machine", "machines", "no_machine","to_all",
@@ -116,23 +117,23 @@ elif launch_cmd=="Condor":
                        "next_job_start_delay", "gpu", "gpu_enabled",
                        "fast", "ulimit_vm"
                        ]
-elif launch_cmd=="Bqtools":
+elif dbi_param['launch_cmd']=="Bqtools":
     valid_dbi_param +=["cpu", "duree", "long", "mem", "micro",
                        "nano", "queue", "raw", "submit_options", "jobs_name",
                        "set_special_env", "env" ]
-elif launch_cmd=="Sge":
+elif dbi_param['launch_cmd']=="Sge":
     valid_dbi_param += ["duree", "jobs_name", "queue", "cpu", "mem", "env",
                         "raw", "set_special_env", "project", "jobs_per_node",
                         "cores_per_node", "mem_per_node", "pe",
                         ]
-elif launch_cmd=="Sharcnet":
+elif dbi_param['launch_cmd']=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu", "env", "set_special_env"]#, "raw" ?
-elif launch_cmd == "Torque":
+elif dbi_param['launch_cmd'] == "Torque":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "raw", "gpu"]
 
 # Only valid for condor
-if launch_cmd == 'Condor':
+if dbi_param['launch_cmd'] == 'Condor':
     if dbi_param['gpu']:
         dbi_param['req']+="&&(Target.GPU=?=True)"
         dbi_param['raw']+='\n+GPU=True'
@@ -140,7 +141,7 @@ if launch_cmd == 'Condor':
         dbi_param['rank']+="&&(Target.GPU=?=True)"
         dbi_param['raw']+='\n+GPU=True'
 
-if  launch_cmd == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
+if  dbi_param['launch_cmd'] == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
     #default value for pkdilly is true.
     if dbi_param.get("pkdilly")==None:
         dbi_param["pkdilly"]=True
@@ -168,11 +169,11 @@ if  launch_cmd == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
             dbi_param['copy_local_source_file']=True
 
 
-print "\n\nThe jobs will be launched on the system:", launch_cmd
+print "\n\nThe jobs will be launched on the system:", dbi_param['launch_cmd']
 print "With options: ",[str(param)+":"+str(value) for param,value in dbi_param.items() if value!=dbi_param_orig.get(param,None)]
 for i in dbi_param:
     if i not in valid_dbi_param and (i not in dbi_param_orig or dbi_param_orig[i]!=dbi_param[i]):
-        print "WARNING: The parameter",i,"is not valid for the",launch_cmd,"back-end. It will be ignored."
+        print "WARNING: The parameter",i,"is not valid for the",dbi_param['launch_cmd'],"back-end. It will be ignored."
 if dbi_param["restart"]:
     print "With the command to be restarted:"," ".join(command_argv),"\n\n"
 elif verbose:
@@ -248,7 +249,7 @@ if len(dbi_param["file"]) > 0:
         fd.close()
 
 elif dbi_param["restart"]:
-    assert launch_cmd=="Condor"
+    assert dbi_param['launch_cmd']=="Condor"
     cmds=[]
     #We accept to start jobs in the queue only if they are completed
     p=Popen('condor_q -l -const "JobStatus!=4" '+" ".join(command_argv),
@@ -311,7 +312,7 @@ elif dbi_param['sort']=='generated':
 else:
     raise Exception("--sort option accept value random and generated only. got %s"%dbi_param['sort'])
 
-if not dbi_param.has_key("next_job_start_delay") and launch_cmd=="Condor" and len(commands)>20:
+if not dbi_param.has_key("next_job_start_delay") and dbi_param['launch_cmd']=="Condor" and len(commands)>20:
     #by default, if their is more then 20 jobs we make a start delay of 1 second between each jobs start.
     dbi_param["next_job_start_delay"]=1
     
@@ -344,7 +345,7 @@ elif len(dbi_param["file"])==0:
     if dbi_param["restart"]:
         tmp="jobs_restarted_"+tmp
     
-    if launch_cmd == "Bqtools":
+    if dbi_param['launch_cmd'] == "Bqtools":
         #bqtools have a limit. It must have a abspath size < max_file_size -16
         #(255 on ext3)
         l=len(os.path.abspath(tmp))
@@ -389,21 +390,21 @@ for pattern in dbi_param["tasks_filename"]:
     elif pattern == "none":
         dbi_param[n]=[""]*len(commands)
     elif pattern == "clusterid":
-        if launch_cmd=="Condor":
+        if dbi_param['launch_cmd']=="Condor":
             dbi_param[n]=merge_pattern(["$(Cluster)"]*len(dbi_param[n]))
-        elif launch_cmd=="Sge":
+        elif dbi_param['launch_cmd']=="Sge":
             dbi_param[n]=merge_pattern(["$JOB_ID"]*len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=clusterid is only valid for Condor and Sge"
     elif pattern == "processid":
-        if launch_cmd=="Condor":
+        if dbi_param['launch_cmd']=="Condor":
             dbi_param[n]=merge_pattern(["$(Process)"]*len(dbi_param[n]))
-        elif launch_cmd=="Sge":
+        elif dbi_param['launch_cmd']=="Sge":
             dbi_param[n]=merge_pattern(["$TASK_ID"]*len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=processid is only valid for Condor and Sge"
     elif pattern == "jobname":
-        if launch_cmd=="Sge":
+        if dbi_param['launch_cmd']=="Sge":
             dbi_param[n]=merge_pattern(["$JOB_NAME"]*len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=processid is only valid for Sge"
@@ -426,7 +427,7 @@ for pattern in dbi_param["tasks_filename"]:
                     del sp[i]
                 else:
                     i+=1
-            if stdout_file==stderr_file and launch_cmd=="Condor":
+            if stdout_file==stderr_file and dbi_param['launch_cmd']=="Condor":
                 print "ERROR: Condor can't redirect the stdout and stderr to the same file!"
                 sys.exit(1)
             stdouts.append(output)
@@ -458,7 +459,7 @@ jobs = DBI([
     for arg in commands:
         cmdstr = "".join(arg);
         SCRIPT.write("   '%s',\n"%cmdstr)
-    SCRIPT.write("   ],'%s'"%(launch_cmd))
+    SCRIPT.write("   ],'%s'"%(dbi_param['launch_cmd']))
     for key in dbi_param.keys():
         if isinstance(dbi_param[key],str):
             SCRIPT.write(","+str(key)+"='"+str(dbi_param[key])+"'")
@@ -480,7 +481,7 @@ else:
     print "We generate the DBI object with %s command"%(len(commands))
     print time.ctime()
     t1=time.time()
-    jobs = DBI(commands, launch_cmd, **dbi_param)
+    jobs = DBI(commands, dbi_param['launch_cmd'], **dbi_param)
     t2=time.time()
     error=False
     if verbose:

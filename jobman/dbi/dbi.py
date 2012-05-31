@@ -382,7 +382,7 @@ def parse_args(to_parse, dbi_param):
             dbi_param["dolog"]=True
         elif argv.split('=')[0] in ["--bqtools","--cluster","--local","--condor",
                                     "--ssh", "--sge", "--sharcnet", "--torque"]:
-            launch_cmd = argv[2].upper()+argv.split('=')[0][3:]
+            dbi_param['launch_cmd'] = argv[2].upper()+argv.split('=')[0][3:]
             if len(argv.split('='))>1:
                 dbi_param["nb_proc"]=argv.split('=')[1]
             if argv.startswith("--ssh"):
