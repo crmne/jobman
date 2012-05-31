@@ -492,7 +492,7 @@ class DBIError(Exception):
     pass
 
 
-#original version from: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/196618
+#original from: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/196618
 class LockedIterator:
     def __init__(self, iterator):
         self._lock = Lock()
@@ -729,7 +729,7 @@ class DBIBase:
         self.test = False
         self.dolog = False
         self.temp_files = []
-        self.arch = 0 # TODO, we should put the local arch: 32,64 or 3264 bits
+        self.arch = 0  # TODO, we should put the local arch: 32,64 or 3264 bits
         self.base_tasks_log_file = []
         self.stdouts = ''
         self.stderrs = ''
@@ -746,12 +746,13 @@ class DBIBase:
 #            if self.dolog or self.file_redirect_stdout or self.file_redirect_stderr:
             os.mkdir(self.log_dir)
         if self.mem[-1] in ['G', 'g']:
-            self.mem = int(float(self.mem[:-1])*1024)
+            self.mem = int(float(self.mem[:-1]) * 1024)
         elif self.mem[-1] in ['M', 'm']:
             self.mem = int(self.mem[:-1])
         elif self.mem[-1] in ['K', 'k']:
-            self.mem = int(self.mem[:-1])/1024
-        else: self.mem = int(self.mem)
+            self.mem = int(self.mem[:-1]) / 1024
+        else:
+            self.mem = int(self.mem)
 
         self.cpu = int(self.cpu)
         # If some arguments aren't lists, put them in a list
@@ -2865,24 +2866,26 @@ class DBILocal(DBIBase):
             id+=1
         #keeps a list of the temporary files created, so that they can be deleted at will
 
-    def run_one_job(self,task):
+    def run_one_job(self, task):
         c = (';'.join(task.commands))
         task.set_scheduled_time()
 
         if self.test:
-            print "[DBI] "+c
+            print "[DBI] " + c
             return
 
-        (output,error)=self.get_redirection(*self.get_file_redirection(task.id))
+        (output, error) = self.get_redirection(
+            *self.get_file_redirection(task.id))
 
-        self.started+=1#Is this atomic?
-        print "[DBI,%d/%d,%s] %s"%(self.started,len(self.tasks),time.ctime(),c)
-        p = Popen(c, shell=True,stdout=output,stderr=error)
+        self.started += 1  # Is this atomic?
+        print "[DBI,%d/%d,%s] %s" % (self.started, len(self.tasks),
+                                     time.ctime(), c)
+        p = Popen(c, shell=True, stdout=output, stderr=error)
         p.wait()
-        task.status=STATUS_FINISHED
+        task.status = STATUS_FINISHED
 
     def clean(self):
-        if len(self.temp_files)>0:
+        if len(self.temp_files) > 0:
             sleep(20)
             for file_name in self.temp_files:
                 try:
@@ -2894,15 +2897,15 @@ class DBILocal(DBIBase):
     def run(self):
         if self.test:
             print "[DBI] Test mode, we only print the command to be executed, we don't execute them"
-        if not self.file_redirect_stdout and self.nb_proc>1:
+        if not self.file_redirect_stdout and self.nb_proc > 1:
             print "[DBI] WARNING: many process but all their stdout are redirected to the parent"
         elif not self.file_redirect_stdout and self.nb_proc_file:
             print "[DBI] WARNING: nb process dynamic with one thread and their stdout are redirected to the parent. Don't change to more then 1 thread!"
-        if not self.file_redirect_stderr and self.nb_proc>1:
+        if not self.file_redirect_stderr and self.nb_proc > 1:
             print "[DBI] WARNING: many process but all their stderr are redirected to the parent"
         elif not self.file_redirect_stderr and self.nb_proc_file:
             print "[DBI] WARNING: nb process dynamic with one thread and their stderr are redirected to the parent. Don't change to more then 1 thread!"
-        print "[DBI] The Log file are under %s"%self.log_dir
+        print "[DBI] The Log file are under %s" % self.log_dir
 
         # Execute pre-batch
         self.exec_pre_batch()
@@ -2911,14 +2914,14 @@ class DBILocal(DBIBase):
         nb_proc = self.nb_proc
         if self.nb_proc_file:
             nb_proc = self.nb_proc_file
-        self.mt=MultiThread(self.run_one_job,self.tasks,nb_proc,lambda :("[DBI,%s]"%time.ctime()))
+        self.mt = MultiThread(self.run_one_job, self.tasks,
+                              nb_proc, lambda :("[DBI,%s]" % time.ctime()))
         self.mt.start()
 
         #TODO: Need to wait before post_bach?
 
         # Execute post-batchs
         self.exec_post_batch()
-
 
     def clean(self):
         pass
@@ -2930,67 +2933,68 @@ class DBILocal(DBIBase):
             except KeyboardInterrupt, e:
                 print "[DBI] Catched KeyboardInterrupt"
                 self.print_jobs_status()
-                print "[DBI] The Log file are under %s"%self.log_dir
+                print "[DBI] The Log file are under %s" % self.log_dir
                 raise
         else:
             print "[DBI] WARNING jobs not started!"
         self.print_jobs_status()
-        print "[DBI] The Log file are under %s"%self.log_dir
+        print "[DBI] The Log file are under %s" % self.log_dir
+
 
 class SshHost:
-    def __init__(self, hostname,nice=19,get_avail=True):
-        self.hostname= hostname
-        self.minupdate=15
-        self.lastupd= -1-self.minupdate
-        self.working=True
-        (self.bogomips,self.ncores,self.loadavg)=(-1.,-1,-1.)
-        self.nice=nice
+    def __init__(self, hostname, nice=19, get_avail=True):
+        self.hostname = hostname
+        self.minupdate = 15
+        self.lastupd = -1 - self.minupdate
+        self.working = True
+        (self.bogomips, self.ncores, self.loadavg) = (-1., -1, -1.)
+        self.nice = nice
         if get_avail:
             self.getAvailability()
 
     def getAvailability(self):
         # simple heuristic: mips / load
-        t= time.time()
-        if t - self.lastupd > self.minupdate: # min. 15 sec. before update
-            (self.bogomips,self.ncores,self.loadavg)=self.getAllHostInfo()
-            self.lastupd= t
+        t = time.time()
+        if t - self.lastupd > self.minupdate:  # min. 15 sec. before update
+            (self.bogomips, self.ncores, self.loadavg) = self.getAllHostInfo()
+            self.lastupd = t
             #print  self.hostname, self.bogomips, self.loadavg, (self.bogomips / (self.loadavg + 0.5))
         return self.bogomips / (self.loadavg + 0.5)
 
     def getAllHostInfo(self):
-        cmd= ["ssh", self.hostname ,"cat /proc/cpuinfo;cat /proc/loadavg"]
-        p= Popen(cmd, stdout=PIPE)
-        bogomips= -1
-        ncores=-1
-        loadavg=-1
+        cmd = ["ssh", self.hostname , "cat /proc/cpuinfo;cat /proc/loadavg"]
+        p = Popen(cmd, stdout=PIPE)
+        bogomips = -1
+        ncores = -1
+        loadavg = -1
         returncode = p.returncode
         wait = p.wait()
         if returncode:
-            self.working=False
-            return (-1.,-1,-1.)
-        elif wait!=0:
-            self.working=False
-            return (-1.,-1,-1.)
+            self.working = False
+            return (-1., -1, -1.)
+        elif wait != 0:
+            self.working = False
+            return (-1., -1, -1.)
 
         for l in p.stdout:
             if l.startswith('bogomips'):
-                s= l.split(' ')
-                bogomips+= float(s[-1])
+                s = l.split(' ')
+                bogomips += float(s[-1])
             if l.startswith('processor'):
-                s= l.split(' ')
-                ncores=int(s[-1])+1
+                s = l.split(' ')
+                ncores = int(s[-1]) + 1
 
         if l:
-            loadavg=float(l[0])
+            loadavg = float(l[0])
         #(bogomips,ncores,load average)
-        return (bogomips,ncores,loadavg)
+        return (bogomips, ncores, loadavg)
 
-    def addToLoadavg(self,n):
-        self.loadavg+= n
-        self.lastupd= time.time()
+    def addToLoadavg(self, n):
+        self.loadavg += n
+        self.lastupd = time.time()
 
     def __str__(self):
-        return "SshHost("+self.hostname+" <nice: "+str(self.nice)\
+        return "SshHost(" + self.hostname + " <nice: "+   str(self.nice)\
                +"bogomips:"+str(self.bogomips)\
                +',ncores:'+str(self.ncores)\
                +',loadavg'+str(self.loadavg)\
@@ -3000,13 +3004,15 @@ class SshHost:
     def __repr__(self):
         return str(self)
 
+
 def get_hostname():
     from socket import gethostname
     myhostname = gethostname()
-    pos = string.find(myhostname,'.')
-    if pos>=0:
+    pos = string.find(myhostname, '.')
+    if pos >= 0:
         myhostname = myhostname[0:pos]
     return myhostname
+
 
 # copied from PLearn/python_modules/plearn/pymake/pymake.py
 def get_platform():
@@ -3016,104 +3022,111 @@ def get_platform():
     if pymake_osarch:
         return pymake_osarch
     platform = sys.platform
-    if platform=='linux2':
+    if platform == 'linux2':
         linux_type = os.uname()[4]
         if linux_type == 'ppc':
             platform = 'linux-ppc'
-        elif linux_type =='x86_64':
+        elif linux_type == 'x86_64':
             platform = 'linux-x86_64'
         else:
             platform = 'linux-i386'
     return platform
 
+
 # copied from PLearn/python_modules/plearn/pymake/pymake.py
 def find_all_ssh_hosts():
-    hostspath_list = [os.path.join(os.getenv("HOME"),".pymake",get_platform()+'.hosts')]
-    if os.path.exists(hostspath_list[0])==0:
-        raise DBIError("[DBI] ERROR: no host file %s for the ssh backend"%(hostspath_list[0]))
-    print "[DBI] using file %s for the list of host"%(hostspath_list[0])
+    hostspath_list = [os.path.join(os.getenv("HOME"),
+                                   ".pymake",
+                                   get_platform() + '.hosts')]
+    if os.path.exists(hostspath_list[0]) == 0:
+        raise DBIError("[DBI] ERROR: no host file %s for the ssh backend" % (
+            hostspath_list[0]))
+    print "[DBI] using file %s for the list of host" % (hostspath_list[0])
 #    from plearn.pymake.pymake import process_hostspath_list
 #    (list_of_hosts, nice_values) = process_hostspath_list(hostspath_list,19,get_hostname())
     shuffle(list_of_hosts)
     print list_of_hosts
     print nice_values
-    h=[]
+    h = []
     for host in list_of_hosts:
-        print "connecting to",host
-        s=SshHost(host,nice_values[host],False)
+        print "connecting to", host
+        s=SshHost(host, nice_values[host], False)
         if s.working:
             h.append(s)
         else:
-            print "[DBI] host not working:",s.hostname
+            print "[DBI] host not working:", s.hostname
         print s
     print h
     return h
 
+
 def cmp_ssh_hosts(h1, h2):
     return cmp(h2.getAvailability(), h1.getAvailability())
+
 
 class DBISsh(DBIBase):
 
     def __init__(self, commands, **args):
         print "[DBI] WARNING: The SSH DBI is not fully implemented!"
         print "[DBI] Use at your own risk!"
-        self.nb_proc=1
+        self.nb_proc = 1
         DBIBase.__init__(self, commands, **args)
-        self.args=args
+        self.args = args
         self.add_commands(commands)
-        self.hosts= find_all_ssh_hosts()
-        print "[DBI] hosts: ",self.hosts
+        self.hosts = find_all_ssh_hosts()
+        print "[DBI] hosts: ", self.hosts
 
-    def add_commands(self,commands):
+    def add_commands(self, commands):
         if not isinstance(commands, list):
-            commands=[commands]
+            commands = [commands]
 
         # create the information about the tasks
-        id=len(self.tasks)+1
+        id = len(self.tasks) + 1
         for command in commands:
             self.tasks.append(Task(command, self.tmp_dir, self.log_dir,
                                    self.time_format, self.pre_tasks,
-                                   self.post_tasks,self.dolog,id,False,
+                                   self.post_tasks, self.dolog, id, False,
                                    self.args))
-            id+=1
+            id += 1
 
     def getHost(self):
-        self.hosts.sort(cmp= cmp_ssh_hosts)
+        self.hosts.sort(cmp=cmp_ssh_hosts)
         print "hosts= "
-        for h in self.hosts: print h
+        for h in self.hosts:
+            print h
         self.hosts[0].addToLoadavg(1.0)
         return self.hosts[0]
 
     def run_one_job(self, task):
         DBIBase.run(self)
 
-        host= self.getHost()
+        host = self.getHost()
 
-        cwd= os.getcwd()
+        cwd = os.getcwd()
         command = "ssh " + host.hostname + " 'cd " + cwd + "; " + string.join(task.commands,';') + "'"
-        print "[DBI] "+command
+        print "[DBI] " + command
 
         if self.test:
             return
 
         task.launch_time = time.time()
         task.set_scheduled_time()
-        (output,error)=self.get_redirection(*self.get_file_redirection(task.id))
+        (output, error) = self.get_redirection(
+            *self.get_file_redirection(task.id))
 
-        task.p = Popen(command, shell=True,stdout=output,stderr=error)
+        task.p = Popen(command, shell=True, stdout=output, stderr=error)
         task.p.wait()
-        task.status=STATUS_FINISHED
-
+        task.status = STATUS_FINISHED
 
     def run_one_job2(self, host):
         DBIBase.run(self)
 
-        cwd= os.getcwd()
+        cwd = os.getcwd()
         print self._locked_iter
         for task in self._locked_iter:
-            print "task",task
+            print "task", task
             command = "ssh " + host.hostname + " 'cd " + cwd + "; " + string.join(task.commands,';') + " ; echo $?'"
-            print "[DBI, %s] %s"%(time.ctime(),command)
+            print "[DBI, %s] %s" % (time.ctime(), command)
 
             if self.test:
                 return
@@ -3122,48 +3135,50 @@ class DBISsh(DBIBase):
             task.set_scheduled_time()
 
 
-            task.p = Popen(command, shell=True,stdout=PIPE,stderr=PIPE)
+            task.p = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
             wait = task.p.wait()
             returncode = p.returncode
             if returncode:
-                self.working=False
+                self.working = False
 
-            elif wait!=0:
-                self.working=False
+            elif wait != 0:
+                self.working = False
                 #redo it
             return -1.
 
-            out=task.p.stdout.readlines()
-            err=task.p.stderr.readlines()
-            self.echo_result=None
+            out = task.p.stdout.readlines()
+            err = task.p.stderr.readlines()
+            self.echo_result = None
             if out:
-                self.echo_result=int(out[-1])
+                self.echo_result = int(out[-1])
                 del out[-1]
-            print "out",out
-            print "err",err
-            print "echo result",self.echo_result
+            print "out", out
+            print "err", err
+            print "echo result", self.echo_result
             if err:
                 task.return_status = int(err[-1])  # last line was an echo $? (because rsh doesn't transmit the status byte correctly)
                 del err[-1]
                 print "return status", task.return_status
             sleep(1)
-            task.status=STATUS_FINISHED
+            task.status = STATUS_FINISHED
 
     def run(self):
-        print "[DBI] The Log file are under %s"%self.log_dir
-        if not self.file_redirect_stdout and self.nb_proc>1:
+        print "[DBI] The Log file are under %s" % self.log_dir
+        if not self.file_redirect_stdout and self.nb_proc > 1:
             print "[DBI] WARNING: many process but all their stdout are redirected to the parent"
-        if not self.file_redirect_stderr and self.nb_proc>1:
+        if not self.file_redirect_stderr and self.nb_proc > 1:
             print "[DBI] WARNING: many process but all their stderr are redirected to the parent"
 
         # Execute pre-batch
         self.exec_pre_batch()
-        self._locked_iter=LockedListIter(iter(self.tasks))
+        self._locked_iter = LockedListIter(iter(self.tasks))
         if self.test:
             print "[DBI] In testmode, we only print the command that would be executed."
-        print "in run",self.hosts
+        print "in run", self.hosts
         # Execute all Tasks (including pre_tasks and post_tasks if any)
-        self.mt=MultiThread(self.run_one_job2,self.hosts,self.nb_proc,lambda :("[DBI,%s]"%time.ctime()))
+        self.mt = MultiThread(self.run_one_job2, self.hosts,
+                              self.nb_proc,
+                              lambda :("[DBI,%s]" % time.ctime()))
         self.mt.start()
 
         # Execute post-batchs
@@ -3186,22 +3201,24 @@ def DBI(commands, launch_system, **args):
     systems like condor, bqtools on Mammouth, the cluster command or localy.
     """
     try:
-        jobs = eval('DBI'+launch_system+'(commands,**args)')
+        jobs = eval('DBI' + launch_system + '(commands,**args)')
     except DBIError, e:
         print e
         sys.exit(1)
     except NameError:
-        print 'The launch system ',launch_system, ' does not exists. Available systems are: Cluster, Ssh, Bqtools and Condor'
+        print 'The launch system ', launch_system, ' does not exists. Available systems are: Cluster, Ssh, Bqtools and Condor'
         traceback.print_exc()
         sys.exit(1)
     return jobs
 
+
 def main():
-    if len(sys.argv)!=2:
-        print "Usage: %s {Condor|Cluster|Ssh|Local|Bqtools} < joblist"%(sys.argv[0])
+    if len(sys.argv) != 2:
+        print "Usage: %s {Condor|Cluster|Ssh|Local|Bqtools} < joblist" % (
+            sys.argv[0])
         print "Where joblist is a file containing one experiment on each line"
         sys.exit(0)
-    DBI([ s[0:-1] for s in sys.stdin.readlines() ], sys.argv[1]).run()
+    DBI([s[0:-1] for s in sys.stdin.readlines()], sys.argv[1]).run()
 #    jobs.clean()
 
 #    config['LOG_DIRECTORY'] = 'LOGS/'
