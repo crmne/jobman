@@ -77,8 +77,8 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
     cluster option           :[*--[no_]cwait]  [--[*no_]force]
                               [--[*no_]interruptible]
     condor option            :[--req="CONDOR_REQUIREMENT"] [--[*no_]nice]
-                              [--[*no_]getenv] [*--[no_]prefserver] 
-                              [--rank=RANK_EXPRESSION] 
+                              [--[*no_]getenv] [*--[no_]prefserver]
+                              [--rank=RANK_EXPRESSION]
                               [--files=file1[,file2...]]
                               [*--[no_]abs_path] [--[*no_]pkdilly]
                               [--universe={vanilla*, standard, grid, java,
@@ -125,10 +125,10 @@ common options:
     this file calls dbi in test mode, so dbi do everything but don't execute the
     jobs. (so you can check the script).
   The '--testdbi' set only dbi in test mode. Not this script
-  The '--file=FILEPATH' specifies a file containing the jobs to execute, one 
+  The '--file=FILEPATH' specifies a file containing the jobs to execute, one
     per line. This is instead of specifying job(s) on the command line.
     You can put multiple --file option to read jobs from multiple files.
-  The '--nb_proc=nb_proc', specifies the maximum number of concurrent jobs. 
+  The '--nb_proc=nb_proc', specifies the maximum number of concurrent jobs.
     The value -1 will try to execute all jobs concurently. This work for condor,
     bqtools, but for cluster you SHOULD add  the --cwait option.
     --local=N is the same as --local --nb_proc=N
@@ -141,8 +141,8 @@ common options:
     ssh default to 1.
 
     --local=FILE_PATH is accepted. The file should contain only the number of
-    threads wanted. This allows dynamically changing the number of threads. 
-    The change in the number of threads happen before we start the threads or 
+    threads wanted. This allows dynamically changing the number of threads.
+    The change in the number of threads happen before we start the threads or
     when a thread ends. We wait until threads finish to lower the number of
     running threads.
 
@@ -156,16 +156,16 @@ common options:
   The 'JOBDISPATCH_LOGDIR' environnement variable set the name of the directory
     where all the individual logs directory will be put. Default to LOGS.
     If it is not defined we look for 'DBIDISPATCH_LOGDIR' for history.
-  The '--[*no_]restart' option work only for condor. The parameter 
+  The '--[*no_]restart' option work only for condor. The parameter
     following this option should be condor jobs number. We will parse the
     history on the local host and relaunch those jobs. We only take the command
-    line that was executed, all other options are are those passed to 
+    line that was executed, all other options are are those passed to
     jobdispatch this time. Work only with jobs launched with jobdispatch.
   The '--only_n_first=N' option tell to launch only the first N jobs from the list.
   The '--repeat_jobs=N' option tell that we must repeat N time each jobs.
   The '--tasks_filename={compact,explicit,nb0,nb1,sh}+' option will change the
-    filename where the stdout, stderr are redirected. We can put many option 
-    separated by comma. They will apper in the filename in order separated by a 
+    filename where the stdout, stderr are redirected. We can put many option
+    separated by comma. They will apper in the filename in order separated by a
     dot. For all except sh, they have this pattern condor.X.{out,error} where X=:
       Sge don't support compact,explicit,nb0,nb1,sh
       - default : as --tasks_filename=[jobname,]{clusterid,processid|nb0},[compact]
@@ -189,17 +189,17 @@ common options:
   The '--sort={generated*,random}' option allow to change the default order of jobs.
 
 bqtools, cluster, condor, sge and torque option:
-  The '--cpu=nb_cpu_per_node' option determine the number of cpu(cores) that 
+  The '--cpu=nb_cpu_per_node' option determine the number of cpu(cores) that
     will be reserved for each job.(default=1, -1 won't set it)
   The '--mem=X' speficify the number of ram in meg the program need to execute.
     If you put G[g],M[m] or K[k] at the end. We consider it as Gig, Meg or K
-    with multiple of 1024. Default to don't specify it for all except on 
+    with multiple of 1024. Default to don't specify it for all except on
     condor where it default to 950.
 
 bqtools, cluster, sge, sharcnet and torque option:
-  The '--duree' option specifies the maximum duration of the jobs. The syntax 
-    depends on the back-end. For the cluster syntax, see 'cluster --help'. 
-    For bqtools and sge, the syntax is '--duree=12:13:15', giving 12 hours, 
+  The '--duree' option specifies the maximum duration of the jobs. The syntax
+    depends on the back-end. For the cluster syntax, see 'cluster --help'.
+    For bqtools and sge, the syntax is '--duree=12:13:15', giving 12 hours,
     13 minutes and 15 seconds.
 
 bqtools, condor, sge, sharcnet and torque options:
@@ -207,7 +207,7 @@ bqtools, condor, sge, sharcnet and torque options:
     jobs the variable VAR with value VALUE. To pass many variable you can:
       1) use one --env option and separ the pair by ' '(don't forget to quote)
       2) you can pass many time the --env parameter.
-  The '--[no_]set_special_env' option will set the varialbe OMP_NUM_THREADS, 
+  The '--[no_]set_special_env' option will set the varialbe OMP_NUM_THREADS,
     MKL_NUM_THREADS and GOTO_NUM_THREADS to the number of cpus allocated to job.
 
 bqtools, condor, sge and torque options:
@@ -217,9 +217,9 @@ bqtools, condor, sge and torque options:
 cluster and condor options:
   The '--3264', '--32' or '--64' specify the type of cpu for the execution node.
     Default the same as the submit host.
-  The '--os=X' speficify the os of the server. 
+  The '--os=X' speficify the os of the server.
     Cluster default: fc7. Cluster accepted value fc4, fc7 and fc9.
-    Condor default to the same as the submit host and --os=FC7,FC9 
+    Condor default to the same as the submit host and --os=FC7,FC9
     tell to use FC7 or FC9 hosts.
 
 bqtools, sge, sharcnet and torque options:
@@ -228,10 +228,10 @@ bqtools, sge, sharcnet and torque options:
     Default, random.
 
 bqtools only options:
-  If the --long option is not set, the maximum duration of each job will be 
+  If the --long option is not set, the maximum duration of each job will be
     120 hours (5 days).
-  The '--micro[=nb_batch]' option can be used with BqTools when launching many 
-    jobs that have a very short duration. This may prevent some queue crashes. 
+  The '--micro[=nb_batch]' option can be used with BqTools when launching many
+    jobs that have a very short duration. This may prevent some queue crashes.
     The nb_batch value is the number of experience to group together in a batch.
     (by default not used, --micro is equivalent to --micro=20)
   The '--long' option must be used with BqTools to launch jobs whose duration
@@ -245,8 +245,8 @@ bqtools only options:
   The '--[no_]m32G' option tell to use node with 32G of RAM. Usefull on mammouth-serie2 only.
 
 cluster only options:
-  The '--[no_]cwait' is transfered to cluster. 
-    This must be enabled if there is not nb_proc available nodes. Otherwise 
+  The '--[no_]cwait' is transfered to cluster.
+    This must be enabled if there is not nb_proc available nodes. Otherwise
     when there are no nodes available, the launch of that command fails.
   The '--force' option is transfered to cluster
   The '--interruptible' option is passed to cluster
@@ -256,13 +256,13 @@ condor only options:
     in the environment of the submitted jobs.
   The 'CONDOR_LOCAL_SOURCE' environment variable define a file that will be
     sourced before the jobs execute.
-  The 'CONDOR_JOB_LOGDIR' for each jobs the environment variable is set to 
-    the condor log directory. 
-  The '--[no_]getenv' option is forwarded to condor. If True, the current 
+  The 'CONDOR_JOB_LOGDIR' for each jobs the environment variable is set to
+    the condor log directory.
+  The '--[no_]getenv' option is forwarded to condor. If True, the current
     environnement variable will be forwarded to the execution node.
-  The '--req=\"CONDOR_REQUIREMENT\"' add requirement for condor. 
-    CONDOR_REQUIREMENT must follow the syntax of requirement for condor with 
-    one exception. The symbol '\"' must be escaped 3 times! So the requirement 
+  The '--req=\"CONDOR_REQUIREMENT\"' add requirement for condor.
+    CONDOR_REQUIREMENT must follow the syntax of requirement for condor with
+    one exception. The symbol '\"' must be escaped 3 times! So the requirement
     (Machine == \"computer.example.com\") must be writen in the following way:
 
     jobdispatch \"--req=Machine==\\\"computer.example.com\\\"\"
@@ -270,7 +270,7 @@ condor only options:
     jobdispatch '--req=Machine=="computer.example.com"'
 
   The '--[no_]server' option add the requirement that the executing host must
-    be a server dedicated to computing. This is equivalent to: 
+    be a server dedicated to computing. This is equivalent to:
     jobdispatch '--req=SERVER==True'(SERVER==False)
   The '--[no_]prefserver' option will tell that you prefer to execute on server
     first. This is equivalent to jobdispatch '--rank=SERVER=?=True'.
@@ -279,36 +279,36 @@ condor only options:
      host is full_host_name. If multiple --machine or --machines options,
     take anyone of them. Is equivalent to
      jobdispatch '--req=Machine=="full_host_name"'
-  The '--no_machine=full_host_name' option remove the machines from possible 
+  The '--no_machine=full_host_name' option remove the machines from possible
     host to run your jobs.
-  The '--machines=regexp' option add the requirement that the executing host 
+  The '--machines=regexp' option add the requirement that the executing host
     name must be match the regexp. If multiple --machine or --machines options,
     take anyone of them.
      jobdispatch '--machines=computer00*'
         witch is equivalent to
      jobdispatch '--req=regexp("computer0*", target.Machine)'
-  The '--[no_]nice' option set the nice_user option to condor. 
+  The '--[no_]nice' option set the nice_user option to condor.
     If nice, the job(s) will have the lowest possible priority.
-  The '--[no_]abs_path' option will tell condor to change the path to the 
+  The '--[no_]abs_path' option will tell condor to change the path to the
     executable to the absolute path or not. Default True.
-  The '--[no_]pkdilly': will use the pkdilly tool to make condor more 
+  The '--[no_]pkdilly': will use the pkdilly tool to make condor more
       kerberos friendly.
   The '--universe={vanilla*, standard, grid, java, scheduler, local, parallel, vm}'
-      The universe parameter is passed to condor. You can use the 'local' 
-       universe to test your script as this make the all the jobs start 
-       immediately without being preempted on the local host. Take care to 
+      The universe parameter is passed to condor. You can use the 'local'
+       universe to test your script as this make the all the jobs start
+       immediately without being preempted on the local host. Take care to
        don't send too much jobs.
-  The '--[no_]keep_failed_jobs_in_queue' option will cause the jobs to stay 
-      in the queue in completed status if it failed. You should do condor_rm 
+  The '--[no_]keep_failed_jobs_in_queue' option will cause the jobs to stay
+      in the queue in completed status if it failed. You should do condor_rm
       after to remove it from the queue.
   The '--max_file_size=N' option tell the maximum file size. Default 10G.
   The '--[no_]debug' option is forwarded to condor_submit
-  The '--[no_]local_log_file' option tell to put the condor log file on the 
+  The '--[no_]local_log_file' option tell to put the condor log file on the
       local disk. This help to solv a bug with condor and lock on NFS directory.
   The '--next_job_start_delay=N' option allow to tell condor to wait N second
       between each job we start. Default 1 if more then 20 jobs, 0 otherwise.
-  The '--fast' option tell condor to send the jobs only on fast computer. This 
-      add some hardcoded(maggie, brams and zappa) computers to the list 
+  The '--fast' option tell condor to send the jobs only on fast computer. This
+      add some hardcoded(maggie, brams and zappa) computers to the list
       generated by --machine=...
   The '--gpu' option tell to launch only on host with gpu card.
   The '--gpu_enabled' option tell that we can take adventage of gpu card.
@@ -330,11 +330,11 @@ sge only option:
 where <command-template> is interpreted as follows: the first argument
 is the <command> above, and the rest are interpreted as <arguments>.
 The arguments may contain one or many segments of the form {{a,b,c,d}},
-which generate multiple jobs to execute. Each segement will be replaced 
-by one value in the segment separated by comma. The first will have the 
-a value, the second the b value, etc. If their is many segment, it will 
-generate the cross-product of possible value between the segment. The 
-jobs will be executed serially or in parallel depending of the backend 
+which generate multiple jobs to execute. Each segement will be replaced
+by one value in the segment separated by comma. The first will have the
+a value, the second the b value, etc. If their is many segment, it will
+generate the cross-product of possible value between the segment. The
+jobs will be executed serially or in parallel depending of the backend
 and the nb_proc option.
 
   For example, the command (NOTE: THERE MUST NOT
@@ -361,8 +361,8 @@ is equivalent to:
   aplearn myscript.plearn numhidden=25 wd=0.01
   aplearn myscript.plearn numhidden=25 wd=0.001
 
-In the file of the option --file=FILEPATH, there must not be double 
-quotes around the {{}} as they are for the shell and if the command is 
+In the file of the option --file=FILEPATH, there must not be double
+quotes around the {{}} as they are for the shell and if the command is
 in the file, it is not interpreted by the shell.
 
 
