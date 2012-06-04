@@ -4,9 +4,9 @@ import sys
 import logging
 
 from .tools import flatten
-from .api0 import open_db as sql_db
+from .api0 import open_db as sql_db, parse_dbstring
 from .sql import HOST, HOST_WORKDIR, EXPERIMENT, FUCKED_UP
-from .sql import parse_dbstring, insert_dict, hash_state
+from .sql import insert_dict, hash_state
 
 logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -146,7 +146,7 @@ def create_view(db, tablename, **kwargs):
 @cmd
 def status(db, **kwargs):
     """List counts of jobs that are queued, running, done, etc."""
-    sts = {0:0, 1:0, 2:0, 666:0}
+    sts = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 666:0}
     for d in db:
         cnt = sts.get(d['jobman.status'], 0)
         sts[d['jobman.status']] = cnt + 1
