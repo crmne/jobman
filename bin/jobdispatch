@@ -500,4 +500,3 @@ else:
         jobs.clean()
     if verbose:
         print "it took %f s to launch all the commands"%(t3-t2)
-

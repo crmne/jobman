@@ -49,7 +49,7 @@ class JobSet(object):
         """Add a job-state to this pool. It will be started as soon as possible."""
         raise NotImplementedError()
 
-    def del(self, state):
+    def delete(self, state):
         """Remove a job-state from this pool"""
         raise NotImplementedError()
 
