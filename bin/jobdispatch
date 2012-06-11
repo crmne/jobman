@@ -103,7 +103,7 @@ if not os.path.exists(LOGDIR):
 
 valid_dbi_param=["clean_up", "test", "dolog", "nb_proc", "exp_dir", "file",
                  "tasks_filename", "exec_in_exp_dir", "repeat_jobs",
-                 "whitespace", "sort",
+                 "whitespace", "sort", "launch_cmd",
                  ]
 if dbi_param['launch_cmd']=="Cluster":
     valid_dbi_param +=["cwait","force","arch","interruptible",
