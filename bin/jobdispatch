@@ -131,6 +131,8 @@ elif dbi_param['launch_cmd']=="Sharcnet":
 elif dbi_param['launch_cmd'] == "Torque":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "raw", "gpu"]
+elif dbi_param['launch_cmd'] == "Local":
+    valid_dbi_param += ["cpu", "env", "set_special_env"]
 
 # Only valid for condor
 if dbi_param['launch_cmd'] == 'Condor':

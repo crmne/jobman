@@ -56,12 +56,13 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                                                  clusterid(condor,sge only),
                                                  processid(condor,sge only),
                                                  jobname(sge only)}+]
-    bqtools, cluster, condor, sge, sharcnet, torque options:
+    bqtools, cluster, condor, sge, sharcnet, torque, local options:
                               [--cpu=nb_cpu_per_node]
+    bqtools, cluster, condor, sge, sharcnet, torque options:
                               [--mem=N]
     bqtools, cluster, sge, sharcnet, torque option:
                               [--duree=X]
-    bqtools, condor, sge, sharcnet, torque options:
+    bqtools, condor, sge, sharcnet, torque local options:
                               [--env=VAR=VALUE[ VAR2=VALUE2]]  (must be quoted into the shell!)
                               [*--[no_]set_special_env]
     bqtools, condor, sge, torque options:
@@ -190,9 +191,10 @@ common options:
       I put this as an option as I don't remember why it was not allowed.
   The '--sort={generated*,random}' option allow to change the default order of jobs.
 
-bqtools, cluster, condor, sge and torque option:
+bqtools, cluster, condor, sge, torque and local option:
   The '--cpu=nb_cpu_per_node' option determine the number of cpu(cores) that
     will be reserved for each job.(default=1, -1 won't set it)
+bqtools, cluster, condor, sge and torque option:
   The '--mem=X' speficify the number of ram in meg the program need to execute.
     If you put G[g],M[m] or K[k] at the end. We consider it as Gig, Meg or K
     with multiple of 1024. Default to don't specify it for all except on
@@ -204,7 +206,7 @@ bqtools, cluster, sge, sharcnet and torque option:
     For bqtools and sge, the syntax is '--duree=12:13:15', giving 12 hours,
     13 minutes and 15 seconds.
 
-bqtools, condor, sge, sharcnet and torque options:
+bqtools, condor, sge, sharcnet, torque and local options:
   The '--env=VAR=VALUE' option will set in the environment of the executing
     jobs the variable VAR with value VALUE. To pass many variable you can:
       1) use one --env option and separ the pair by ' '(don't forget to quote)
@@ -2809,12 +2811,17 @@ class DBILocal(DBIBase):
 
     def __init__(self, commands, **args):
         self.nb_proc=1
+        self.env = ""
+        self.set_special_env = True
         DBIBase.__init__(self, commands, **args)
         self.args=args
         self.threads=[]
         self.mt = None
         self.started=0
         self.nb_proc_file = ''
+
+        if self.set_special_env and self.cpu>0:
+            self.env+=' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
 
         try:
             self.nb_proc=int(self.nb_proc)
@@ -2880,6 +2887,7 @@ class DBILocal(DBIBase):
         self.started += 1  # Is this atomic?
         print "[DBI,%d/%d,%s] %s" % (self.started, len(self.tasks),
                                      time.ctime(), c)
+        c = self.env + " " + c
         p = Popen(c, shell=True, stdout=output, stderr=error)
         p.wait()
         task.status = STATUS_FINISHED
