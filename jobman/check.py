@@ -199,6 +199,12 @@ def check_serve(options, dbdescr):
             if pbs_job:
                 check_running_pbs_jobs(r, now)
                 continue
+
+            if not condor_job:
+                print "W: Job %d is running but don't have the information needed to check if they still run on the jobs scheduler condor/pbs/torque/sge. Possible reasons: the job started with an old version of jobman or on another jobs scheduler."%r.id
+                continue
+
+            # We suppose the jobs started on condor.
             try:
                 h = r["jobman.sql.host_name"]
                 s = r["jobman.sql.condor_slot"]
