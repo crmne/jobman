@@ -139,7 +139,8 @@ def flatten(obj):
                     break
         # TODO: add numpy.floating, numpy.integer?
         if (prevent_flatten or
-            isinstance(obj, (str, unicode, int, float, list, tuple)) or
+            # add numpy.ndarray
+            isinstance(obj, (str, unicode, int, float, list, tuple, set)) or
             obj in (True, False, None)):
             # We do not flatten these objects.
             d[prefix] = obj #convert(obj)

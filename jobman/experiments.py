@@ -54,15 +54,6 @@ def example_sleep(state, channel):
     return channel.COMPLETE
 
 
-#This example fail for now. I will try to make it work later.
-def example_numpy(state, channel):
-    print "start of example_numpy"
-    import numpy
-    state.ndarray = numpy.zeros(4)
-    print "end of example_numpy"
-    return channel.COMPLETE
-
-
 def example_save(state, channel):
     import numpy
     size = getattr(state, "size", 10 * 1024 * 1024)  # 10M
@@ -76,4 +67,41 @@ def print_state(state, channel):
     print "start of print_state"
     print state
     print "end of print_state"
+    return channel.COMPLETE
+
+
+#This example fail for now. I will try to make it work later.
+def example_numpy(state, channel):
+    print "start of example_numpy"
+    import numpy
+    state.ndarray = numpy.zeros(4)
+    print "end of example_numpy"
+    return channel.COMPLETE
+
+
+#This example fail for now. I will try to make it work later.
+def example_numpy_float32(state, channel):
+    print "start of example_numpy_float32"
+    import numpy
+    state.float32 = numpy.float32(4.)
+    print "end of example_numpy_float32"
+    return channel.COMPLETE
+
+
+#This example fail for now. I will try to make it work later.
+def example_numpy_float64(state, channel):
+    print "start of example_numpy_float64"
+    import numpy
+    state.float64 = numpy.float64(4.)
+    print "end of example_numpy_float64"
+    return channel.COMPLETE
+
+
+def example_set(state, channel):
+    print "start of example_set"
+    if hasattr(state, 'set'):
+        state.set.update([4])
+    else:
+        state.set = set([4])
+    print "end of example_set"
     return channel.COMPLETE
