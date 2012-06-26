@@ -572,6 +572,9 @@ parser_sql.add_option('--save-every', action='store', dest='save_every',
 parser_sql.add_option('-w', '--workdir', action='store',
                       dest='workdir', default=None,
                       help='the working directory in which to run the experiment')
+parser_sql.add_option('--import', action='store',
+                      dest='modules', default=None,
+                      help='Modules to be loaded before the experiment begins')
 
 
 def runner_sql(options, dbdescr, exproot):
@@ -608,6 +611,10 @@ def runner_sql(options, dbdescr, exproot):
             postgres://user:pass@host[:port]/dbname?table=tablename \\
             ssh://central_host:myexperiments
     """
+    modules = options.modules.split(',') if options.modules else []
+    for module in modules:
+        __import__(module, fromlist=[])
+
     db = open_db(dbdescr, serial=True)
     n = options.n if options.n else -1
     nrun = 0
