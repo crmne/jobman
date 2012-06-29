@@ -724,8 +724,10 @@ parser_sqlstatus.add_option('--set_status', action="store",
                           help='If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
 parser_sqlstatus.add_option('--all', action="store_true", dest="all",
                           help='Append all jobs in the db to the list of jobs.')
-parser_sqlstatus.add_option('--status', action="store", dest="status",
-                          help='Append jobs in the db with the gived status to the list of jobs.')
+parser_sqlstatus.add_option('--status', action="append", dest="status",
+                            help='Append jobs in the db with the gived status'
+                            ' to the list of jobs. You can pass multiple time'
+                            ' this parameter.')
 parser_sqlstatus.add_option('--reset_prio', action="store_true", dest="reset_prio",
                           help='Reset the priority to the default.')
 parser_sqlstatus.add_option('--ret_nb_jobs', action="store_true", dest="ret_nb_jobs",
@@ -790,7 +792,10 @@ def runner_sqlstatus(options, dbdescr, *ids):
 
         if options.status:
             q = db.query(session)
-            jobs = q.filter_eq('jobman.status', to_status_number(options.status)).all()
+            jobs = []
+            for  stat in options.status:
+                jobs += q.filter_eq('jobman.status',
+                                    to_status_number(stat)).all()
 
             ids.extend([j.id for j in jobs])
             del jobs, q
