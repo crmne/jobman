@@ -219,6 +219,14 @@ at the command line, jobman connects to the database and retrieves a job that:
 
 and then actually runs it locally.
 
+Additionaly, if you execute
+
+.. code-block:: bash
+
+    jobman sql --import=theano 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .
+
+the ``theano`` module will be imported before the job launches.
+
 Using jobdispatch
 -----------------
 
