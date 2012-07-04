@@ -611,7 +611,10 @@ def runner_sql(options, dbdescr, exproot):
             postgres://user:pass@host[:port]/dbname?table=tablename \\
             ssh://central_host:myexperiments
     """
-    modules = options.modules.split(',') if options.modules else []
+    if options.modules:
+        modules = options.modules.split(',')
+    else:
+        modules = []
     for module in modules:
         __import__(module, fromlist=[])
 
