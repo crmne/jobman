@@ -204,7 +204,7 @@ will keep on executing new jobs until all jobs are executed. You can
 launch this command on different computers, or several times on a
 cluster, to have jobs executed in parallel.
 
-To import modules before launching this job, use the ``--import `` option. The 
+To import modules before contacting the database, use the ``--import `` option. The 
 following code
 
 .. code-block:: bash
