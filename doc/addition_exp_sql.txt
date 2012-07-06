@@ -212,7 +212,7 @@ following code
    jobman sql --import=numpy,theano postgres://<user>:<pass>@<server>/\
    <database>?table=<table> .
 
-will import ``numpy`` and ``theano`` before executing the job.
+will import ``numpy`` and ``theano`` before contacting the database.
 
 For more information::
 
