@@ -225,7 +225,7 @@ Additionaly, if you execute
 
     jobman sql --import=theano 'postgres://ift6266h10@gershwin/ift6266h10_sandbox_db?table=mlp_dumi' .
 
-the ``theano`` module will be imported before the job launches.
+the ``theano`` module will be imported before database is contacted.
 
 Using jobdispatch
 -----------------
