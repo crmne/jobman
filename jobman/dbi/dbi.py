@@ -2435,7 +2435,7 @@ class DBICondor(DBIBase):
                         m=1024
                     ulimit_cmd = "ulimit -v "+str((self.ulimit_vm+m)*1024)
                 fd.write(dedent('''\
-                    /usr/kerberos/bin/klist -5
+                    klist -5
                     echo "Executing on " `/bin/hostname` 1>&2
                     echo "HOSTNAME: ${HOSTNAME}" 1>&2
                     echo "PATH: $PATH" 1>&2
@@ -2469,7 +2469,7 @@ class DBICondor(DBIBase):
                     fd.write('source ' + self.source_file + '\n')
 
                 fd.write(dedent('''\
-                /usr/kerberos/bin/klist -5
+                klist -5
                 echo "Executing on " `/bin/hostname`
                 echo "HOSTNAME: ${HOSTNAME}"
                 echo "PATH: $PATH"
