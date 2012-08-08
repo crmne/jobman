@@ -9,6 +9,10 @@ if sys.version_info[:2] < (2,5):
                 return True
         return False
 
+#Uncomment this line to force the use of this repo jobman version
+#This bypass the egg loading system that always prepended egg to the PYTHONPATH!
+#sys.path[0:0] = [os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]]
+
 from jobman.dbi.utils import search_file
 from jobman.dbi.dbi import *
 

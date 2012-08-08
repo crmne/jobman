@@ -2435,7 +2435,7 @@ class DBICondor(DBIBase):
                         m=1024
                     ulimit_cmd = "ulimit -v "+str((self.ulimit_vm+m)*1024)
                 fd.write(dedent('''\
-                    /usr/kerberos/bin/klist -5
+                    klist -5
                     echo "Executing on " `/bin/hostname` 1>&2
                     echo "HOSTNAME: ${HOSTNAME}" 1>&2
                     echo "PATH: $PATH" 1>&2
@@ -2444,6 +2444,7 @@ class DBICondor(DBIBase):
                     echo "OMP_NUM_THREADS: $OMP_NUM_THREADS" 1>&2
                     echo "CONDOR_JOB_LOGDIR: $CONDOR_JOB_LOGDIR" 1>&2
                     echo "HOME: $HOME" 1>&2
+                    grep -E "^GlobalJobId" $_CONDOR_JOB_AD 1>&2
                     pwd 1>&2
                     echo "nb args: $#" 1>&2
                     echo "Running: command: \\"$@\\"" 1>&2
@@ -2469,7 +2470,7 @@ class DBICondor(DBIBase):
                     fd.write('source ' + self.source_file + '\n')
 
                 fd.write(dedent('''\
-                /usr/kerberos/bin/klist -5
+                klist -5
                 echo "Executing on " `/bin/hostname`
                 echo "HOSTNAME: ${HOSTNAME}"
                 echo "PATH: $PATH"
@@ -2478,6 +2479,7 @@ class DBICondor(DBIBase):
                 echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
                 echo "CONDOR_JOB_LOGDIR: $CONDOR_JOB_LOGDIR"
                 echo "HOME: $HOME"
+                grep -E "^GlobalJobId" $_CONDOR_JOB_AD
                 pwd
                 echo "Running command: $argv"
                 $argv
