@@ -10,11 +10,13 @@ EXPDIR=/tmp/TEST_JOBMAN_EXP
 
 jobman sqlschedule --force ${P} jobman.experiments.example_sleep sleep=5
 jobman sqlschedules --force ${P} jobman.experiments.example_sleep sleep="{{1,2,3}}"
-jobman sqlstatus $P 10 11
+jobman sqlstatus $P 1
 jobman sqlview ${P} ${DB_NAME}_view
 jobman sql ${P} $EXPDIR
+jobman sqlstatus --status=0 --status=2 ${P}
 jobman check ${P}
 jobman cmdline jobman.experiments.example1
+jobman sqlstatus --set_status=0 $P 1
 
 #TEST CONCURRENTLY CHECKOUT IN THE DB
 # THE FOLLOWING LINE CREATE ONLY 1 jobs. Check and fix!
