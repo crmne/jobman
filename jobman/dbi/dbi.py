@@ -86,13 +86,19 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [*--[no_]abs_path] [--[*no_]pkdilly]
                               [--universe={vanilla*, standard, grid, java,
                                            scheduler, local, parallel, vm}]
-                              [--machine=HOSTNAME+] [--machines=regex+]
+                              [--machines=regex+]
                               [--no_machine=HOSTNAME+]
                               [--[*no_]keep_failed_jobs_in_queue]
                               [--max_file_size=N][--[no_]debug]
                               [--[no_]local_log_file][--next_job_start_delay=N]
                               [--fast] [--[no_]gpu_enabled]
                               [--ulimit_vm=N]
+    condor options:
+                              [--machine=HOSTNAME+]
+
+    torque options:
+                              [--machine=HOSTNAME]
+
     sge options              :[--project=STRING]
                               [--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
@@ -255,6 +261,17 @@ cluster only options:
   The '--force' option is transfered to cluster
   The '--interruptible' option is passed to cluster
 
+condor options:
+  The '--machine=full_host_name' option add the requirement that the
+     executing host is full_host_name. For condor only, if multiple
+     --machine or --machines options, take anyone of them. Is
+     equivalent to jobdispatch '--req=Machine=="full_host_name"'.
+     We need the full host name of the computer.
+
+torque options:
+  The '--machine=host_name' option add the requirement that the
+     executing host is host_name.
+
 condor only options:
   The 'CONDOR_HOME' environment variable will change value of the HOME variable
     in the environment of the submitted jobs.
@@ -279,10 +296,6 @@ condor only options:
   The '--[no_]prefserver' option will tell that you prefer to execute on server
     first. This is equivalent to jobdispatch '--rank=SERVER=?=True'.
   The '--rank=STRING' option add rank=STRING in the submit file.
-  The '--machine=full_host_name' option add the requirement that the executing
-     host is full_host_name. If multiple --machine or --machines options,
-    take anyone of them. Is equivalent to
-     jobdispatch '--req=Machine=="full_host_name"'
   The '--no_machine=full_host_name' option remove the machines from possible
     host to run your jobs.
   The '--machines=regexp' option add the requirement that the executing host
@@ -368,7 +381,6 @@ is equivalent to:
 In the file of the option --file=FILEPATH, there must not be double
 quotes around the {{}} as they are for the shell and if the command is
 in the file, it is not interpreted by the shell.
-
 
 """ % {'ShortHelp': ShortHelp, 'ScriptName': ScriptName}
 
@@ -1697,6 +1709,7 @@ class DBITorque(DBIBase):
         self.set_special_env = True
         self.nb_proc = -1
         self.gpu = False
+        self.machine = []
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
@@ -1776,17 +1789,30 @@ class DBITorque(DBIBase):
                 #PBS -o %(log_dir)s/%(name)s.out
                 #PBS -e %(log_dir)s/%(name)s.err
 
+                '''
+
+        if len(self.machine) == 0:
+            submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
                 #PBS -l nodes=1:ppn=%(cpu)i
+            '''
+        elif len(self.machine) == 1:
+            submit_sh_template += '''
+                ## Number of CPU (on the same node) per job
+                #PBS -l nodes=%s:ppn=%%(cpu)i
+            ''' % self.machine[0]
+        elif len(self.machine) > 1:
+            raise Exception("The torque backend support submitting"
+                            " only to 1 specific computer")
 
-                ## Execute as many jobs as needed
-                '''
         if self.nb_proc > 0:
             submit_sh_template += '''
+                ## Execute as many jobs as needed
                 #PBS -t 0-%(n_tasks_m1)i%%%(nb_proc)i
                 '''
         else:
             submit_sh_template += '''
+                ## Execute as many jobs as needed
                 #PBS -t 0-%(n_tasks_m1)i
                 '''
 
