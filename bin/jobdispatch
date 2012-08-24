@@ -134,7 +134,7 @@ elif dbi_param['launch_cmd']=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu", "env", "set_special_env"]#, "raw" ?
 elif dbi_param['launch_cmd'] == "Torque":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
-                        "set_special_env", "raw", "gpu"]
+                        "set_special_env", "raw", "gpu", "machine"]
 elif dbi_param['launch_cmd'] == "Local":
     valid_dbi_param += ["cpu", "env", "set_special_env"]
 
