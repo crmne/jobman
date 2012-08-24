@@ -93,9 +93,8 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--[no_]local_log_file][--next_job_start_delay=N]
                               [--fast] [--[no_]gpu_enabled]
                               [--ulimit_vm=N]
-    condor options:
+                              [--notification={Always, Complete, Error*, Never}]
                               [--machine=HOSTNAME+]
-
     torque options:
                               [--machine=HOSTNAME]
 
@@ -332,6 +331,7 @@ condor only options:
       We try to launch on gpu host first.
   The '--ulimit_vm=N' option tell condor to limit the virtual memory usage by
       N(in meg, default 500) + memory requested (default 950M on condor)
+  The '--notification={Error*, Always, Complete, Never}' option is forwarded to condor.
 
 sge only option:
   The '--project' specifies the project to which this  job  is  assigned.
@@ -461,7 +461,7 @@ def parse_args(to_parse, dbi_param):
                                     "--repeat_jobs", "--sort", "--ulimit_vm",
                                     "--project", "--jobs_per_node",
                                     "--cores_per_node", "--mem_per_node",
-                                    "--pe"
+                                    "--pe", "--notification"
                                     ]:
             sp = argv.split('=', 1)
             param = sp[0][2:]
@@ -2099,6 +2099,7 @@ class DBICondor(DBIBase):
         self.next_job_start_delay = -1
         self.imagesize=-1
         self.ulimit_vm = 0
+        self.notification = "Error"
 
         DBIBase.__init__(self, commands, **args)
 
@@ -2142,6 +2143,11 @@ class DBICondor(DBIBase):
 
         self.next_job_start_delay=int(self.next_job_start_delay)
         self.ulimit_vm = int(self.ulimit_vm)
+
+        if self.notification not in ["Always", "Complete", "Error", "Never"]:
+            raise ValueError("The notification parameter support only the "
+                             "values: Always, Complete, Error, Never. Got %s" %
+                             self.notification)
 
         self.add_commands(commands)
 
@@ -2540,10 +2546,13 @@ class DBICondor(DBIBase):
                 log            = %s
                 getenv         = %s
                 nice_user      = %s
+                notification   = %s
                 ''' % (self.launch_file, self.universe, self.req,
                        output,
                        error,
-                       self.log_file,str(self.getenv),str(self.nice))))
+                       self.log_file, str(self.getenv), str(self.nice),
+                       self.notification
+                   )))
         if arguments:
             fd.write('arguments      = '+arguments+'\n')
         if self.keep_failed_jobs_in_queue:
