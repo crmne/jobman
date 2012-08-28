@@ -331,7 +331,15 @@ condor only options:
       We try to launch on gpu host first.
   The '--ulimit_vm=N' option tell condor to limit the virtual memory usage by
       N(in meg, default 500) + memory requested (default 950M on condor)
-  The '--notification={Error*, Always, Complete, Never}' option is forwarded to condor.
+  The '--notification={Error*, Always, Complete, Never}' option is forwarded
+      to condor. When email notification are sent. If defined by Always, the
+      owner will be notified whenever the job produces a checkpoint, as well
+      as when the job completes. If defined by Complete, the owner will be
+      notified when the job terminates. If defined by Error, the owner will
+      only be notified if the job terminates abnormally, or if the job is
+      placed on hold because of a failure, and not by user request. If
+      defined by Never, the owner will not receive e-mail. There is some
+      statistic included in the email.
 
 sge only option:
   The '--project' specifies the project to which this  job  is  assigned.
