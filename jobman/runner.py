@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import tempfile
@@ -146,6 +147,7 @@ def runner_cmdline(options, experiment, *strings):
     state.setdefault('jobman', DD()).experiment = experiment
     state.jobman.time = time.ctime()
     experiment = resolve(experiment)
+
     if options.workdir and options.dry_run:
         raise UsageError('Please use only one of: --workdir, --dry-run.')
     if options.workdir:
@@ -155,6 +157,7 @@ def runner_cmdline(options, experiment, *strings):
     else:
         workdir_gen = getattr(workdirgen, options.workdir_gen, None) or resolve(options.workdir_gen)
         workdir = workdir_gen(state)
+    print "The working directory is:", os.path.join(os.getcwd(), workdir)
 
     channel = StandardChannel(workdir,
                               experiment, state,
