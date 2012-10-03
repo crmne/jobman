@@ -17,13 +17,14 @@ import workdirgen
 ### Running
 ################################################################################
 
+
 def parse_and_run(command, arguments):
-    if command==None:
+    if command == None:
         #allow other parameter for help used in other program
         for arg in arguments:
-            if arg in [ "--help", "-h" ]:
-                command="help"
-                arguments=[]
+            if arg in ["--help", "-h"]:
+                command = "help"
+                arguments = []
 
     parser, runner = runner_registry.get(command, (None, None))
     if not runner:
@@ -34,21 +35,25 @@ def parse_and_run(command, arguments):
         options = optparse.Values()
     return run(runner, [options] + arguments)
 
+
 def run(runner, arguments):
     argspec = inspect.getargspec(runner)
     minargs = len(argspec[0])
     if argspec[3]:
-        minargs-=len(argspec[3])
+        minargs -= len(argspec[3])
     maxargs = len(argspec[0])
     if minargs > len(arguments) or maxargs < len(arguments) and not argspec[1]:
         s = format_help(runner)
         raise UsageError(s)
     return runner(*arguments)
 
+
 def run_cmdline():
     try:
         if len(sys.argv) <= 1:
-            raise UsageError('Usage: "%s <command> [<arguments>*]" \nor "%s help" for help' % (sys.argv[0],sys.argv[0]))
+            raise UsageError(
+                'Usage: "%s <command> [<arguments>*]" \nor "%s help" for help'
+                % (sys.argv[0], sys.argv[0]))
         cmd = None
         args = []
         for arg in sys.argv[1:]:
@@ -62,6 +67,7 @@ def run_cmdline():
         print 'Usage error:'
         print e
 
+
 def warn_if_sql_failure():
     """Display a warning if sqlalchemy or psycopg2 could not be imported.
 
@@ -71,7 +77,7 @@ def warn_if_sql_failure():
     if len(sys.argv) >= 2 and sys.argv[1] == 'cmdline':
         return
     from jobman import sql
-    for module in ('sqlalchemy',):#, 'psycopg2'):
+    for module in ('sqlalchemy',):  # , 'psycopg2'):
         if not getattr(sql, '%s_ok' % module):
             # Note: we use `RuntimeWarning` instead of `ImportWarning` because
             # the latter are ignored by default, and we do not want it to be
@@ -95,32 +101,46 @@ runner_registry = dict()
 ### cmdline
 ################################################################################
 
-parser_cmdline = OptionParser(usage = '%prog cmdline [options] <experiment> <parameters>', add_help_option=False)
-parser_cmdline.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
-                          help = 'force running the experiment even if it is already running or completed')
-parser_cmdline.add_option('--redirect-stdout', action = 'store_true', dest = 'redirect_stdout', default = False,
-                          help = 'redirect stdout to the workdir/stdout file')
-parser_cmdline.add_option('--redirect-stderr', action = 'store_true', dest = 'redirect_stderr', default = False,
-                          help = 'redirect stderr to the workdir/stdout file')
-parser_cmdline.add_option('-r', '--redirect', action = 'store_true', dest = 'redirect', default = False,
-                          help = 'redirect stdout and stderr to the workdir/stdout and workdir/stderr files')
-parser_cmdline.add_option('-w', '--workdir', action = 'store', dest = 'workdir', default = None,
-                          help = 'the working directory in which to run the experiment')
-parser_cmdline.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
-                          help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
-parser_cmdline.add_option('-2', '--sigint', action = 'store_true', dest = 'allow_sigint', default = False,
-                          help = 'allow sigint (CTRL-C) to interrupt a process')
-parser_cmdline.add_option('-p', '--parser', action = 'store', dest = 'parser', default = 'filemerge',
-                          help = 'parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
-parser_cmdline.add_option('-g', '--workdir-gen', action = 'store', dest = 'workdir_gen', default = 'date',
-                          help = 'function serving to generate the relative path of the workdir')
+parser_cmdline = OptionParser(
+    usage='%prog cmdline [options] <experiment> <parameters>',
+    add_help_option=False)
+parser_cmdline.add_option('-f', '--force', action='store_true',
+                          dest='force', default=False,
+                          help='force running the experiment even if it is already running or completed')
+parser_cmdline.add_option('--redirect-stdout', action='store_true',
+                          dest='redirect_stdout', default=False,
+                          help='redirect stdout to the workdir/stdout file')
+parser_cmdline.add_option('--redirect-stderr', action='store_true',
+                          dest='redirect_stderr', default=False,
+                          help='redirect stderr to the workdir/stdout file')
+parser_cmdline.add_option('-r', '--redirect', action='store_true',
+                          dest='redirect', default=False,
+                          help='redirect stdout and stderr to the workdir/stdout and workdir/stderr files')
+parser_cmdline.add_option('-w', '--workdir', action='store',
+                          dest='workdir', default=None,
+                          help='the working directory in which to run the experiment')
+parser_cmdline.add_option('-n', '--dry-run', action='store_true',
+                          dest='dry_run', default=False,
+                          help='use this option to run the whole experiment in a temporary working directory (cleaned after use)')
+parser_cmdline.add_option('-2', '--sigint', action='store_true',
+                          dest='allow_sigint', default=False,
+                          help='allow sigint (CTRL-C) to interrupt a process')
+parser_cmdline.add_option('-p', '--parser', action='store',
+                          dest='parser', default='filemerge',
+                          help='parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
+parser_cmdline.add_option('-g', '--workdir-gen', action='store',
+                          dest='workdir_gen', default='date',
+                          help='function serving to generate the relative path of the workdir')
 
-parser_cmdline.add_option('--finish-up-after', action = 'store', dest = 'finish_up_after',
-                          default = None,
-                          help = 'Duration (in seconds) after which the call to channel.switch() will return "finish-up". Asks the experiment to reach the next checkpoint, save, and exit. It is up to the experimentto use channel.switch() and respect it.')
-parser_cmdline.add_option('--save-every', action = 'store', dest = 'save_every',
-                          default = None,
-                          help = 'Interval (in seconds) after which the call to channel.switch() will return "save". Asks the experiment to save at the next checkpoint. It is up to the experiment use channel.switch() and respect it.')
+parser_cmdline.add_option('--finish-up-after', action='store',
+                          dest='finish_up_after',
+                          default=None,
+                          help='Duration (in seconds) after which the call to channel.switch() will return "finish-up". Asks the experiment to reach the next checkpoint, save, and exit. It is up to the experimentto use channel.switch() and respect it.')
+parser_cmdline.add_option('--save-every', action='store',
+                          dest='save_every',
+                          default=None,
+                          help='Interval (in seconds) after which the call to channel.switch() will return "save". Asks the experiment to save at the next checkpoint. It is up to the experiment use channel.switch() and respect it.')
+
 
 def runner_cmdline(options, experiment, *strings):
     """
@@ -155,7 +175,8 @@ def runner_cmdline(options, experiment, *strings):
     elif options.dry_run:
         workdir = tempfile.mkdtemp()
     else:
-        workdir_gen = getattr(workdirgen, options.workdir_gen, None) or resolve(options.workdir_gen)
+        workdir_gen = getattr(workdirgen, options.workdir_gen,
+                              None) or resolve(options.workdir_gen)
         workdir = workdir_gen(state)
     print "The working directory is:", os.path.join(os.getcwd(), workdir)
 
@@ -167,18 +188,16 @@ def runner_cmdline(options, experiment, *strings):
                               save_interval = options.save_every or None
                               )
     channel.catch_sigint = not options.allow_sigint
-    channel.run(force = options.force)
+    channel.run(force=options.force)
     if options.dry_run:
         shutil.rmtree(workdir, ignore_errors=True)
 
 runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 
 
-
 # ################################################################################
 # ### filemerge
 # ################################################################################
-
 # parser_filemerge = OptionParser(usage = '%prog filemerge [options] <experiment> <file> <file2> ...', add_help_option=False)
 # parser_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
 #                           help = 'force running the experiment even if it is already running or completed')
@@ -252,8 +271,7 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 ################################################################################
 ### help
 ################################################################################
-
-def runner_help(options, topic = None):
+def runner_help(options, topic=None):
     """
     Get help for a topic.
 
@@ -326,8 +344,9 @@ def runner_help(options, topic = None):
             called when the function returns, but it is a good idea to do it
             periodically.
 
-         - channel.save_and_switch() is an useful shortcut to do both operations
-            described above.
+         - channel.save_and_switch() is an useful shortcut to do both
+            operations described above.
+
         """
 
     elif topic == 'parameters':
@@ -367,7 +386,8 @@ def runner_help(options, topic = None):
 
           from jobman.tools import make
           def experiment(state, channel):
-              regexp = make(state.regexp) # regexp is now re.compile(pattern = 'a.*c')
+              # regexp is now re.compile(pattern = 'a.*c')
+              regexp = make(state.regexp)
               print regexp.sub('blahblah', 'hello abbbbc there')
 
           If the above experiment was called with the state produced by the
