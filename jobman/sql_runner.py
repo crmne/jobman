@@ -24,8 +24,7 @@ from channel import StandardChannel, JobError
 import parse
 from sql import START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED
 from api0 import open_db
-    
-from pylearn2.scripts.jobman import experiment
+
 
 ###############################################################################
 ### Channels
@@ -76,15 +75,11 @@ class RSyncChannel(StandardChannel):
         excludes = ' '.join('--exclude="%s"' % e for e in exclusions)
         # TODO: use something more portable than os.system
         if direction == 'push':
-            # Flag setting is similar to -a (-rlptgoD), but we avoid setting
-            # group permissions, as this often fails.
-            rsync_cmd = 'rsync -a -O --no-g --no-p --no-o --chmod 644 %s "%s/" "%s/"' % (
-                    excludes, path, remote_path)
+            rsync_cmd = 'rsync -a %s "%s/" "%s/"' % (excludes, path,
+                                                     remote_path)
         elif direction == 'pull':
-            # Flag setting is similar to -a (-rlptgoD), but we avoid setting
-            # group permissions, as this often fails.
-            rsync_cmd = 'rsync -a -O --no-g --no-p --no-o --chmod 644 %s "%s/" "%s/"' % (
-                    excludes, remote_path, path)
+            rsync_cmd = 'rsync -a %s "%s/" "%s/"' % (excludes, remote_path,
+                                                     path)
         else:
             raise RSyncException('invalid direction', direction)
 
@@ -941,8 +936,6 @@ def runner_sqlreload(options, dbdescr, table_dir, *ids):
     assert os.path.split(table_dir)[-1] == db.tablename
     assert os.path.split(os.path.split(table_dir)[0])[-1] == db.dbname
     expdir = os.path.split(os.path.split(table_dir)[0])[0]
-
-    fnames = os.listdir(table_dir) if options.all else ids
 
     if options.all:
         assert len(ids) == 0
