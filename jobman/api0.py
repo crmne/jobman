@@ -568,6 +568,7 @@ class DbHandle (object):
         else:
             rval = h_self._Dict(session)
             if dct: rval.update_simple(dct, session=session)
+            session.commit()
         return rval
 
     def query(h_self, session):
