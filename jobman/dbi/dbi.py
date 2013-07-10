@@ -1767,7 +1767,9 @@ class DBITorque(DBIBase):
                 tasks=(
                 '''))
         for task in self.tasks:
-            launcher.write("'" + ';'.join(task.commands) + "'\n")
+            # We need double quote in the launcher file as otherwise
+            # $VAR don't work.
+            launcher.write('"' + ';'.join(task.commands) + '"\n')
         launcher.write(dedent('''\
                 )
 
