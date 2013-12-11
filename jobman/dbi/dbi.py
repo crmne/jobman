@@ -93,6 +93,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--[no_]local_log_file][--next_job_start_delay=N]
                               [--fast] [--[no_]gpu_enabled]
                               [--ulimit_vm=N]
+                              [--interactive]
                               [--notification={Always, Complete, Error*, Never}]
                               [--machine=HOSTNAME+]
     torque options:
@@ -334,6 +335,7 @@ condor only options:
       We try to launch on gpu host first.
   The '--ulimit_vm=N' option tell condor to limit the virtual memory usage by
       N(in meg, default 500) + memory requested (default 950M on condor)
+  The '--[no_]interactive' option tell condor to launch an interactive job
   The '--notification={Error*, Always, Complete, Never}' option is forwarded
       to condor. When email notification are sent. If defined by Always, the
       owner will be notified whenever the job produces a checkpoint, as well
@@ -432,7 +434,7 @@ def parse_args(to_parse, dbi_param):
                        "--m32G", "--keep_failed_jobs_in_queue", "--restart",
                        "--debug", "--local_log_file",
                        "--exec_in_exp_dir", "--fast", "--whitespace",
-                       "--gpu", "--gpu_enabled",
+                       "--gpu", "--gpu_enabled", "--interactive"
                    ]:
             dbi_param[argv[2:]] = True
         elif argv in ["--no_force", "--no_interruptible", "--no_long",
@@ -444,7 +446,7 @@ def parse_args(to_parse, dbi_param):
                       "--no_debug", "--no_local_log_file",
                       "--no_exec_in_exp_dir",
                       "--no_fast", "--no_whitespace",
-                      "--no_gpu", "--no_gpu_enabled",
+                      "--no_gpu", "--no_gpu_enabled", "--no_interactive"
                       ]:
             dbi_param[argv[5:]] = False
         elif argv == "--testdbi":
@@ -2111,6 +2113,7 @@ class DBICondor(DBIBase):
         self.clean_up = True
         self.max_file_size = 10*1024*1024 #in blocks size, here they are 1k each
         self.debug = False
+        self.interactive = False
         self.local_log_file = True#by default true as condor can have randomly failure otherwise.
         self.next_job_start_delay = -1
         self.imagesize=-1
@@ -2128,6 +2131,9 @@ class DBICondor(DBIBase):
         if self.debug:
             self.condor_submit_exec+=" -debug"
             self.condor_submit_dag_exec+=" -debug"
+        if self.interactive:
+            self.condor_submit_exec+=" -interactive"
+            self.condor_submit_dag_exec+=" -interactive"
         valid_universe = ["standard", "vanilla", "grid", "java", "scheduler", "local", "parallel", "vm"]
         if not self.universe in valid_universe:
             raise DBIError("[DBI] ERROR: the universe option have an invalid value",self.universe,". Valid values are:",valid_universe)

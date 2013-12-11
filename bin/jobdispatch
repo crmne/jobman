@@ -28,7 +28,7 @@ dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
            "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
            "restart":False,'whitespace':False,"fast":False,
            "gpu":False,"gpu_enabled":False, "sort":"generated",
-           "file":[], "ulimit_vm":500}
+           "file":[], "ulimit_vm":500, "interactive":False}
 dbi_param_orig = dbi_param.copy()
 testmode=False
 
@@ -119,7 +119,7 @@ elif dbi_param['launch_cmd']=="Condor":
                        "keep_failed_jobs_in_queue", "restart",
                        "max_file_size", "debug", "local_log_file",
                        "next_job_start_delay", "gpu", "gpu_enabled",
-                       "fast", "ulimit_vm"
+                       "fast", "ulimit_vm", "interactive"
                        ]
 elif dbi_param['launch_cmd']=="Bqtools":
     valid_dbi_param +=["cpu", "duree", "long", "mem", "micro",
