@@ -93,7 +93,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--[no_]local_log_file][--next_job_start_delay=N]
                               [--fast] [--[no_]gpu_enabled]
                               [--ulimit_vm=N]
-                              [--interactive]
+                              [*--[no_]interactive]
                               [--notification={Always, Complete, Error*, Never}]
                               [--machine=HOSTNAME+]
     torque options:
