@@ -270,22 +270,16 @@ def find_conf_files(cwd, fname='current.conf', recurse=True):
         if os.path.isdir(e) and recurse:
             find_conf_files(e, fname)
 
-#         try:
-#             e_config = open(os.path.join(e, fname),'r')
-#         except:
-#             e_config = None
-
-        if e_config:
-            ## data = e_config.read().split('\n') 
-            # trailing \n at end of file creates empty string
-            ## jobdd = DD(parse(*data[:-1]))
+        try:
             jobdd = DD(parse.filemerge(os.path.join(e, fname)))
+        except IOError:
+            print "WARNING: %s file not found. Skipping it" % os.path.join(e, fname)
 
-            try:
-                jobid = int(jobid)
-            except ValueError:
-                jobid = None
-            yield (jobid, jobdd)
+        try:
+            jobid = int(jobid)
+        except ValueError:
+            jobid = None
+        yield (jobid, jobdd)
 
 
 def rebuild_DB_from_FS(db, cwd='./', keep_id=True, verbose=False):
