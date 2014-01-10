@@ -274,6 +274,7 @@ def find_conf_files(cwd, fname='current.conf', recurse=True):
             jobdd = DD(parse.filemerge(os.path.join(e, fname)))
         except IOError:
             print "WARNING: %s file not found. Skipping it" % os.path.join(e, fname)
+            continue
 
         try:
             jobid = int(jobid)
