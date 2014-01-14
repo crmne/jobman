@@ -46,7 +46,11 @@ elif search_file('qsub',PATH):
     p = Popen('qsub --version',shell=True, stdout=PIPE, stderr=PIPE)
     ret = p.wait()
     stdout = p.stdout.readlines()
-    if ret==0 and len(stdout)==0:
+    stderr = p.stderr.readlines()
+    #Maui have a different output then Torque, but it support the Torque interface
+    if ret==0 and len(stdout) == 1 and stdout[0] == "\n" and len(stderr) == 2:
+        dbi_param['launch_cmd'] = 'Torque'
+    elif ret==0 and len(stdout)==0:
         dbi_param['launch_cmd'] = 'Torque'
     else:
         # We suppose it is SGE.
