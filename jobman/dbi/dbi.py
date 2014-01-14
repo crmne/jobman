@@ -1728,6 +1728,8 @@ class DBITorque(DBIBase):
         self.gpu = False
         self.machine = []
         self.launch_exec = "qsub"
+        self.env_var_jobarray_id = "PBS_ARRAYID"
+        self.log_file_suffix = ""
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
@@ -1774,12 +1776,13 @@ class DBITorque(DBIBase):
             # We need double quote in the launcher file as otherwise
             # $VAR don't work.
             launcher.write('"' + ';'.join(task.commands) + '"\n')
+        env_var_jobarray_id = self.env_var_jobarray_id
         launcher.write(dedent('''\
                 )
 
                 # Execute the task
-                ${tasks[$PBS_ARRAYID]}
-                '''))
+                ${tasks[$%(env_var_jobarray_id)s]}
+                ''') % locals())
 
 
     def run(self):
@@ -1806,8 +1809,10 @@ class DBITorque(DBIBase):
                 ## log out/err files
                 # We cannot use output_file and error_file here for now.
                 # We will use dbi_...out-id and dbi_...err-id instead
-                #PBS -o %(log_dir)s/%(name)s.out
-                #PBS -e %(log_dir)s/%(name)s.err
+                # Torque append -{JOBID} to the output filename
+                # But not Moab, so we add it
+                #PBS -o %(log_dir)s/%(name)s.out%(log_file_suffix)s
+                #PBS -e %(log_dir)s/%(name)s.err%(log_file_suffix)s
 
                 '''
 
@@ -1890,6 +1895,7 @@ class DBITorque(DBIBase):
                 mem = self.mem,
                 nb_proc = self.nb_proc,
                 queue = self.queue,
+                log_file_suffix = self.log_file_suffix,
             )))
 
         submit_sh.close()
@@ -1935,11 +1941,17 @@ class DBITorque(DBIBase):
 ###############################
 
 class DBIMoab(DBITorque):
+    """
+    As it is very similar to Torque, we inherit from it.
+
+    The jobs array system isn't the same for Moab then Torque from Moab documentation.
+    """
     def __init__(self, commands, **args):
         DBITorque.__init__(self, commands, **args)
         self.duree = '23:59:59'
         self.launch_exec = "msub"
-        pass
+        self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
+        self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
 
     def wait(self):
         print "[DBI] WARNING cannot wait until all jobs are done for Moab, use 'showq -u $USER'"
