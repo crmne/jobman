@@ -39,7 +39,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
 <common options>:
         [--help|-h]
         [--[*no_]dbilog]
-        [--condor[=N]|--bqtools[=N]|--cluster[=N]|--local[=N]|--sge[=N]|--sharcnet|--ssh[=N]|--torque[=N]]
+        [--condor[=N]|--bqtools[=N]|--cluster[=N]|--local[=N]|--sge[=N]|--sharcnet|--ssh[=N]|--torque[=N]|--moab[=N]]
         [--[*no_]test]
         [--[*no_]testdbi]
         [--[*no_]nb_proc=N]
@@ -71,9 +71,9 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
     bqtools, sge, sharcnet, torque options:
                               [--queue=X] [--jobs_name=X]
     condor and sharcnet options:
-                              [--[no_]gpu]
-    torque(the env variable JOBDISPATCH_GPU_PARAM specify the right config) options:
-                              [--[no_]gpu]
+                              [--[*no_]gpu]
+    torque and moab(the env variable JOBDISPATCH_GPU_PARAM specify the right config: like --queue=gpu):
+                              [--[*no_]gpu]
     bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
                               [--nano=X] [--submit_options=X]
                               [*--[no_]clean_up] [*--[no_]m32G]
@@ -413,7 +413,8 @@ def parse_args(to_parse, dbi_param):
         elif argv.split('=')[0] in ["--bqtools", "--cluster",
                                     "--local", "--condor",
                                     "--ssh", "--sge",
-                                    "--sharcnet", "--torque"]:
+                                    "--sharcnet", "--torque",
+                                    "--moab"]:
             dbi_param['launch_cmd'] = argv[2].upper() + argv.split('=')[0][3:]
             if len(argv.split('=')) > 1:
                 dbi_param["nb_proc"] = argv.split('=')[1]
@@ -1726,6 +1727,7 @@ class DBITorque(DBIBase):
         self.nb_proc = -1
         self.gpu = False
         self.machine = []
+        self.launch_exec = "qsub"
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
@@ -1897,7 +1899,7 @@ class DBITorque(DBIBase):
 
         print "[DBI] All logs will be in the directory: ", self.log_dir
         # Launch qsub
-        submit_command = 'qsub ' + os.path.join(self.log_dir, 'submit.sh')
+        submit_command = self.launch_exec + " " + os.path.join(self.log_dir, 'submit.sh')
         if not self.test:
             for t in self.tasks:
                 t.set_scheduled_time()
@@ -1906,10 +1908,11 @@ class DBITorque(DBIBase):
             self.p.wait()
 
             if self.p.returncode != 0:
-                raise DBIError("[DBI] ERROR: qsub returned an error code "
+                raise DBIError("[DBI] ERROR: " + self.launch_exec +
+                               " returned an error code "
                                "of " + str(self.p.returncode))
         else:
-            print "[DBI] Test mode, we generated all files, but will not execute qsub"
+            print "[DBI] Test mode, we generated all files, but will not execute " + self.launch_exec
             print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
 
             if self.dolog:
@@ -1925,6 +1928,21 @@ class DBITorque(DBIBase):
         print "[DBI] WARNING cannot wait until all jobs are done for Torque, use qstat"
 
 
+
+###############################
+# Moab
+# (used on guillimin)
+###############################
+
+class DBIMoab(DBITorque):
+    def __init__(self, commands, **args):
+        DBITorque.__init__(self, commands, **args)
+        self.duree = '23:59:59'
+        self.launch_exec = "msub"
+        pass
+
+    def wait(self):
+        print "[DBI] WARNING cannot wait until all jobs are done for Moab, use 'showq -u $USER'"
 
 ###################
 # Sharcnet tools

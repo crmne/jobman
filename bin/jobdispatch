@@ -40,6 +40,8 @@ elif search_file('bqsubmit',PATH):
     dbi_param['launch_cmd'] = 'Bqtools'
 elif search_file('sqsub',PATH):
     dbi_param['launch_cmd'] = 'Sharcnet'
+elif search_file('msub',PATH):
+    dbi_param['launch_cmd'] = 'Moab'
 elif search_file('qsub',PATH):
     # qsub command is used by torque/pbs and Sun Grid Engine
     # that take different input.
@@ -136,11 +138,13 @@ elif dbi_param['launch_cmd']=="Sge":
                         ]
 elif dbi_param['launch_cmd']=="Sharcnet":
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu", "env", "set_special_env"]#, "raw" ?
-elif dbi_param['launch_cmd'] == "Torque":
+elif dbi_param['launch_cmd'] in ["Torque", "Moab"]:
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "raw", "gpu", "machine", "exec_dir"]
 elif dbi_param['launch_cmd'] == "Local":
     valid_dbi_param += ["cpu", "env", "set_special_env"]
+else:
+    raise Exception("Invalid launch_cmd" + dbi_param['launch_cmd'])
 
 # Only valid for condor
 if dbi_param['launch_cmd'] == 'Condor':
