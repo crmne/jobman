@@ -13,7 +13,7 @@ except ImportError:
     from distutils.core import setup
 
 setup(name='Jobman',
-      version='hg',
+      version='git',
       description=('Facilitate handling of many jobs'
                    '(especially jobs send on cluster)'),
       license='3-clause BSD',
