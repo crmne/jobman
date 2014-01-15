@@ -2002,7 +2002,6 @@ class DBIMoab(DBITorque):
     """
     def __init__(self, commands, **args):
         DBITorque.__init__(self, commands, **args)
-        self.duree = '23:59:59'
         self.launch_exec = "msub"
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
