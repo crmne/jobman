@@ -100,6 +100,8 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--machine=HOSTNAME]
                               [--exec_dir=DIR_PATH]
 
+    torque moab options (it suppose the job scheduler always reserve a full node):
+                              [--jobs_per_node]
     sge options              :[--project=STRING]
                               [--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
@@ -1725,6 +1727,7 @@ class DBITorque(DBIBase):
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
+        self.jobs_per_node = 0
         self.gpu = False
         self.machine = []
         self.launch_exec = "qsub"
@@ -1733,6 +1736,7 @@ class DBITorque(DBIBase):
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
+        self.jobs_per_node = int(self.jobs_per_node)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
         self.log_dir = os.path.abspath(self.log_dir)
         if not self.jobs_name:
@@ -1785,9 +1789,59 @@ class DBITorque(DBIBase):
                 ''') % locals())
 
 
-    def run(self):
+    def create_full_node_submit_files(self):
+        """We reserve a full node and ourself we run many jobs on it """
+        launcher = open(os.path.join(self.log_dir, 'launcher'), 'w')
+        launcher.write(dedent('''\
+                #!/bin/bash -l
+                # Bash is needed because we use its "array" data structure
+                # the -l flag means it will act like a login shell,
+                # and source the .profile, .bashrc, and so on
 
-        self.create_separate_jobs_submit_files()
+                # List of all tasks to execute
+                tasks=(
+                '''))
+
+        for task in self.tasks:
+            launcher.write("'" + ';'.join(task.commands) + "'\n")
+        launcher.write(dedent('''\
+                )
+
+                echo "IN LAUNCHER"
+                echo "%(env_var_jobarray_id)s=$%(env_var_jobarray_id)s"
+                ID=$%(env_var_jobarray_id)s
+                JOBS_PER_NODE=%(jobs_per_node)s
+                NB_TASKS=%(nb_tasks)s
+                UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
+                echo "UPPER_LIMIT=$UPPER_LIMIT"
+                echo "seq start"
+                seq ${ID} ${UPPER_LIMIT}
+                echo "seq end"
+
+                # Execute the task
+                echo "Before we launch the jobs on this node"
+                date
+                for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
+                    echo "Launching task id = ${TASK_ID}"
+                    ${tasks[${TASK_ID}]} > %(log_dir)s/%(name)s.out.sub$TASK_ID 2> %(log_dir)s/%(name)s.err.sub$TASK_ID &
+
+                done
+                wait
+                echo "All jobs finished on this node"
+                date
+                '''%(dict(jobs_per_node=self.jobs_per_node,
+                          env_var_jobarray_id=self.env_var_jobarray_id,
+                          nb_tasks=len(self.tasks),
+                          log_dir=self.log_dir,
+                          name=self.jobs_name))))
+
+    def run(self):
+        # why not call?
+        # (output_file, error_file)=self.get_file_redirection(0)))
+        if self.jobs_per_node > 0:
+            self.create_full_node_submit_files()
+        else:
+            self.create_separate_jobs_submit_files()
 
         pre_batch_command = ';'.join(self.pre_batch)
         post_batch_command = ';'.join(self.post_batch)
@@ -1830,7 +1884,15 @@ class DBITorque(DBIBase):
             raise Exception("The torque backend support submitting"
                             " only to 1 specific computer")
 
-        if self.nb_proc > 0:
+        if self.jobs_per_node > 0:
+            assert self.nb_proc <= 0
+            submit_sh_template += '''
+                ## Number of CPU (on the same node) per job
+                ## -pe %%(pe)s %%(cores_per_node)i
+                ## Execute as many jobs as needed
+                #PBS -t 0-%(n_tasks_m1)i:%(jobs_per_node)i
+                '''
+        elif self.nb_proc > 0:
             submit_sh_template += '''
                 ## Execute as many jobs as needed
                 #PBS -t 0-%(n_tasks_m1)i%%%(nb_proc)i
@@ -1889,6 +1951,7 @@ class DBITorque(DBIBase):
                 exec_dir = self.exec_dir,
                 duree = self.duree,
                 name = self.jobs_name,
+                jobs_per_node = self.jobs_per_node,
                 log_dir = self.log_dir,
                 n_tasks_m1 = (len(self.tasks) - 1),
                 cpu = self.cpu,
@@ -1952,6 +2015,7 @@ class DBIMoab(DBITorque):
         self.launch_exec = "msub"
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
+        assert self.nb_proc < 0
 
     def wait(self):
         print "[DBI] WARNING cannot wait until all jobs are done for Moab, use 'showq -u $USER'"
