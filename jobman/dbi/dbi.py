@@ -1538,9 +1538,6 @@ class DBISge(DBIBase):
                 echo "python -c \\"print min(${ID} + ${JOBS_PER_NODE} - 1, ${JOBS_PER_NODE} 1)\\""
                 UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
                 echo "UPPER_LIMIT=$UPPER_LIMIT"
-                echo "seq start"
-                seq ${ID} ${UPPER_LIMIT}
-                echo "seq end"
 
                 ## Trap SIGUSR1 and SIGUSR2, so the job has time to react
                 # These signals are emitted by SGE before (respectively)
@@ -1809,19 +1806,13 @@ class DBITorque(DBIBase):
 
                 echo "IN LAUNCHER"
                 echo "%(env_var_jobarray_id)s=$%(env_var_jobarray_id)s"
-                ID=$%(env_var_jobarray_id)s
-                JOBS_PER_NODE=%(jobs_per_node)s
-                NB_TASKS=%(nb_tasks)s
-                UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
+                UPPER_LIMIT=`python -c "print min($%(env_var_jobarray_id)s + %(jobs_per_node)s - 1, %(nb_tasks)s - 1)"`
                 echo "UPPER_LIMIT=$UPPER_LIMIT"
-                echo "seq start"
-                seq ${ID} ${UPPER_LIMIT}
-                echo "seq end"
 
                 # Execute the task
                 echo "Before we launch the jobs on this node"
                 date
-                for TASK_ID in `seq ${ID} ${UPPER_LIMIT}`; do
+                for TASK_ID in `seq $%(env_var_jobarray_id)s ${UPPER_LIMIT}`; do
                     echo "Launching task id = ${TASK_ID}"
                     ${tasks[${TASK_ID}]} > %(log_dir)s/%(name)s.out.sub$TASK_ID 2> %(log_dir)s/%(name)s.err.sub$TASK_ID &
 
