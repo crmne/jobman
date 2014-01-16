@@ -28,7 +28,7 @@ dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
            "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
            "restart":False,'whitespace':False,"fast":False,
            "gpu":False,"gpu_enabled":False, "sort":"generated",
-           "file":[], "ulimit_vm":500, "interactive":False}
+           "file":[], "ulimit_vm":500, "interactive":False, "pre_tasks":[]}
 dbi_param_orig = dbi_param.copy()
 testmode=False
 
@@ -141,7 +141,7 @@ elif dbi_param['launch_cmd']=="Sharcnet":
 elif dbi_param['launch_cmd'] in ["Torque", "Moab"]:
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "raw", "gpu", "machine", "exec_dir",
-                        "jobs_per_node",]
+                        "jobs_per_node", "pre_tasks"]
 elif dbi_param['launch_cmd'] == "Local":
     valid_dbi_param += ["cpu", "env", "set_special_env"]
 else:

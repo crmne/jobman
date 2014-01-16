@@ -74,6 +74,10 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--[*no_]gpu]
     torque and moab(the env variable JOBDISPATCH_GPU_PARAM specify the right config: like --queue=gpu):
                               [--[*no_]gpu]
+    torque and moab options (it suppose the job scheduler always reserve a full node):
+                              [--jobs_per_node]
+    torque and moab options:
+                              [--pre_tasks]
     bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
                               [--nano=X] [--submit_options=X]
                               [*--[no_]clean_up] [*--[no_]m32G]
@@ -100,8 +104,6 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--machine=HOSTNAME]
                               [--exec_dir=DIR_PATH]
 
-    torque moab options (it suppose the job scheduler always reserve a full node):
-                              [--jobs_per_node]
     sge options              :[--project=STRING]
                               [--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
@@ -239,6 +241,19 @@ bqtools, sge, sharcnet and torque options:
   The '--queue=X' tell on witch queue the jobs will be launched.
   The '--jobs_name=X' option give the X as the jobs name to bqtools or sge.
     Default, random.
+
+torque and moab options:
+  The '--[*no_]gpu' option tell the jobs scheduler to add the jobdispatch option
+    from the environment variable JOBDISPATCH_GPU_PARAM. It is up to the
+    user/admin to make sure JOBDISPATCH_GPU_PARAM contain the right parameter.
+    Ex: "JOBDISPATCH_GPU_PARAM=--queue=gpu".
+  The '--jobs_per_node=N' option tell dbi to reserve a full node and launch
+    itself N jobs in it. It suppose the jobs scheduler run one jobs per node.
+  The '--pre_tasks=...' option add ... in the bash script that will launch each
+    tasks. If "--jobs_per_node=N" is also used, the enviroment variable
+    BLOCK_TASK_ID is defined with a value from 0 to N-1. It is the number of sub
+    tasks already started in that task. You can use this options many times.
+    We put each value on a separate line in the bash script.
 
 bqtools only options:
   If the --long option is not set, the maximum duration of each job will be
@@ -477,7 +492,8 @@ def parse_args(to_parse, dbi_param):
                                     "--repeat_jobs", "--sort", "--ulimit_vm",
                                     "--project", "--jobs_per_node",
                                     "--cores_per_node", "--mem_per_node",
-                                    "--pe", "--notification", "--exec_dir"
+                                    "--pe", "--notification", "--exec_dir",
+                                    "--pre_tasks",
                                     ]:
             sp = argv.split('=', 1)
             param = sp[0][2:]
@@ -489,7 +505,7 @@ def parse_args(to_parse, dbi_param):
                 dbi_param[param] += '\n' + val
             elif param == "env":
                 dbi_param[param] += ' ' + val
-            elif param == "file":
+            elif param in ["file", "pre_tasks"]:
                 dbi_param[param].append(val)
             elif param in ["machine", "machines", "no_machine",
                            "tasks_filename"]:
@@ -1754,7 +1770,9 @@ class DBITorque(DBIBase):
                 tmp_dir = self.tmp_dir,
                 log_dir = self.log_dir,
                 time_format = self.time_format,
-                pre_tasks = self.pre_tasks,
+                #We put the pretask ourself in the launch script.
+                #We need this to be able to define new env variable
+                #pre_tasks = self.pre_tasks,
                 post_tasks = self.post_tasks,
                 dolog = self.dolog,
                 id = id,
@@ -1778,8 +1796,12 @@ class DBITorque(DBIBase):
             # $VAR don't work.
             launcher.write('"' + ';'.join(task.commands) + '"\n')
         env_var_jobarray_id = self.env_var_jobarray_id
+        pre_tasks = "\n".join(self.pre_tasks)
         launcher.write(dedent('''\
                 )
+
+                # Execute the pre tasks
+                %(pre_tasks)s
 
                 # Execute the task
                 ${tasks[$%(env_var_jobarray_id)s]}
@@ -1801,6 +1823,7 @@ class DBITorque(DBIBase):
 
         for task in self.tasks:
             launcher.write("'" + ';'.join(task.commands) + "'\n")
+        pre_tasks = "\n".join(self.pre_tasks)
         launcher.write(dedent('''\
                 )
 
@@ -1814,6 +1837,12 @@ class DBITorque(DBIBase):
                 date
                 for TASK_ID in `seq $%(env_var_jobarray_id)s ${UPPER_LIMIT}`; do
                     echo "Launching task id = ${TASK_ID}"
+                    BLOCK_TASK_ID=$((${TASK_ID} - ${%(env_var_jobarray_id)s}))
+                    echo "BLOCK_TASK_ID=$BLOCK_TASK_ID"
+
+                    # Execute the pre tasks
+                    %(pre_tasks)s
+
                     ${tasks[${TASK_ID}]} > %(log_dir)s/%(name)s.out.sub$TASK_ID 2> %(log_dir)s/%(name)s.err.sub$TASK_ID &
 
                 done
@@ -1824,7 +1853,8 @@ class DBITorque(DBIBase):
                           env_var_jobarray_id=self.env_var_jobarray_id,
                           nb_tasks=len(self.tasks),
                           log_dir=self.log_dir,
-                          name=self.jobs_name))))
+                          name=self.jobs_name,
+                          pre_tasks=pre_tasks))))
 
     def run(self):
         # why not call?
