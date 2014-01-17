@@ -506,6 +506,7 @@ def parse_args(to_parse, dbi_param):
             elif param == "env":
                 dbi_param[param] += ' ' + val
             elif param in ["file", "pre_tasks"]:
+                dbi_param.setdefault(param, [])
                 dbi_param[param].append(val)
             elif param in ["machine", "machines", "no_machine",
                            "tasks_filename"]:
