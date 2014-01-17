@@ -1552,7 +1552,6 @@ class DBISge(DBIBase):
                 echo "ID=$ID"
                 JOBS_PER_NODE=%i
                 NB_TASKS=%i
-                echo "python -c \\"print min(${ID} + ${JOBS_PER_NODE} - 1, ${JOBS_PER_NODE} 1)\\""
                 UPPER_LIMIT=`python -c "print min(${ID} + ${JOBS_PER_NODE} - 1, ${NB_TASKS} - 1)"`
                 echo "UPPER_LIMIT=$UPPER_LIMIT"
 
