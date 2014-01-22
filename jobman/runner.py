@@ -119,6 +119,9 @@ parser_cmdline.add_option('-r', '--redirect', action='store_true',
 parser_cmdline.add_option('-w', '--workdir', action='store',
                           dest='workdir', default=None,
                           help='the working directory in which to run the experiment')
+parser_cmdline.add_option('--workdir-dir', action='store',
+                          dest='workdir_dir', default=None,
+                          help='The directory where the workdir should be created')
 parser_cmdline.add_option('-n', '--dry-run', action='store_true',
                           dest='dry_run', default=False,
                           help='use this option to run the whole experiment in a temporary working directory (cleaned after use)')
@@ -170,10 +173,14 @@ def runner_cmdline(options, experiment, *strings):
 
     if options.workdir and options.dry_run:
         raise UsageError('Please use only one of: --workdir, --dry-run.')
+    if options.workdir and options.workdir_dir:
+        raise UsageError('Please use only one of: --workdir, --workdir_dir.')
     if options.workdir:
         workdir = options.workdir
-    elif options.dry_run:
-        workdir = tempfile.mkdtemp()
+    elif options.dry_run or options.workdir_dir:
+        if options.workdir_dir and not os.path.exists(options.workdir_dir):
+            os.mkdir(options.workdir_dir)
+        workdir = tempfile.mkdtemp(dir=options.workdir_dir)
     else:
         workdir_gen = getattr(workdirgen, options.workdir_gen,
                               None) or resolve(options.workdir_gen)
