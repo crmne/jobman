@@ -122,6 +122,9 @@ parser_cmdline.add_option('-w', '--workdir', action='store',
 parser_cmdline.add_option('--workdir-dir', action='store',
                           dest='workdir_dir', default=None,
                           help='The directory where the workdir should be created')
+parser_cmdline.add_option('-g', '--workdir-gen', action='store',
+                          dest='workdir_gen', default='date',
+                          help='function serving to generate the relative path of the workdir')
 parser_cmdline.add_option('-n', '--dry-run', action='store_true',
                           dest='dry_run', default=False,
                           help='use this option to run the whole experiment in a temporary working directory (cleaned after use)')
@@ -131,10 +134,6 @@ parser_cmdline.add_option('-2', '--sigint', action='store_true',
 parser_cmdline.add_option('-p', '--parser', action='store',
                           dest='parser', default='filemerge',
                           help='parser to use for the argument list provided on the command line (takes a list of strings, returns a state)')
-parser_cmdline.add_option('-g', '--workdir-gen', action='store',
-                          dest='workdir_gen', default='date',
-                          help='function serving to generate the relative path of the workdir')
-
 parser_cmdline.add_option('--finish-up-after', action='store',
                           dest='finish_up_after',
                           default=None,

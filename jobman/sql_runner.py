@@ -576,7 +576,6 @@ parser_sql.add_option('-w', '--workdir', action='store',
 parser_sql.add_option('--workdir-dir', action='store',
                       dest='workdir_dir', default=None,
                       help='The directory where the workdir should be created')
-
 parser_sql.add_option('--import', action='store',
                       dest='modules', default=None,
                       help='Modules to be loaded before the experiment begins')
