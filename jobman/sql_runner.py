@@ -573,6 +573,10 @@ parser_sql.add_option('--save-every', action='store', dest='save_every',
 parser_sql.add_option('-w', '--workdir', action='store',
                       dest='workdir', default=None,
                       help='the working directory in which to run the experiment')
+parser_sql.add_option('--workdir-dir', action='store',
+                      dest='workdir_dir', default=None,
+                      help='The directory where the workdir should be created')
+
 parser_sql.add_option('--import', action='store',
                       dest='modules', default=None,
                       help='Modules to be loaded before the experiment begins')
@@ -627,7 +631,10 @@ def runner_sql(options, dbdescr, exproot):
             if options.workdir:
                 workdir = options.workdir
             else:
-                workdir = tempfile.mkdtemp()
+                if options.workdir_dir and not os.path.exists(options.workdir_dir):
+                    os.mkdir(options.workdir_dir)
+                workdir = tempfile.mkdtemp(dir=options.workdir_dir)
+            print "The working directory is:", os.path.join(os.getcwd(), workdir)
 
             channel = DBRSyncChannel(db,
                                      workdir,
