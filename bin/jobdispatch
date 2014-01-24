@@ -147,12 +147,6 @@ elif dbi_param['launch_cmd'] == "Local":
 else:
     raise Exception("Invalid launch_cmd" + dbi_param['launch_cmd'])
 
-# Only valid for condor
-if dbi_param['launch_cmd'] == 'Condor':
-    if dbi_param['gpu']:
-        dbi_param['req'] += "&&(Target.GPU=?=True)"
-        dbi_param['raw'] += '\n+GPU=True'
-
 if  dbi_param['launch_cmd'] == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
     #default value for pkdilly is true.
     if dbi_param.get("pkdilly")==None:

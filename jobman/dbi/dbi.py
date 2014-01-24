@@ -2229,7 +2229,7 @@ class DBICondor(DBIBase):
         self.ulimit_vm = 0
         self.notification = "Error"
 
-        DBIBase.__init__(self, commands, **args)
+        DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         if not 'mem' in args:
             # Default to 950 to be close to 1G, but account for condor rounding.
@@ -2273,7 +2273,8 @@ class DBICondor(DBIBase):
             self.env = self.env[1:-1]
 
         self.next_job_start_delay=int(self.next_job_start_delay)
-        self.ulimit_vm = int(self.ulimit_vm)
+        if self.ulimit_vm != "unlimited":
+            self.ulimit_vm = int(self.ulimit_vm)
 
         if self.notification not in ["Always", "Complete", "Error", "Never"]:
             raise ValueError("The notification parameter support only the "
@@ -2592,7 +2593,7 @@ class DBICondor(DBIBase):
                     fd.write('[ -r "%s" ];echo "Can read the source file? " $? 1>&2 \n'%self.source_file)
                     fd.write('source ' + self.source_file + '\n')
                 ulimit_cmd = ""
-                if self.ulimit_vm>0:
+                if self.ulimit_vm != "unlimited" and self.ulimit_vm >= 0:
                     m = self.mem
                     if m<=0:# Should not happen as we default to 950.
                         m=1024
