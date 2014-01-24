@@ -27,7 +27,7 @@ MAX_FILE_NAME_SIZE=255
 dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
            "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
            "restart":False,'whitespace':False,"fast":False,
-           "gpu":False,"gpu_enabled":False, "sort":"generated",
+           "gpu":False, "sort":"generated",
            "file":[], "ulimit_vm":500, "interactive":False, "pre_tasks":[]}
 dbi_param_orig = dbi_param.copy()
 testmode=False
@@ -124,7 +124,7 @@ elif dbi_param['launch_cmd']=="Condor":
                        "universe", "machine", "machines", "no_machine","to_all",
                        "keep_failed_jobs_in_queue", "restart",
                        "max_file_size", "debug", "local_log_file",
-                       "next_job_start_delay", "gpu", "gpu_enabled",
+                       "next_job_start_delay", "gpu",
                        "fast", "ulimit_vm", "interactive"
                        ]
 elif dbi_param['launch_cmd']=="Bqtools":
@@ -150,11 +150,8 @@ else:
 # Only valid for condor
 if dbi_param['launch_cmd'] == 'Condor':
     if dbi_param['gpu']:
-        dbi_param['req']+="&&(Target.GPU=?=True)"
-        dbi_param['raw']+='\n+GPU=True'
-    elif dbi_param['gpu_enabled']:
-        dbi_param['rank']+="&&(Target.GPU=?=True)"
-        dbi_param['raw']+='\n+GPU=True'
+        dbi_param['req'] += "&&(Target.GPU=?=True)"
+        dbi_param['raw'] += '\n+GPU=True'
 
 if  dbi_param['launch_cmd'] == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
     #default value for pkdilly is true.
