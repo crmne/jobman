@@ -1901,7 +1901,7 @@ class DBITorque(DBIBase):
                             " only to 1 specific computer")
 
         if self.jobs_per_node > 0:
-            assert self.nb_proc <= 0
+            assert self.nb_proc <= 0, "You can't use --jobs_per_node with --nb_proc'"
             submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
                 ## -pe %%(pe)s %%(cores_per_node)i
@@ -2030,7 +2030,6 @@ class DBIMoab(DBITorque):
         self.launch_exec = "msub"
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
-        assert self.nb_proc < 0
 
     def wait(self):
         print "[DBI] WARNING cannot wait until all jobs are done for Moab, use 'showq -u $USER'"
