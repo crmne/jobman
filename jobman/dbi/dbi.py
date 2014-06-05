@@ -2,6 +2,7 @@
 import datetime
 import os
 import re
+import shlex
 import shutil
 import string
 import subprocess
@@ -819,7 +820,8 @@ class DBIBase:
             gpu_param = os.getenv("JOBDISPATCH_GPU_PARAM", None)
             if not gpu_param:
                 raise Exception("This back-end need that the env variable JOBDISPATCH_GPU_PARAM is specified with the param to set to use the GPU.")
-            parse_args(gpu_param.split(), self.__dict__)
+            # shlex.split() will repect quote in the string.
+            parse_args(shlex.split(gpu_param), self.__dict__)
 
     def n_avail_machines(self): raise NotImplementedError, "DBIBase.n_avail_machines()"
 
