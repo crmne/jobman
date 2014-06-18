@@ -168,6 +168,8 @@ class DBRSyncChannel(RSyncChannel):
 
         try:
             state = expand(self.dbstate)
+            # The id isn't set by the line above
+            state["jobman.id"] = self.dbstate.id
             if "dbdict" in state:
                 state.jobman = state.dbdict
             experiment = resolve(state.jobman.experiment)
