@@ -7,7 +7,7 @@ To install Jobman, you have to clone the development Mercurial repository:
 
 .. code-block:: bash
 
-    git clone git@git.assembla.com:jobman.git Jobman
+    git clone git://git.assembla.com/jobman.git Jobman
 
 This will create a local ``Jobman/`` folder which you should add to your
 ``PYTHONPATH`` environment variable. For ease of use, you should also add
