@@ -1904,6 +1904,11 @@ class DBITorque(DBIBase):
             raise Exception("The torque backend support submitting"
                             " only to 1 specific computer")
 
+        #On helios, "#PBS -A ...", must be before -t parameter
+        if self.raw:
+            submit_sh_template += '''%s
+                '''%self.raw
+
         if self.jobs_per_node > 0:
             assert self.nb_proc <= 0, "You can't use --jobs_per_node with --nb_proc'"
             submit_sh_template += '''
@@ -1952,10 +1957,6 @@ class DBITorque(DBIBase):
                 ## Variable to put into the environment
                 #PBS -v %s
                 '''%(','.join(vs))
-
-        if self.raw:
-            submit_sh_template += '''%s
-                '''%self.raw
 
         submit_sh_template += '''
                 ## Execute the 'launcher' script in bash
