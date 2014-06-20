@@ -1743,6 +1743,8 @@ class DBITorque(DBIBase):
         self.launch_exec = "qsub"
         self.env_var_jobarray_id = "PBS_ARRAYID"
         self.log_file_suffix = ""
+        self.job_array_prefix = ""
+        self.job_array_suffix = ""
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
@@ -1918,7 +1920,7 @@ class DBITorque(DBIBase):
         else:
             submit_sh_template += '''
                 ## Execute as many jobs as needed
-                #PBS -t 0-%(n_tasks_m1)i
+                #PBS -t %(job_array_prefix)s0-%(n_tasks_m1)i%(job_array_suffix)s
                 '''
 
         if self.mem > 0:
@@ -1977,6 +1979,8 @@ class DBITorque(DBIBase):
                 nb_proc = self.nb_proc,
                 queue = self.queue,
                 log_file_suffix = self.log_file_suffix,
+                job_array_prefix = self.job_array_prefix,
+                job_array_suffix = self.job_array_suffix
             )))
 
         submit_sh.close()
@@ -2032,6 +2036,8 @@ class DBIMoab(DBITorque):
         self.launch_exec = "msub"
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
+        self.job_array_prefix = "["
+        self.job_array_suffix = "]"
 
     def wait(self):
         print "[DBI] WARNING cannot wait until all jobs are done for Moab, use 'showq -u $USER'"
