@@ -50,6 +50,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
         [--repeat_jobs=N]
         [--[*no_]whitespace]
         [--sort={generated*,random}]
+        [--extra_param=STRING]
 
 <back-end parameter>:
     all                      :[--tasks_filename={compact,explicit,nb0,nb1,
@@ -79,6 +80,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--jobs_per_node]
     torque and moab options:
                               [--pre_tasks]
+                              [--extra_param=STRING]
     bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
                               [--nano=X] [--submit_options=X]
                               [*--[no_]clean_up] [*--[no_]m32G]
@@ -255,6 +257,8 @@ torque and moab options:
     BLOCK_TASK_ID is defined with a value from 0 to N-1. It is the number of sub
     tasks already started in that task. You can use this options many times.
     We put each value on a separate line in the bash script.
+  The '--extra_param=STRING' option add STRING to the end of this configuration line:
+    #PSB -l nodes=*:ppn=*%%(extra_param)s. Don't forget to add the colon in extra_param.
 
 bqtools only options:
   If the --long option is not set, the maximum duration of each job will be
@@ -492,7 +496,7 @@ def parse_args(to_parse, dbi_param):
                                     "--project", "--jobs_per_node",
                                     "--cores_per_node", "--mem_per_node",
                                     "--pe", "--notification", "--exec_dir",
-                                    "--pre_tasks",
+                                    "--pre_tasks", "--extra_param",
                                     ]:
             sp = argv.split('=', 1)
             param = sp[0][2:]
@@ -1729,6 +1733,7 @@ class DBISge(DBIBase):
 # (used on briaree)
 ###############################
 
+
 class DBITorque(DBIBase):
     def __init__(self, commands, **args):
         self.jobs_name = ''
@@ -1745,6 +1750,7 @@ class DBITorque(DBIBase):
         self.log_file_suffix = ""
         self.job_array_prefix = ""
         self.job_array_suffix = ""
+        self.extra_param = ""
         DBIBase.__init__(self, commands, substitute_gpu=True, **args)
 
         self.nb_proc = int(self.nb_proc)
@@ -1893,12 +1899,12 @@ class DBITorque(DBIBase):
         if len(self.machine) == 0:
             submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
-                #PBS -l nodes=1:ppn=%(cpu)i
+                #PBS -l nodes=1:ppn=%(cpu)i%(extra_param)s
             '''
         elif len(self.machine) == 1:
             submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
-                #PBS -l nodes=%s:ppn=%%(cpu)i
+                #PBS -l nodes=%s:ppn=%%(cpu)i%(extra_param)s
             ''' % self.machine[0]
         elif len(self.machine) > 1:
             raise Exception("The torque backend support submitting"
@@ -1981,7 +1987,8 @@ class DBITorque(DBIBase):
                 queue = self.queue,
                 log_file_suffix = self.log_file_suffix,
                 job_array_prefix = self.job_array_prefix,
-                job_array_suffix = self.job_array_suffix
+                job_array_suffix = self.job_array_suffix,
+                extra_param = self.extra_param,
             )))
 
         submit_sh.close()
