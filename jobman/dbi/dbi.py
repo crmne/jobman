@@ -107,8 +107,8 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [--machine=HOSTNAME]
                               [--exec_dir=DIR_PATH]
 
-    sge options              :[--project=STRING]
-                              [--jobs_per_node]
+    torque, sge, moab options:[--project=STRING]
+    sge options              :[--jobs_per_node]
                               [--cores_per_node] [--mem_per_node]
                               [--pe]
     Note: Sharcnet support is partial
@@ -366,7 +366,10 @@ condor only options:
       defined by Never, the owner will not receive e-mail. There is some
       statistic included in the email.
 
-sge only option:
+torque, moab and sge option:
+  The '--project' specifies the project to which this  job  is  assigned.
+
+sge only options:
   The '--project' specifies the project to which this  job  is  assigned.
   The '--jobs_per_node=N' option tell dbi to reserve a full node and
       launch itself N jobs in it. (needed on colosse or the next one)
@@ -1739,6 +1742,7 @@ class DBITorque(DBIBase):
         self.jobs_name = ''
         self.queue = ''
         self.duree = '47:59:59'
+        self.project = ''
         self.env = ''
         self.set_special_env = True
         self.nb_proc = -1
@@ -1895,6 +1899,11 @@ class DBITorque(DBIBase):
                 #PBS -e %(log_dir)s/%(name)s.err%(log_file_suffix)s
 
                 '''
+        if self.project:
+            submit_sh_template += '''
+                ## The project name for accounting/permission
+                #PBS -A %s
+            ''' % self.project
 
         if len(self.machine) == 0:
             submit_sh_template += '''
