@@ -1907,11 +1907,10 @@ class DBITorque(DBIBase):
                 ## The project name for accounting/permission
                 #PBS -A %s
             ''' % self.project
-        param = "-l "
         if len(self.machine) == 0:
-            param += "nodes=1"
+            param = "nodes=1"
         elif len(self.machine) == 1:
-            param += "nodes=%s" % self.machine[0]
+            param = "nodes=%s" % self.machine[0]
         elif len(self.machine) > 1:
             raise Exception("The torque backend support submitting"
                             " only to 1 specific computer")
