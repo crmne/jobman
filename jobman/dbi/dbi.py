@@ -797,6 +797,13 @@ class DBIBase:
         for key in args.keys():
             self.__dict__[key] = args[key]
 
+        if self.substitute_gpu and self.gpu:
+            gpu_param = os.getenv("JOBDISPATCH_GPU_PARAM", None)
+            if not gpu_param:
+                raise Exception("This back-end need that the env variable JOBDISPATCH_GPU_PARAM is specified with the param to set to use the GPU.")
+            # shlex.split() will repect quote in the string.
+            parse_args(shlex.split(gpu_param), self.__dict__)
+
         # check if log directory exists, if not create it
         if (not os.path.exists(self.log_dir)):
 #            if self.dolog or self.file_redirect_stdout or self.file_redirect_stderr:
@@ -823,12 +830,8 @@ class DBIBase:
         if not isinstance(self.post_batch, list):
             self.post_batch = [self.post_batch]
 
-        if self.substitute_gpu and self.gpu:
-            gpu_param = os.getenv("JOBDISPATCH_GPU_PARAM", None)
-            if not gpu_param:
-                raise Exception("This back-end need that the env variable JOBDISPATCH_GPU_PARAM is specified with the param to set to use the GPU.")
-            # shlex.split() will repect quote in the string.
-            parse_args(shlex.split(gpu_param), self.__dict__)
+        # prepend the information about the host we execution on.
+        self.pre_tasks[0:0] = ["echo '[DBI] executing on host' $HOSTNAME"]
 
     def n_avail_machines(self): raise NotImplementedError, "DBIBase.n_avail_machines()"
 
@@ -1074,7 +1077,7 @@ class DBICluster(DBIBase):
         if self.os:
             self.os = self.os.lower()
 
-        self.pre_tasks=["echo '[DBI] executing on host' $HOSTNAME"]+self.pre_tasks
+        self.pre_tasks=self.pre_tasks
         self.post_tasks=["echo '[DBI] exit status' $?"]+self.post_tasks
         self.add_commands(commands)
         self.nb_proc=int(self.nb_proc)
