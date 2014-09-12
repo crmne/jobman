@@ -1907,20 +1907,24 @@ class DBITorque(DBIBase):
                 ## The project name for accounting/permission
                 #PBS -A %s
             ''' % self.project
-
+        param = "-l "
         if len(self.machine) == 0:
-            submit_sh_template += '''
-                ## Number of CPU (on the same node) per job
-                #PBS -l nodes=1:ppn=%(cpu)i%(extra_param)s
-            '''
+            param += "nodes=1"
         elif len(self.machine) == 1:
-            submit_sh_template += '''
-                ## Number of CPU (on the same node) per job
-                #PBS -l nodes=%s:ppn=%%(cpu)i%(extra_param)s
-            ''' % self.machine[0]
+            param += "nodes=%s" % self.machine[0]
         elif len(self.machine) > 1:
             raise Exception("The torque backend support submitting"
                             " only to 1 specific computer")
+        # On one GPU cluster, we should specify only the number of
+        # GPUs, not ppn. It is set automatically for the number of
+        # GPUs. So the -1 is a special value for this.
+        if self.cpu != -1:
+            param += ":ppn%(cpu)i"
+        param += "%(extra_param)s"
+        submit_sh_template += '''
+        ## Number of CPU (on the same node) per job
+        #PBS -l %s
+        ''' % param
 
         #On helios, "#PBS -A ...", must be before -t parameter
         if self.raw:
