@@ -1918,7 +1918,7 @@ class DBITorque(DBIBase):
         # GPUs, not ppn. It is set automatically for the number of
         # GPUs. So the -1 is a special value for this.
         if self.cpu != -1:
-            param += ":ppn%(cpu)i"
+            param += ":ppn=%(cpu)i"
         param += "%(extra_param)s"
         submit_sh_template += '''
         ## Number of CPU (on the same node) per job
@@ -1928,7 +1928,7 @@ class DBITorque(DBIBase):
         #On helios, "#PBS -A ...", must be before -t parameter
         if self.raw:
             submit_sh_template += '''%s
-                '''%self.raw
+                ''' % self.raw
 
         if self.jobs_per_node > 0:
             assert self.nb_proc <= 0, "You can't use --jobs_per_node with --nb_proc'"
