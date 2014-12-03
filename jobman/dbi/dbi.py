@@ -1748,7 +1748,7 @@ class DBISge(DBIBase):
 
 
 class DBITorque(DBIBase):
-    def __init__(self, commands, **args):
+    def __init__(self, commands, launch_exec="qsub", **args):
         self.jobs_name = ''
         self.queue = ''
         self.duree = '47:59:59'
@@ -1759,13 +1759,13 @@ class DBITorque(DBIBase):
         self.jobs_per_node = 0
         self.gpu = False
         self.machine = []
-        self.launch_exec = "qsub"
         self.env_var_jobarray_id = "PBS_ARRAYID"
         self.log_file_suffix = ""
         self.job_array_prefix = ""
         self.job_array_suffix = ""
         self.extra_param = ""
-        DBIBase.__init__(self, commands, substitute_gpu=True, **args)
+        DBIBase.__init__(self, commands, substitute_gpu=True, launch_exec=launch_exec,
+                         **args)
 
         self.nb_proc = int(self.nb_proc)
         self.jobs_per_node = int(self.jobs_per_node)
@@ -1776,6 +1776,7 @@ class DBITorque(DBIBase):
         self.args = args
         self.add_commands(commands)
 
+        self.submit_command = self.launch_exec + " " + os.path.join(self.log_dir, 'submit.sh')
 
     def add_commands(self,commands):
         if not isinstance(commands, list):
@@ -1862,7 +1863,7 @@ class DBITorque(DBIBase):
                     # Execute the pre tasks
                     %(pre_tasks)s
 
-                    ${tasks[${TASK_ID}]} > %(log_dir)s/%(name)s.out.sub$TASK_ID 2> %(log_dir)s/%(name)s.err.sub$TASK_ID &
+                    ${tasks[${TASK_ID}]} >> %(log_dir)s/%(name)s.out.sub$TASK_ID 2>> %(log_dir)s/%(name)s.err.sub$TASK_ID &
 
                 done
                 wait
@@ -1973,13 +1974,15 @@ class DBITorque(DBIBase):
             if not env:
                 env = ''
             env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
+        if len(self.tasks) == 1:
+            env += " JOBDISPATCH_RESUBMIT='%(cmd)s'" % dict(cmd=self.submit_command)
         if env:
             vs = []
             # torque don't ALWAYS split variable at "," in #PBS -v
             # So we can't have "," in variable value.
             # So we define them outside and tell torque to get the value.
-            for v in env.split():
-                submit_sh_template += 'export %s\n' % v
+            for v in shlex.split(env):
+                submit_sh_template += 'export "%s"\n' % v
                 vs.append(v.split('=', 1)[0])
             submit_sh_template += '''
                 ## Variable to put into the environment
@@ -2020,12 +2023,11 @@ class DBITorque(DBIBase):
 
         print "[DBI] All logs will be in the directory: ", self.log_dir
         # Launch qsub
-        submit_command = self.launch_exec + " " + os.path.join(self.log_dir, 'submit.sh')
         if not self.test:
             for t in self.tasks:
                 t.set_scheduled_time()
 
-            self.p = Popen(submit_command, shell=True)
+            self.p = Popen(self.submit_command, shell=True)
             self.p.wait()
 
             if self.p.returncode != 0:
@@ -2034,7 +2036,7 @@ class DBITorque(DBIBase):
                                "of " + str(self.p.returncode))
         else:
             print "[DBI] Test mode, we generated all files, but will not execute " + self.launch_exec
-            print '[DBI] Test mode, to manually launch it execute "'+submit_command+'"'
+            print '[DBI] Test mode, to manually launch it execute "'+self.submit_command+'"'
 
             if self.dolog:
                 print "[DBI] The scheduling time will not be logged when you submit the generated file"
@@ -2077,8 +2079,7 @@ class DBIMoab(DBITorque):
                                  "MOAB_QOS",
                                  "MOAB_PARTITION",
                                  ]
-        DBITorque.__init__(self, commands, **args)
-        self.launch_exec = "msub"
+        DBITorque.__init__(self, commands, launch_exec="msub", **args)
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
         self.job_array_prefix = "["
