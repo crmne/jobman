@@ -762,6 +762,10 @@ class DBIBase:
         # Commands to be executed once after the entire batch on the
         # submit node
         self.post_batch = []
+        # Environment variable to print in the pre_task.
+        # They are automatically added to the pre_task.
+        if not hasattr(self, "env_var_to_print"):
+            self.env_var_to_print = []
 
         # the default directory where to keep all the log files
         self.log_dir = os.path.join('LOGS', self.unique_id)
@@ -832,6 +836,9 @@ class DBIBase:
 
         # prepend the information about the host we execution on.
         self.pre_tasks[0:0] = ["echo '[DBI] executing on host' $HOSTNAME"]
+        for var in self.env_var_to_print:
+            self.pre_tasks.append("echo %(var)s=${%(var)s}" % dict(var=var))
+
 
     def n_avail_machines(self): raise NotImplementedError, "DBIBase.n_avail_machines()"
 
@@ -2055,6 +2062,21 @@ class DBIMoab(DBITorque):
     The jobs array system isn't the same for Moab then Torque from Moab documentation.
     """
     def __init__(self, commands, **args):
+        self.env_var_to_print = ["MOAB_JOBNAME",
+                                 "MOAB_USER",
+                                 "MOAB_TASKMAP",
+                                 "MOAB_CLASS",
+                                 "MOAB_PROCCOUNT",
+                                 "MOAB_GROUP",
+                                 "MOAB_NODELIST",
+                                 "MOAB_ACCOUNT",
+                                 "MOABHOMEDIR",
+                                 "MOAB_MACHINE",
+                                 "MOAB_NODECOUNT",
+                                 "MOAB_JOBID",
+                                 "MOAB_QOS",
+                                 "MOAB_PARTITION",
+                                 ]
         DBITorque.__init__(self, commands, **args)
         self.launch_exec = "msub"
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
