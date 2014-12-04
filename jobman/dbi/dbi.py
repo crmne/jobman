@@ -81,6 +81,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
     torque and moab options:
                               [--pre_tasks]
                               [--extra_param=STRING]
+                              [--restart]
     bqtools options          :[--micro[=nb_batch]] [--[*no_]long]
                               [--nano=X] [--submit_options=X]
                               [*--[no_]clean_up] [*--[no_]m32G]
@@ -103,6 +104,7 @@ ShortHelp = '''Usage: jobdispatch <common options> <back-end parameters> {--file
                               [*--[no_]interactive]
                               [--notification={Always, Complete, Error*, Never}]
                               [--machine=HOSTNAME+]
+                              [--restart=JOBID]
     torque options:
                               [--machine=HOSTNAME]
                               [--exec_dir=DIR_PATH]
@@ -259,6 +261,9 @@ torque and moab options:
     We put each value on a separate line in the bash script.
   The '--extra_param=STRING' option add STRING to the end of this configuration line:
     #PSB -l nodes=*:ppn=*%%(extra_param)s. Don't forget to add the colon in extra_param.
+  The '--[no_]restart' parameter will cause an error if you get in a
+    state where jobdispatch option to help checkpoint/resume of jobs
+    are not available. It ack as a True/False parameter.
 
 bqtools only options:
   If the --long option is not set, the maximum duration of each job will be
@@ -1764,6 +1769,7 @@ class DBITorque(DBIBase):
         self.job_array_prefix = ""
         self.job_array_suffix = ""
         self.extra_param = ""
+        self.restart = False
         DBIBase.__init__(self, commands, substitute_gpu=True, launch_exec=launch_exec,
                          **args)
 
@@ -1976,6 +1982,11 @@ class DBITorque(DBIBase):
             env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
         if len(self.tasks) == 1:
             env += " JOBDISPATCH_RESUBMIT='%(cmd)s'" % dict(cmd=self.submit_command)
+        elif len(self.tasks) == self.jobs_per_node:
+            #            import pdb;pdb.set_trace()
+            raise NotImplementedError("...")
+        elif self.restart:
+            raise Exception("You asked to get help to restart the job for jobs that know how to checkpoint, but we ended up in a case where jobdispatch can't help you.")
         if env:
             vs = []
             # torque don't ALWAYS split variable at "," in #PBS -v

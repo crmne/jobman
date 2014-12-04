@@ -103,8 +103,8 @@ if len(command_argv) == 0 and not dbi_param["file"]:
     print ShortHelp
     sys.exit(1)
 
-if dbi_param["file"] and dbi_param["restart"]:
-    print "the --file= and --restart option are incompatible!"
+if dbi_param["file"] and dbi_param['launch_cmd'] == "Condor" and dbi_param["restart"]:
+    print "the --file= and --restart option are incompatible with the condor back-end!"
     print
     print ShortHelp
     sys.exit(1)
@@ -142,7 +142,7 @@ elif dbi_param['launch_cmd']=="Sharcnet":
 elif dbi_param['launch_cmd'] in ["Torque", "Moab"]:
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "project", "raw", "gpu", "machine", "exec_dir",
-                        "jobs_per_node", "pre_tasks", "extra_param"]
+                        "jobs_per_node", "pre_tasks", "extra_param", "restart"]
 elif dbi_param['launch_cmd'] == "Local":
     valid_dbi_param += ["cpu", "env", "set_special_env"]
 else:
@@ -255,8 +255,7 @@ if len(dbi_param["file"]) > 0:
             choise_args += t2
         fd.close()
 
-elif dbi_param["restart"]:
-    assert dbi_param['launch_cmd']=="Condor"
+elif dbi_param["restart"] and dbi_param['launch_cmd'] == "Condor":
     cmds=[]
     #We accept to start jobs in the queue only if they are completed
     p=Popen('condor_q -l -const "JobStatus!=4" '+" ".join(command_argv),
@@ -349,7 +348,7 @@ elif len(dbi_param["file"])==0:
     ### We need to remove the symbols "," as this cause trouble with bqtools
     tmp=re.sub( ',', '-', tmp )
     date_str=str(datetime.datetime.now())
-    if dbi_param["restart"]:
+    if dbi_param["restart"] and dbi_param['launch_cmd'] == "Condor":
         tmp="jobs_restarted_"+tmp
     
     if dbi_param['launch_cmd'] == "Bqtools":
