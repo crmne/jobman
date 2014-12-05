@@ -1751,6 +1751,21 @@ class DBISge(DBIBase):
 # (used on briaree)
 ###############################
 
+def try_restart():
+    """
+    This is useful only for the Torque/Moab back-end.
+
+    We try to have the job resubmited to help continue it.
+
+    It return True if it was able to do its work.
+    False otherwise.
+    """
+    f = os.environ.get("JOBDISPATCH_RESTART_FILE", None)
+    if f:
+        # Just create the file.
+        open(f, 'w').close()
+        return True
+    return False
 
 class DBITorque(DBIBase):
     def __init__(self, commands, launch_exec="qsub", **args):
@@ -1773,6 +1788,7 @@ class DBITorque(DBIBase):
         DBIBase.__init__(self, commands, substitute_gpu=True, launch_exec=launch_exec,
                          **args)
 
+        self.restart_file = os.path.join(self.log_dir, 'jobdispatch_restart')
         self.nb_proc = int(self.nb_proc)
         self.jobs_per_node = int(self.jobs_per_node)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
@@ -1850,6 +1866,17 @@ class DBITorque(DBIBase):
         for task in self.tasks:
             launcher.write("'" + ';'.join(task.commands) + "'\n")
         pre_tasks = "\n".join(self.pre_tasks)
+        restart_init = ""
+        restart_submit = ""
+
+        if self.restart:
+            restart_init = "rm -f %s" % self.restart_file
+            restart_submit = """
+if [ -e %s ] ; then
+   echo "restart" %s
+   %s
+fi
+""" % (self.restart_file, self.submit_command, self.submit_command)
         launcher.write(dedent('''\
                 )
 
@@ -1861,6 +1888,9 @@ class DBITorque(DBIBase):
                 # Execute the task
                 echo "Before we launch the jobs on this node"
                 date
+
+%(restart_init)s
+
                 for TASK_ID in `seq $%(env_var_jobarray_id)s ${UPPER_LIMIT}`; do
                     echo "Launching task id = ${TASK_ID}"
                     BLOCK_TASK_ID=$((${TASK_ID} - ${%(env_var_jobarray_id)s}))
@@ -1873,6 +1903,9 @@ class DBITorque(DBIBase):
 
                 done
                 wait
+
+%(restart_submit)s
+
                 echo "All jobs finished on this node"
                 date
                 '''%(dict(jobs_per_node=self.jobs_per_node,
@@ -1880,6 +1913,7 @@ class DBITorque(DBIBase):
                           nb_tasks=len(self.tasks),
                           log_dir=self.log_dir,
                           name=self.jobs_name,
+                          restart_init=restart_init, restart_submit=restart_submit,
                           pre_tasks=pre_tasks))))
 
     def run(self):
@@ -1982,9 +2016,12 @@ class DBITorque(DBIBase):
             env += ' OMP_NUM_THREADS=%d GOTO_NUM_THREADS=%d MKL_NUM_THREADS=%d'%(self.cpu,self.cpu,self.cpu)
         if len(self.tasks) == 1:
             env += " JOBDISPATCH_RESUBMIT='%(cmd)s'" % dict(cmd=self.submit_command)
-        elif len(self.tasks) == self.jobs_per_node:
-            #            import pdb;pdb.set_trace()
-            raise NotImplementedError("...")
+            if self.jobs_per_node > 0:
+                assert not self.restart
+                print "WARNING, YOU ARE USING AN OLD INTERFACE THAT WILL NOT BE SUPPORTED SHORTLY"
+        if len(self.tasks) == self.jobs_per_node:
+            fname = os.path.join(self.log_dir, 'jobdispatch_restart')
+            env += " JOBDISPATCH_RESTART_FILE='%(fname)s'" % dict(fname=fname)
         elif self.restart:
             raise Exception("You asked to get help to restart the job for jobs that know how to checkpoint, but we ended up in a case where jobdispatch can't help you.")
         if env:
