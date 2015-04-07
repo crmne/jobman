@@ -1785,6 +1785,7 @@ class DBITorque(DBIBase):
         self.job_array_suffix = ""
         self.extra_param = ""
         self.restart = False
+        self.support_jobs_per_node_with_nb_proc = False
         DBIBase.__init__(self, commands, substitute_gpu=True, launch_exec=launch_exec,
                          **args)
 
@@ -1977,8 +1978,20 @@ fi
         if self.raw:
             submit_sh_template += '''%s
                 ''' % self.raw
+        nb_proc_per_node = self.nb_proc
+        if self.jobs_per_node > 0 and self.nb_proc > 0:
+            # This support was only tested on Moab. I do not know if it will work with torque
+            assert self.support_jobs_per_node_with_nb_proc, "You can't use --jobs_per_node with --nb_proc'"
+            nb_proc_per_node = self.nb_proc // self.jobs_per_node
+            if nb_proc_per_node * self.jobs_per_node != self.nb_proc:
+                raise Exception("nb_proc(%s) must be a multiple of jobs_per_node(%s) when both option are used." %
+                                (self.nb_proc, self.jobs_per_node))
+            submit_sh_template += '''
+                ## Execute as many jobs as needed while limiting the number of concurrent jobs
+                #PBS -t %(job_array_prefix)s0-%(n_tasks_m1)i:%(jobs_per_node)i%(job_array_suffix)s%%%(nb_proc_per_node)i
+                '''
 
-        if self.jobs_per_node > 0:
+        elif self.jobs_per_node > 0:
             assert self.nb_proc <= 0, "You can't use --jobs_per_node with --nb_proc'"
             submit_sh_template += '''
                 ## Number of CPU (on the same node) per job
@@ -2062,6 +2075,7 @@ fi
                 job_array_prefix = self.job_array_prefix,
                 job_array_suffix = self.job_array_suffix,
                 extra_param = self.extra_param,
+                nb_proc_per_node=nb_proc_per_node,
             )))
 
         submit_sh.close()
@@ -2128,6 +2142,8 @@ class DBIMoab(DBITorque):
                                  "MOAB_PARTITION",
                                  ]
         DBITorque.__init__(self, commands, launch_exec="msub", **args)
+        # Override some variables
+        self.support_jobs_per_node_with_nb_proc = True
         self.env_var_jobarray_id = "MOAB_JOBARRAYINDEX"
         self.log_file_suffix = "-${MOAB_JOBARRAYINDEX}"
         self.job_array_prefix = "["
