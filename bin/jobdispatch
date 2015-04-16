@@ -51,7 +51,7 @@ elif search_file('qsub',PATH):
     stdout = p.stdout.readlines()
     stderr = p.stderr.readlines()
     #Maui have a different output then Torque, but it support the Torque interface
-    if ret==0 and len(stdout) == 1 and stdout[0] == "\n" and len(stderr) == 2:
+    if ret==0 and len(stdout) == 1 and stdout[0] == "\n" and len(stderr) in [2, 3]:
         dbi_param['launch_cmd'] = 'Torque'
     elif ret==0 and len(stdout)==0:
         dbi_param['launch_cmd'] = 'Torque'
