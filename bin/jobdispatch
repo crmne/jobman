@@ -1,67 +1,82 @@
 #!/usr/bin/env python
-import datetime,os,random,re,sys,time
+import datetime
+import os
+import random
+import re
+import sys
+import time
 import shlex
 from socket import gethostname
-from subprocess import Popen,PIPE
-if sys.version_info[:2] < (2,5):
+from subprocess import Popen, PIPE
+from jobman.dbi.utils import search_file
+from jobman.dbi.dbi import *
+if sys.version_info[:2] < (2, 5):
     def any(iterable):
         for element in iterable:
             if element:
                 return True
         return False
 
-#Uncomment this line to force the use of this repo jobman version
-#This bypass the egg loading system that always prepended egg to the PYTHONPATH!
-#sys.path[0:0] = [os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]]
+# Uncomment this line to force the use of this repo jobman version
+# This bypass the egg loading system that always prepended egg to the
+# PYTHONPATH!
+# sys.path[0:0] = \
+#   [os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]]
 
-from jobman.dbi.utils import search_file
-from jobman.dbi.dbi import *
+verbose = False
 
-verbose=False
+# the computer to use with the --fast option.
+fast_computer = ["maggie" + str(x) for x in [11, 12, 13, 14, 15, 16, 21,
+                                             22, 23, 24, 25, 26, 31, 32,
+                                             33, 34, 35, 36, 41, 42, 43,
+                                             44, 45, 46]]
+fast_computer += ["brams0" + str(x)
+                  for x in [0, 1, 2, 3, 4, 5, 6, 7,
+                            'a', 'b', 'c', 'd', 'e', 'f']]
+fast_computer += ["zappa" + str(x) for x in range(1, 9)]
+MAX_FILE_NAME_SIZE = 255
 
-#the computer to use with the --fast option.
-fast_computer=["maggie"+str(x) for x in [11,12,13,14,15,16,21,22,23,24,25,26,31,32,33,34,35,36,41,42,43,44,45,46]]
-fast_computer+=["brams0"+str(x) for x in [0,1,2,3,4,5,6,7,'a','b','c','d','e','f']]
-fast_computer+=["zappa"+str(x) for x in range(1,9)]
-MAX_FILE_NAME_SIZE=255
-
-dbi_param={"req":"True", "files":"", "rank":"True", "raw":"", "env":"",
-           "machine":[], "machines":[], "no_machine":[], "tasks_filename":[],
-           "restart":False,'whitespace':False,"fast":False,
-           "gpu":False, "sort":"generated",
-           "file":[], "ulimit_vm":500, "interactive":False, "pre_tasks":[]}
+dbi_param = {"req": "True", "files": "", "rank": "True", "raw": "", "env": "",
+             "machine": [], "machines": [], "no_machine": [],
+             "tasks_filename": [],
+             "restart": False, 'whitespace': False, "fast": False,
+             "gpu": False, "sort": "generated",
+             "file": [], "ulimit_vm": 500, "interactive": False,
+             "pre_tasks": []}
 dbi_param_orig = dbi_param.copy()
-testmode=False
+testmode = False
 
-PATH=os.getenv('PATH')
+PATH = os.getenv('PATH')
 dbi_param['launch_cmd'] = None
-if search_file('condor_submit',PATH):
+if search_file('condor_submit', PATH):
     dbi_param['launch_cmd'] = 'Condor'
-elif search_file('bqsubmit',PATH):
+elif search_file('bqsubmit', PATH):
     dbi_param['launch_cmd'] = 'Bqtools'
-elif search_file('sqsub',PATH):
+elif search_file('sqsub', PATH):
     dbi_param['launch_cmd'] = 'Sharcnet'
-elif search_file('msub',PATH):
+elif search_file('msub', PATH):
     dbi_param['launch_cmd'] = 'Moab'
-elif search_file('qsub',PATH):
+elif search_file('qsub', PATH):
     # qsub command is used by torque/pbs and Sun Grid Engine
     # that take different input.
-    p = Popen('qsub --version',shell=True, stdout=PIPE, stderr=PIPE)
+    p = Popen('qsub --version', shell=True, stdout=PIPE, stderr=PIPE)
     ret = p.wait()
     stdout = p.stdout.readlines()
     stderr = p.stderr.readlines()
-    #Maui have a different output then Torque, but it support the Torque interface
-    if ret==0 and len(stdout) == 1 and stdout[0] == "\n" and len(stderr) in [2, 3]:
+    # Maui have a different output then Torque, but it support the Torque
+    # interface
+    if ret == 0 and len(stdout) == 1 and stdout[0] == "\n" and
+        len(stderr) in [2, 3]:
         dbi_param['launch_cmd'] = 'Torque'
-    elif ret==0 and len(stdout)==0:
+    elif ret == 0 and len(stdout) == 0:
         dbi_param['launch_cmd'] = 'Torque'
     else:
         # We suppose it is SGE.
         dbi_param['launch_cmd'] = 'Sge'
-elif search_file('cluster',PATH):
+elif search_file('cluster', PATH):
     # The command cluster is not always the program we want
     # The want the cluster command used at DIRO.
-    p = Popen('cluster --liste',shell=True, stdout=PIPE, stderr=PIPE)
+    p = Popen('cluster --liste', shell=True, stdout=PIPE, stderr=PIPE)
     ret = p.wait()
     stderr = p.stderr.readlines()
     if len(stderr) == 0:
@@ -69,23 +84,23 @@ elif search_file('cluster',PATH):
 if dbi_param['launch_cmd'] is None:
     dbi_param['launch_cmd'] = 'Local'
 
-LOGDIR=os.getenv("JOBDISPATCH_LOGDIR")
+LOGDIR = os.getenv("JOBDISPATCH_LOGDIR")
 if not LOGDIR:
-    LOGDIR=os.getenv("DBIDISPATCH_LOGDIR")
+    LOGDIR = os.getenv("DBIDISPATCH_LOGDIR")
     if not LOGDIR:
-        LOGDIR="LOGS"
+        LOGDIR = "LOGS"
 
-to_parse=[]
-env=os.getenv("JOBDISPATCH_DEFAULT_OPTION")
+to_parse = []
+env = os.getenv("JOBDISPATCH_DEFAULT_OPTION")
 if not env:
-    env=os.getenv("DBIDISPATCH_DEFAULT_OPTION")
+    env = os.getenv("DBIDISPATCH_DEFAULT_OPTION")
 if env:
-    to_parse=shlex.split(env)
+    to_parse = shlex.split(env)
 
 to_parse.extend(sys.argv[1:])
 command_argv = parse_args(to_parse, dbi_param)
 
-if len(dbi_param["tasks_filename"])==0:
+if len(dbi_param["tasks_filename"]) == 0:
     if dbi_param['launch_cmd'] == "Cluster":
         dbi_param["tasks_filename"] = ["clusterid", "processid", "compact"]
     elif dbi_param['launch_cmd'] == "Sge":
@@ -93,7 +108,7 @@ if len(dbi_param["tasks_filename"])==0:
     else:
         dbi_param["tasks_filename"] = ["nb0", "compact"]
 if dbi_param['launch_cmd'] == "Sge":
-    if set(['compact','explicit','nb0','nb1','sh']).intersection(dbi_param["tasks_filename"]):
+    if set(['compact', 'explicit', 'nb0', 'nb1', 'sh']).intersection(dbi_param["tasks_filename"]):
         print "Error --tasks_filename for Sge don't support compact,explicit,nb0,nb1,sh"
         sys.exit(1)
 
@@ -112,33 +127,34 @@ if dbi_param["file"] and dbi_param['launch_cmd'] == "Condor" and dbi_param["rest
 if not os.path.exists(LOGDIR):
     os.mkdir(LOGDIR)
 
-valid_dbi_param=["clean_up", "test", "dolog", "nb_proc", "exp_dir", "file",
-                 "tasks_filename", "exec_in_exp_dir", "repeat_jobs",
-                 "whitespace", "sort", "launch_cmd",
-                 ]
-if dbi_param['launch_cmd']=="Cluster":
-    valid_dbi_param +=["cwait","force","arch","interruptible",
-                       "duree","cpu","mem","os"]
-elif dbi_param['launch_cmd']=="Condor":
-    valid_dbi_param +=["req", "arch", "getenv", "nice", "files", "rank", "env",
-                       "raw", "os", "set_special_env", "mem", "cpu", "pkdilly",
-                       "universe", "machine", "machines", "no_machine","to_all",
-                       "keep_failed_jobs_in_queue", "restart",
-                       "max_file_size", "debug", "local_log_file",
-                       "next_job_start_delay", "gpu",
-                       "fast", "ulimit_vm", "interactive"
-                       ]
-elif dbi_param['launch_cmd']=="Bqtools":
-    valid_dbi_param +=["cpu", "duree", "long", "mem", "micro",
-                       "nano", "queue", "raw", "submit_options", "jobs_name",
-                       "set_special_env", "env" ]
-elif dbi_param['launch_cmd']=="Sge":
+valid_dbi_param = ["clean_up", "test", "dolog", "nb_proc", "exp_dir", "file",
+                   "tasks_filename", "exec_in_exp_dir", "repeat_jobs",
+                   "whitespace", "sort", "launch_cmd",
+                   ]
+if dbi_param['launch_cmd'] == "Cluster":
+    valid_dbi_param += ["cwait", "force", "arch", "interruptible",
+                        "duree", "cpu", "mem", "os"]
+elif dbi_param['launch_cmd'] == "Condor":
+    valid_dbi_param += ["req", "arch", "getenv", "nice", "files", "rank", "env",
+                        "raw", "os", "set_special_env", "mem", "cpu", "pkdilly",
+                        "universe", "machine", "machines", "no_machine", "to_all",
+                        "keep_failed_jobs_in_queue", "restart",
+                        "max_file_size", "debug", "local_log_file",
+                        "next_job_start_delay", "gpu",
+                        "fast", "ulimit_vm", "interactive"
+                        ]
+elif dbi_param['launch_cmd'] == "Bqtools":
+    valid_dbi_param += ["cpu", "duree", "long", "mem", "micro",
+                        "nano", "queue", "raw", "submit_options", "jobs_name",
+                        "set_special_env", "env"]
+elif dbi_param['launch_cmd'] == "Sge":
     valid_dbi_param += ["duree", "jobs_name", "queue", "cpu", "mem", "env",
                         "raw", "set_special_env", "project", "jobs_per_node",
                         "cores_per_node", "mem_per_node", "pe",
                         ]
-elif dbi_param['launch_cmd']=="Sharcnet":
-    valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "gpu", "env", "set_special_env"]#, "raw" ?
+elif dbi_param['launch_cmd'] == "Sharcnet":
+    valid_dbi_param += ["cpu", "mem", "duree", "queue",
+                        "jobs_name", "gpu", "env", "set_special_env"]  # , "raw" ?
 elif dbi_param['launch_cmd'] in ["Torque", "Moab"]:
     valid_dbi_param += ["cpu", "mem", "duree", "queue", "jobs_name", "env",
                         "set_special_env", "project", "raw", "gpu", "machine", "exec_dir",
@@ -148,60 +164,63 @@ elif dbi_param['launch_cmd'] == "Local":
 else:
     raise Exception("Invalid launch_cmd" + dbi_param['launch_cmd'])
 
-if  dbi_param['launch_cmd'] == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
-    #default value for pkdilly is true.
-    if dbi_param.get("pkdilly")==None:
-        dbi_param["pkdilly"]=True
+if dbi_param['launch_cmd'] == 'Condor' and gethostname().endswith(".iro.umontreal.ca"):
+    # default value for pkdilly is true.
+    if dbi_param.get("pkdilly") == None:
+        dbi_param["pkdilly"] = True
 
     p = os.path.abspath(os.path.curdir)
-    nokerb_path=["/data/"]
-    pkdilly=False
-    dir_with_kerb=not any([p.startswith(x) for x in nokerb_path])
+    nokerb_path = ["/data/"]
+    pkdilly = False
+    dir_with_kerb = not any([p.startswith(x) for x in nokerb_path])
     if dir_with_kerb:
         # From now on, we don't want the condor log file to be under kerberos
         # Otherwise this cause too much problem with the fileserver
-        raise Exception("You must be in a subfolder of %s. Otherwise their is too much problem with the fileserver."%nokerb_path)
+        raise Exception(
+            "You must be in a subfolder of %s. Otherwise their is too much problem with the fileserver." % nokerb_path)
     if not dir_with_kerb or dbi_param['files']:
         pass
-    elif dbi_param.get("pkdilly")==True:
+    elif dbi_param.get("pkdilly") == True:
         pkdilly = True
     else:
         # Without pkdilly, they don't have access to path with kerberos!
-        raise Exception("You must be in a subfolder of %s. "%nokerb_path)
-    source=os.getenv("CONDOR_LOCAL_SOURCE")
+        raise Exception("You must be in a subfolder of %s. " % nokerb_path)
+    source = os.getenv("CONDOR_LOCAL_SOURCE")
     if source and not pkdilly:
-        source=os.path.realpath(source)
-        source_with_kerb=not any([source.startswith(x) for x in nokerb_path])
+        source = os.path.realpath(source)
+        source_with_kerb = not any([source.startswith(x) for x in nokerb_path])
         if source_with_kerb:
-            dbi_param['copy_local_source_file']=True
+            dbi_param['copy_local_source_file'] = True
 
 
 print "\n\nThe jobs will be launched on the system:", dbi_param['launch_cmd']
-print "With options: ",[str(param)+":"+str(value) for param,value in dbi_param.items() if value!=dbi_param_orig.get(param,None)]
+print "With options: ", [str(param) + ":" + str(value) for param, value in dbi_param.items() if value != dbi_param_orig.get(param, None)]
 for i in dbi_param:
-    if i not in valid_dbi_param and (i not in dbi_param_orig or dbi_param_orig[i]!=dbi_param[i]):
-        print "WARNING: The parameter",i,"is not valid for the",dbi_param['launch_cmd'],"back-end. It will be ignored."
+    if i not in valid_dbi_param and (i not in dbi_param_orig or dbi_param_orig[i] != dbi_param[i]):
+        print "WARNING: The parameter", i, "is not valid for the", dbi_param['launch_cmd'], "back-end. It will be ignored."
 if dbi_param["restart"]:
-    print "With the command to be restarted:"," ".join(command_argv),"\n\n"
+    print "With the command to be restarted:", " ".join(command_argv), "\n\n"
 elif verbose:
-    print "With the command to be expanded:"," ".join(command_argv),"\n\n"
+    print "With the command to be expanded:", " ".join(command_argv), "\n\n"
 
-def generate_combination(repl,sep=" "):
+
+def generate_combination(repl, sep=" "):
     if repl == []:
         return []
     else:
         res = []
         x = repl[0]
-        res1 = generate_combination(repl[1:],sep)
+        res1 = generate_combination(repl[1:], sep)
         for y in x:
             if res1 == []:
                 res.append(y)
             else:
-                res.extend([y+sep+r for r in res1])
+                res.extend([y + sep + r for r in res1])
         return res
 
+
 def generate_commands(sp):
-### Find replacement lists in the arguments
+    # Find replacement lists in the arguments
     repl = []
     if dbi_param['whitespace']:
         p = re.compile('\{\{.*\}\}')
@@ -209,31 +228,31 @@ def generate_commands(sp):
         p = re.compile('\{\{\S*?\}\}')
     for arg in sp:
         reg = p.findall(arg)
-        if len(reg)==1:
+        if len(reg) == 1:
             reg = p.search(arg)
             curargs = reg.group()[2:-2].split(",")
             newcurargs = []
             for curarg in curargs:
-                new = p.sub(curarg,arg)
+                new = p.sub(curarg, arg)
                 newcurargs.append(new)
             repl.append(newcurargs)
-        elif len(reg)>1:
-            s=p.split(arg)
-            tmp=[]
+        elif len(reg) > 1:
+            s = p.split(arg)
+            tmp = []
             for i in range(len(reg)):
                 if s[i]:
                     tmp.append(s[i])
                 tmp.append(reg[i][2:-2].split(","))
-            i+=1
+            i += 1
             if s[i]:
                 tmp.append(s[i])
-            repl.append(generate_combination(tmp,''))
+            repl.append(generate_combination(tmp, ''))
         else:
             repl.append([arg])
     argscombination = generate_combination(repl)
-    args_modif = generate_combination([x for x in repl if len(x)>1])
+    args_modif = generate_combination([x for x in repl if len(x) > 1])
 
-    return (argscombination,args_modif)
+    return (argscombination, args_modif)
 
 
 # Generate the commands.
@@ -250,259 +269,270 @@ if len(dbi_param["file"]) > 0:
             sp = line.split(" ")
             (t1, t2) = generate_commands(sp)
             if not t2:
-                t2 = [''] * len(t1)            
+                t2 = [''] * len(t1)
             commands += t1
             choise_args += t2
         fd.close()
 
 elif dbi_param["restart"] and dbi_param['launch_cmd'] == "Condor":
-    cmds=[]
-    #We accept to start jobs in the queue only if they are completed
-    p=Popen('condor_q -l -const "JobStatus!=4" '+" ".join(command_argv),
-             shell=True, stdout=PIPE)
-    p.wait();
-    lines=p.stdout.readlines()
+    cmds = []
+    # We accept to start jobs in the queue only if they are completed
+    p = Popen('condor_q -l -const "JobStatus!=4" ' + " ".join(command_argv),
+              shell=True, stdout=PIPE)
+    p.wait()
+    lines = p.stdout.readlines()
     for l in lines:
         if l.startswith("Arguments = "):
             print "We don't accept to restart jobs in the queue that are not completed:", arg
             sys.exit(1)
 
-    #get all jobs in the queue that are completed.
-    p=Popen('condor_q -l -const "JobStatus==4" '+" ".join(command_argv),
-             shell=True, stdout=PIPE)
+    # get all jobs in the queue that are completed.
+    p = Popen('condor_q -l -const "JobStatus==4" ' + " ".join(command_argv),
+              shell=True, stdout=PIPE)
     p.wait()
     for l in p.stdout.readlines():
         if l.startswith("Arguments = "):
-            cmd=l[13:-2]
-            cmds.append(cmd.replace("'",""))
+            cmd = l[13:-2]
+            cmds.append(cmd.replace("'", ""))
 
     for arg in command_argv:
-        #condor_history don't accept multiple argument! This is the bottleneck.
-        #We need to modif condor_history to let it accept multiple parameter!
-        p=Popen("condor_history -l "+arg, shell=True, stdout=PIPE)
+        # condor_history don't accept multiple argument! This is the bottleneck.
+        # We need to modif condor_history to let it accept multiple parameter!
+        p = Popen("condor_history -l " + arg, shell=True, stdout=PIPE)
         p.wait()
-        lines=p.stdout.readlines()
+        lines = p.stdout.readlines()
         for l in lines:
             if l.startswith("Arguments = "):
-                cmd=l[13:-2]
-                cmds.append(cmd.replace("'",""))
-    commands=cmds
-    if len(commands)<1:
+                cmd = l[13:-2]
+                cmds.append(cmd.replace("'", ""))
+    commands = cmds
+    if len(commands) < 1:
         raise Exception("Their is no commands selected to be restarted!")
-    if len(commands)<len(command_argv):
-        raise Exception("Their is a bad command number in '%s'!"%command_argv)
-    if all([x.find(".")>=0 for x in command_argv]) and len(commands)!=len(command_argv):
-        raise Exception("Their is a bad command number in '%s'!"%command_argv)
-        
-    choise_args=[]
+    if len(commands) < len(command_argv):
+        raise Exception(
+            "Their is a bad command number in '%s'!" % command_argv)
+    if all([x.find(".") >= 0 for x in command_argv]) and len(commands) != len(command_argv):
+        raise Exception(
+            "Their is a bad command number in '%s'!" % command_argv)
+
+    choise_args = []
     del p, lines, cmds
 else:
-    (commands,choise_args)=generate_commands(command_argv)
+    (commands, choise_args) = generate_commands(command_argv)
 
 if dbi_param.has_key("only_n_first"):
-    n=int(dbi_param["only_n_first"])
-    commands=commands[:n]
-    choise_args=choise_args[:n]
+    n = int(dbi_param["only_n_first"])
+    commands = commands[:n]
+    choise_args = choise_args[:n]
     del dbi_param["only_n_first"]
 
 if dbi_param.has_key("repeat_jobs"):
-    n=int(dbi_param["repeat_jobs"])
-    commands=commands*n
-    choise_args=choise_args*n
+    n = int(dbi_param["repeat_jobs"])
+    commands = commands * n
+    choise_args = choise_args * n
     del dbi_param["repeat_jobs"]
 
-if dbi_param['sort']=='random':
+if dbi_param['sort'] == 'random':
     random.shuffle(commands)
-elif dbi_param['sort']=='generated':
+elif dbi_param['sort'] == 'generated':
     pass
 else:
-    raise Exception("--sort option accept value random and generated only. got %s"%dbi_param['sort'])
+    raise Exception(
+        "--sort option accept value random and generated only. got %s" % dbi_param['sort'])
 
-if not dbi_param.has_key("next_job_start_delay") and dbi_param['launch_cmd']=="Condor" and len(commands)>20:
-    #by default, if their is more then 20 jobs we make a start delay of 1 second between each jobs start.
-    dbi_param["next_job_start_delay"]=1
-    
+if not dbi_param.has_key("next_job_start_delay") and dbi_param['launch_cmd'] == "Condor" and len(commands) > 20:
+    # by default, if their is more then 20 jobs we make a start delay of 1
+    # second between each jobs start.
+    dbi_param["next_job_start_delay"] = 1
+
 
 if dbi_param["fast"]:
     for m in fast_computer:
-        dbi_param["machine"]+=[m+".iro.umontreal.ca"]
+        dbi_param["machine"] += [m + ".iro.umontreal.ca"]
     del dbi_param["fast"]
 
-#we duplicate the command so that everything else work correctly.
+# we duplicate the command so that everything else work correctly.
 if dbi_param.has_key("to_all"):
-    assert(len(commands)==1)
-    assert(len(dbi_param["machine"])>0)
-    commands=commands*len(dbi_param["machine"])
+    assert(len(commands) == 1)
+    assert(len(dbi_param["machine"]) > 0)
+    commands = commands * len(dbi_param["machine"])
 
 if dbi_param.has_key("exp_dir"):
-    dbi_param["log_dir"]=os.path.join(LOGDIR,dbi_param["exp_dir"])
-elif len(dbi_param["file"])==0:
-    t = [x for x in sys.argv[1:] if not x[:2]=="--"]
-    if dbi_param.get("exec_in_exp_dir",True)==True:
-        t[0]=os.path.split(t[0])[1]#keep only the exec name, not the full path
+    dbi_param["log_dir"] = os.path.join(LOGDIR, dbi_param["exp_dir"])
+elif len(dbi_param["file"]) == 0:
+    t = [x for x in sys.argv[1:] if not x[:2] == "--"]
+    if dbi_param.get("exec_in_exp_dir", True) == True:
+        # keep only the exec name, not the full path
+        t[0] = os.path.split(t[0])[1]
     else:
-        t=t[1:]#remove the exec.
+        t = t[1:]  # remove the exec.
 
-    tmp="_".join(t)
-    tmp=re.sub( '[^a-zA-Z0-9-.,]', '_', tmp )
-    ### We need to remove the symbols "," as this cause trouble with bqtools
-    tmp=re.sub( ',', '-', tmp )
-    date_str=str(datetime.datetime.now())
+    tmp = "_".join(t)
+    tmp = re.sub('[^a-zA-Z0-9-.,]', '_', tmp)
+    # We need to remove the symbols "," as this cause trouble with bqtools
+    tmp = re.sub(',', '-', tmp)
+    date_str = str(datetime.datetime.now())
     if dbi_param["restart"] and dbi_param['launch_cmd'] == "Condor":
-        tmp="jobs_restarted_"+tmp
-    
-    if dbi_param['launch_cmd'] == "Bqtools":
-        #bqtools have a limit. It must have a abspath size < max_file_size -16
-        #(255 on ext3)
-        l=len(os.path.abspath(tmp))
-        l=MAX_FILE_NAME_SIZE-16-len(date_str)-(l-len(tmp))-10 #-10 for dbi.py #-16 for bqtools itself
-        assert(l>0)
-        tmp=tmp[:l]
-    else:
-        l=MAX_FILE_NAME_SIZE-len(date_str)-1 #-1 for the '_' before date_str
-        tmp=tmp[:l]
-    tmp+='_'+date_str.replace(' ','_').replace(':','-')
-    dbi_param["log_dir"]=os.path.join(LOGDIR,tmp)
-else:
-    dbi_param["log_dir"]=os.path.join(LOGDIR,'_'.join([os.path.split(f)[1] for f in dbi_param["file"]]))
-dbi_param["log_file"]=os.path.join(dbi_param["log_dir"],'log')
+        tmp = "jobs_restarted_" + tmp
 
-n="base_tasks_log_file"
-dbi_param[n]=[""]*len(commands)
+    if dbi_param['launch_cmd'] == "Bqtools":
+        # bqtools have a limit. It must have a abspath size < max_file_size -16
+        #(255 on ext3)
+        l = len(os.path.abspath(tmp))
+        # -10 for dbi.py #-16 for bqtools itself
+        l = MAX_FILE_NAME_SIZE - 16 - len(date_str) - (l - len(tmp)) - 10
+        assert(l > 0)
+        tmp = tmp[:l]
+    else:
+        # -1 for the '_' before date_str
+        l = MAX_FILE_NAME_SIZE - len(date_str) - 1
+        tmp = tmp[:l]
+    tmp += '_' + date_str.replace(' ', '_').replace(':', '-')
+    dbi_param["log_dir"] = os.path.join(LOGDIR, tmp)
+else:
+    dbi_param["log_dir"] = os.path.join(
+        LOGDIR, '_'.join([os.path.split(f)[1] for f in dbi_param["file"]]))
+dbi_param["log_file"] = os.path.join(dbi_param["log_dir"], 'log')
+
+n = "base_tasks_log_file"
+dbi_param[n] = [""] * len(commands)
+
 
 def merge_pattern(new_list):
-#    return [x+'.'+y if x else y for (x,y) in  zip(dbi_param[n], new_list)]
-    l=[]
-    for (x,y) in zip(dbi_param[n], new_list):
+    #    return [x+'.'+y if x else y for (x,y) in  zip(dbi_param[n], new_list)]
+    l = []
+    for (x, y) in zip(dbi_param[n], new_list):
         if x:
-            l.append(x+'.'+str(y))
+            l.append(x + '.' + str(y))
         else:
             l.append(y)
     return l
 for pattern in dbi_param["tasks_filename"]:
     if pattern == "explicit":
-        dbi_param[n]=merge_pattern([re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in commands])
+        dbi_param[n] = merge_pattern(
+            [re.sub('[^a-zA-Z=0-9-]', '_', x) for x in commands])
     elif pattern == "compact":
-        assert len(choise_args)==len(commands) or len(choise_args)==0
-        l=[re.sub( '[^a-zA-Z=0-9-]', '_', x ) for x in choise_args]
+        assert len(choise_args) == len(commands) or len(choise_args) == 0
+        l = [re.sub('[^a-zA-Z=0-9-]', '_', x) for x in choise_args]
         if l:
-            dbi_param[n]=merge_pattern(l)
+            dbi_param[n] = merge_pattern(l)
     elif pattern == "nb0":
-        dbi_param[n]=merge_pattern(map(str,range(len(commands))))
+        dbi_param[n] = merge_pattern(map(str, range(len(commands))))
     elif pattern == "nb1":
-        dbi_param[n]=merge_pattern(map(str,range(1,len(commands)+1)))
+        dbi_param[n] = merge_pattern(map(str, range(1, len(commands) + 1)))
     elif pattern == "":
         pass
     elif pattern == "none":
-        dbi_param[n]=[""]*len(commands)
+        dbi_param[n] = [""] * len(commands)
     elif pattern == "clusterid":
-        if dbi_param['launch_cmd']=="Condor":
-            dbi_param[n]=merge_pattern(["$(Cluster)"]*len(dbi_param[n]))
-        elif dbi_param['launch_cmd']=="Sge":
-            dbi_param[n]=merge_pattern(["$JOB_ID"]*len(dbi_param[n]))
+        if dbi_param['launch_cmd'] == "Condor":
+            dbi_param[n] = merge_pattern(["$(Cluster)"] * len(dbi_param[n]))
+        elif dbi_param['launch_cmd'] == "Sge":
+            dbi_param[n] = merge_pattern(["$JOB_ID"] * len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=clusterid is only valid for Condor and Sge"
     elif pattern == "processid":
-        if dbi_param['launch_cmd']=="Condor":
-            dbi_param[n]=merge_pattern(["$(Process)"]*len(dbi_param[n]))
-        elif dbi_param['launch_cmd']=="Sge":
-            dbi_param[n]=merge_pattern(["$TASK_ID"]*len(dbi_param[n]))
+        if dbi_param['launch_cmd'] == "Condor":
+            dbi_param[n] = merge_pattern(["$(Process)"] * len(dbi_param[n]))
+        elif dbi_param['launch_cmd'] == "Sge":
+            dbi_param[n] = merge_pattern(["$TASK_ID"] * len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=processid is only valid for Condor and Sge"
     elif pattern == "jobname":
-        if dbi_param['launch_cmd']=="Sge":
-            dbi_param[n]=merge_pattern(["$JOB_NAME"]*len(dbi_param[n]))
+        if dbi_param['launch_cmd'] == "Sge":
+            dbi_param[n] = merge_pattern(["$JOB_NAME"] * len(dbi_param[n]))
         else:
             print "Warning the option tasks_filename=processid is only valid for Sge"
     elif pattern == "sh":
-        stdouts=[]
-        stderrs=[]
+        stdouts = []
+        stderrs = []
         for x in range(len(commands)):
-            sp=commands[x].split()
-            i=0
-            output=""
-            error=""
+            sp = commands[x].split()
+            i = 0
+            output = ""
+            error = ""
             while i < len(sp):
-                if sp[i]=="2>":
+                if sp[i] == "2>":
                     del sp[i]
-                    error=sp[i]
+                    error = sp[i]
                     del sp[i]
-                elif sp[i]==">":
+                elif sp[i] == ">":
                     del sp[i]
-                    output=sp[i]
+                    output = sp[i]
                     del sp[i]
                 else:
-                    i+=1
-            if stdout_file==stderr_file and dbi_param['launch_cmd']=="Condor":
+                    i += 1
+            if stdout_file == stderr_file and dbi_param['launch_cmd'] == "Condor":
                 print "ERROR: Condor can't redirect the stdout and stderr to the same file!"
                 sys.exit(1)
             stdouts.append(output)
             stderrs.append(error)
-            commands[x]=' '.join(sp)
-            dbi_param[n]=[]
-        dbi_param["stdouts"]=stdouts
-        dbi_param["stderrs"]=stderrs
+            commands[x] = ' '.join(sp)
+            dbi_param[n] = []
+        dbi_param["stdouts"] = stdouts
+        dbi_param["stderrs"] = stderrs
     else:
-        raise Exception("bad value for tasks_filename ("+pattern+"). Accepted value: compact, explicit, nb0, nb1, sh, clusterid, processid, none.")
-    assert(not (dbi_param.has_key("stdouts") and (dbi_param[n])==0))
+        raise Exception("bad value for tasks_filename (" + pattern +
+                        "). Accepted value: compact, explicit, nb0, nb1, sh, clusterid, processid, none.")
+    assert(not (dbi_param.has_key("stdouts") and (dbi_param[n]) == 0))
 
-#undef merge_pattern
+# undef merge_pattern
 
-SCRIPT=open(os.getenv("HOME")+"/.jobdispatch.launched",'a');
-SCRIPT.write("["+time.ctime()+"] "+str(sys.argv)+"\n")
+SCRIPT = open(os.getenv("HOME") + "/.jobdispatch.launched", 'a')
+SCRIPT.write("[" + time.ctime() + "] " + str(sys.argv) + "\n")
 SCRIPT.close()
 
 if testmode:
-    print "We generated %s command in the file"% len(commands)
-    print "The script %s was not launched"% ScriptName
-    SCRIPT=open(ScriptName,'w');
+    print "We generated %s command in the file" % len(commands)
+    print "The script %s was not launched" % ScriptName
+    SCRIPT = open(ScriptName, 'w')
     SCRIPT.write(
-"""#! /usr/bin/env python
+        """#! /usr/bin/env python
 #%s
 from jobman.dbi import DBI
 jobs = DBI([
-"""% " ".join(sys.argv))
+""" % " ".join(sys.argv))
     for arg in commands:
-        cmdstr = "".join(arg);
-        SCRIPT.write("   '%s',\n"%cmdstr)
-    SCRIPT.write("   ],'%s'"%(dbi_param['launch_cmd']))
+        cmdstr = "".join(arg)
+        SCRIPT.write("   '%s',\n" % cmdstr)
+    SCRIPT.write("   ],'%s'" % (dbi_param['launch_cmd']))
     for key in dbi_param.keys():
-        if isinstance(dbi_param[key],str):
-            SCRIPT.write(","+str(key)+"='"+str(dbi_param[key])+"'")
+        if isinstance(dbi_param[key], str):
+            SCRIPT.write("," + str(key) + "='" + str(dbi_param[key]) + "'")
         else:
-            SCRIPT.write(","+str(key)+"="+str(dbi_param[key]))
+            SCRIPT.write("," + str(key) + "=" + str(dbi_param[key]))
     SCRIPT.write(
-""")
+        """)
 jobs.run()
 jobs.wait()
-# There is %d command in the script"""%(len(commands)))
+# There is %d command in the script""" % (len(commands)))
     if "test" in dbi_param:
         print "[DBI dispatch] In test mode, we do not make dbi errase temp file"
     else:
         SCRIPT.write("jobs.clean()")
     SCRIPT.close()
-    os.system("chmod +x %s"%(ScriptName));
+    os.system("chmod +x %s" % (ScriptName))
 
 else:
-    print "We generate the DBI object with %s command"%(len(commands))
+    print "We generate the DBI object with %s command" % (len(commands))
     print time.ctime()
-    t1=time.time()
+    t1 = time.time()
     jobs = DBI(commands, dbi_param['launch_cmd'], **dbi_param)
-    t2=time.time()
-    error=False
+    t2 = time.time()
+    error = False
     if verbose:
-        print "it took %f s to create the DBI objects"%(t2-t1)
+        print "it took %f s to create the DBI objects" % (t2 - t1)
     try:
         jobs.run()
     except DBIError, e:
-        error=True
+        error = True
         print e
         sys.exit(1)
-    t3=time.time()
+    t3 = time.time()
     jobs.wait()
     if "test" in dbi_param:
         print "[DBI dispatch] In test mode, we do not make dbi errase temp file"
     else:
         jobs.clean()
     if verbose:
-        print "it took %f s to launch all the commands"%(t3-t2)
+        print "it took %f s to launch all the commands" % (t3 - t2)

@@ -13,14 +13,14 @@ from channel import StandardChannel
 import parse
 import workdirgen
 
-################################################################################
-### Running
-################################################################################
+##########################################################################
+# Running
+##########################################################################
 
 
 def parse_and_run(command, arguments):
     if command == None:
-        #allow other parameter for help used in other program
+        # allow other parameter for help used in other program
         for arg in arguments:
             if arg in ["--help", "-h"]:
                 command = "help"
@@ -86,20 +86,20 @@ def warn_if_sql_failure():
                    " features will most likely crash" % module)
 
 
-################################################################################
-### Registry
-################################################################################
+##########################################################################
+# Registry
+##########################################################################
 
 runner_registry = dict()
 
 
-################################################################################
-### Default runners
-################################################################################
+##########################################################################
+# Default runners
+##########################################################################
 
-################################################################################
-### cmdline
-################################################################################
+##########################################################################
+# cmdline
+##########################################################################
 
 parser_cmdline = OptionParser(
     usage='%prog cmdline [options] <experiment> <parameters>',
@@ -188,10 +188,10 @@ def runner_cmdline(options, experiment, *strings):
 
     channel = StandardChannel(workdir,
                               experiment, state,
-                              redirect_stdout = options.redirect or options.redirect_stdout,
-                              redirect_stderr = options.redirect or options.redirect_stderr,
-                              finish_up_after = options.finish_up_after or None,
-                              save_interval = options.save_every or None
+                              redirect_stdout=options.redirect or options.redirect_stdout,
+                              redirect_stderr=options.redirect or options.redirect_stderr,
+                              finish_up_after=options.finish_up_after or None,
+                              save_interval=options.save_every or None
                               )
     channel.catch_sigint = not options.allow_sigint
     channel.run(force=options.force)
@@ -216,7 +216,8 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 # parser_filemerge.add_option('-w', '--workdir', action = 'store', dest = 'workdir', default = None,
 #                           help = 'the working directory in which to run the experiment')
 # parser_filemerge.add_option('-n', '--dry-run', action = 'store_true', dest = 'dry_run', default = False,
-#                           help = 'use this option to run the whole experiment in a temporary working directory (cleaned after use)')
+# help = 'use this option to run the whole experiment in a temporary
+# working directory (cleaned after use)')
 
 # def runner_filemerge(options, experiment, *files):
 #     """
@@ -273,10 +274,9 @@ runner_registry['cmdline'] = (parser_cmdline, runner_cmdline)
 # runner_registry['filemerge'] = (parser_filemerge, runner_filemerge)
 
 
-
-################################################################################
-### help
-################################################################################
+##########################################################################
+# help
+##########################################################################
 def runner_help(options, topic=None):
     """
     Get help for a topic.

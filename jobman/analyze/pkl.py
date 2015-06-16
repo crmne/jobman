@@ -6,11 +6,13 @@ from ..analyze_runner import cmd
 # Commands for analyze
 ######################
 
+
 @cmd
 def list_jobs(exproot, **kwargs):
     """List jobs in the experiment"""
     for jobname, args, results in load_all(exproot):
         print jobname, args, results
+
 
 @cmd
 def list_dups(exproot, **kwargs):
@@ -23,6 +25,8 @@ def list_dups(exproot, **kwargs):
         elif args != None:
             seen_args.append(args)
             seen_names.append(jobname)
+
+
 @cmd
 def del_dups(exproot, **kwargs):
     """Delete duplicate jobs in the experiment"""
@@ -40,5 +44,3 @@ def del_dups(exproot, **kwargs):
         elif args != None:
             seen_args.append(args)
             seen_names.append(jobname)
-
-

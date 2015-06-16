@@ -1,7 +1,9 @@
 """ Example library file implementing an experiment.
 """
 
-# Typically this sort of file would be a lot more complicated, and deserve it's own file.
+# Typically this sort of file would be a lot more complicated, and deserve
+# it's own file.
+
 
 def addition_example(state, channel):
 
@@ -12,4 +14,3 @@ def addition_example(state, channel):
     print 'result =', state.result
 
     return channel.COMPLETE
-

@@ -1,4 +1,4 @@
-from __future__ import with_statement 
+from __future__ import with_statement
 import sys
 import os
 import commands
@@ -19,20 +19,23 @@ import platform
 CACHESYNC_VERBOSE = False
 CACHESYNC_LOCK = True
 _endmsg = "so 'jobman cachesync' will be unsafe" \
-        + " (might cause corruption if called around the time the job ends)."
+    + " (might cause corruption if called around the time the job ends)."
+
 
 def _lockfile_not_available(host_string=None):
     if host_string:
-        retcode, output = commands.getstatusoutput("ssh "+host_string+" \"lockfile -v\"")
+        retcode, output = commands.getstatusoutput(
+            "ssh " + host_string + " \"lockfile -v\"")
         if not output.startswith("lockfile v"):
             return "Remote host seems to not have the 'lockfile' utility,"\
-                    + _endmsg
+                + _endmsg
     else:
         retcode, output = commands.getstatusoutput("lockfile -v")
         if not output.startswith("lockfile v"):
             return "'lockfile' utility apparently not available, " + _endmsg
 
     return None
+
 
 @contextmanager
 def cachesync_lock(host_string, tmp_dir_to_lock):
@@ -95,16 +98,18 @@ def cachesync_lock(host_string, tmp_dir_to_lock):
             # and lock_path, to see if we have proper rights on the file
             # This CAN happen when killing the program, though, at least.
             raise RuntimeError('cachesync lock could not be acquired.')
-        
+
     try:
         yield
     finally:
         if lock:
             lock.release()
 
+
 class DistributedLock(object):
+
     def __init__(self, host_string, lock_path,
-                        force_if_older=15, retries=20, sleeptime=1):
+                 force_if_older=15, retries=20, sleeptime=1):
         '''
         Used to make sure we don't rsync from the two sides at the same
         time. Yet this could also be used for other locks, if the need
@@ -154,7 +159,7 @@ class DistributedLock(object):
 
     def acquire(self):
         command = "lockfile -r " + str(self.retries)
-        command += " -" + str(self.sleeptime*60)
+        command += " -" + str(self.sleeptime * 60)
         command += " -l " + str(self.force_if_older * 60)
         command += " " + self.lock_path
 
@@ -167,7 +172,7 @@ class DistributedLock(object):
 
     def release(self):
         if self.lock_acquired:
-            command = "rm -f " + self.lock_path        
+            command = "rm -f " + self.lock_path
             return self.exec_command(command)
 
     def exec_command(self, command):
@@ -176,25 +181,27 @@ class DistributedLock(object):
         else:
             command = "ssh " + self.host_string + " \"" + command + "\""
             retcode = os.system(command)
-     
+
         return retcode
 
     def __str__(self):
         return "DistributedLock(" + str(self.host_string) + ", " + str(self.lock_path) + ")"
-     
+
+
 def sync_single_directory(dir_path, all_jobs=None, force=False):
     if not all_jobs:
         conf = DD(parse.filemerge(os.path.join(dir_path, 'current.conf')))
     else:
-        conf = [i for i in all_jobs if str(i.id) == os.path.split(dir_path)[-1]]
-        assert len(conf)==1
+        conf = [i for i in all_jobs if str(
+            i.id) == os.path.split(dir_path)[-1]]
+        assert len(conf) == 1
         conf = conf[0]
 
     if 'jobman.status' not in conf\
        or 'jobman.sql.host_workdir' not in conf \
        or 'jobman.sql.host_name' not in conf:
         print "abort for", dir_path, " because at least one of jobman.status,", \
-                "jobman.sql.host_workdir or jobman.sql.host_name is not specified."
+            "jobman.sql.host_workdir or jobman.sql.host_name is not specified."
         print "Try giving the --sql option if possible"
         return
 
@@ -206,6 +213,7 @@ def sync_single_directory(dir_path, all_jobs=None, force=False):
             return
 
     perform_sync(dir_path, conf)
+
 
 def perform_sync(dir_path, conf):
     remote_dir = copy.copy(conf['jobman.sql.host_workdir'])
@@ -228,6 +236,7 @@ def perform_sync(dir_path, conf):
 
         print "return code was for last command was", return_code
 
+
 def sync_all_directories(base_dir, all_jobs=None, force=False):
     oldcwd = os.getcwd()
     os.chdir(base_dir)
@@ -245,6 +254,7 @@ def sync_all_directories(base_dir, all_jobs=None, force=False):
         full_path = os.path.join(base_dir, dir)
 
         sync_single_directory(full_path, all_jobs, force)
+
 
 def cachesync_runner(options, dir):
     """
@@ -330,25 +340,24 @@ def cachesync_runner(options, dir):
             except:
                 pass
 
-
     if multiple:
         sync_all_directories(dir, all_jobs, force)
     else:
         sync_single_directory(dir, all_jobs, force)
 
-################################################################################
-### register the command
-################################################################################
+##########################################################################
+# register the command
+##########################################################################
 
 cachesync_parser = OptionParser(
-    usage = '%prog cachesync [options] <path_to_job(s)_workingdir(s)>',
+    usage='%prog cachesync [options] <path_to_job(s)_workingdir(s)>',
     add_help_option=False)
-cachesync_parser.add_option('-f', '--force', dest = 'force', default = False, action='store_true',
-                              help = 'force rsync even if the job is complete')
-cachesync_parser.add_option('-m', '--multiple', dest = 'multiple', default = False, action='store_true',
-                               help = 'sync multiple jobs (in that case, "path_to_job" must be the directory that contains all the jobs, i.e. its subdirectories are 1, 2, 3...)')
-cachesync_parser.add_option('', '--sql', dest = 'sql', default = "", action='store',
-                               help = 'The db to witch we want to sync with.')
+cachesync_parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
+                            help='force rsync even if the job is complete')
+cachesync_parser.add_option('-m', '--multiple', dest='multiple', default=False, action='store_true',
+                            help='sync multiple jobs (in that case, "path_to_job" must be the directory that contains all the jobs, i.e. its subdirectories are 1, 2, 3...)')
+cachesync_parser.add_option('', '--sql', dest='sql', default="", action='store',
+                            help='The db to witch we want to sync with.')
 
 runner_registry['cachesync'] = (cachesync_parser, cachesync_runner)
 
@@ -364,6 +373,7 @@ TEST2 = False
 TEST3 = False
 TEST3_t1 = None
 
+
 def manualtest_lockandwait_jobman_experiment(state, channel):
     # make sure the info is available to run "jobman cachesync ."
     channel.save()
@@ -373,6 +383,7 @@ def manualtest_lockandwait_jobman_experiment(state, channel):
 
     return channel.COMPLETE
 
+
 def manualtest_before_delete():
     global TEST3, TEST3_t1
     if TEST3:
@@ -381,10 +392,12 @@ def manualtest_before_delete():
         TEST3_t1 = time.time()
         time.sleep(30)
 
+
 def manualtest_will_delete():
     global TEST3, TEST3_t1
     if TEST3:
-        print "Total delay (should be > 60 secs) was ", time.time()-TEST3_t1
+        print "Total delay (should be > 60 secs) was ", time.time() - TEST3_t1
+
 
 def manualtest_will_save():
     global TEST1, MANUALTEST_SAVE_COUNT
@@ -394,21 +407,25 @@ def manualtest_will_save():
             print "Will wait 60 secs before save()ing"
             time.sleep(60)
 
+
 def manualtest_will_perform_sync():
     global TEST2, TEST3
     if TEST2 or TEST3:
         print "Test 2/3: will sleep in perform_sync, for 60 secs"
         time.sleep(60)
 
+
 def manualtest_inc_save_count():
     global MANUALTEST_SAVE_COUNT
     MANUALTEST_SAVE_COUNT += 1
+
 
 def manualtest_test1_helper1(channel):
     global TEST1
     if TEST1:
         print "will run save() for second time"
         channel.save()
+
 
 def manualtest_test2_helper1(channel):
     global TEST2
@@ -421,8 +438,8 @@ def manualtest_test2_helper1(channel):
             channel.save()
             time.sleep(5)
             time2 = time.time()
-            print "delay was ", time2-time1
-            if time2-time1 > 20.0:
+            print "delay was ", time2 - time1
+            if time2 - time1 > 20.0:
                 # means the cachesync was performed, waited for some time
                 break
 
@@ -481,4 +498,3 @@ Now, the test cases:
     * TEST 4: we can't run cachesync while temporary directory is being deleted
         * TBD, not a very important case
 '''
-

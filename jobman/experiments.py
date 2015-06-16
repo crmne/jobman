@@ -1,5 +1,5 @@
-#This file contain example experiment and in the futur some generic
-#experiment(for example for PLearn)
+# This file contain example experiment and in the futur some generic
+# experiment(for example for PLearn)
 import sys
 import time
 
@@ -9,7 +9,7 @@ def example1(state, channel):
     print "example experiment"
 
     return channel.COMPLETE
-    #return channel.INCOMPLETE #if the job is not finished, not tested
+    # return channel.INCOMPLETE #if the job is not finished, not tested
 
 
 def theano_example(state, channel):
@@ -70,7 +70,7 @@ def print_state(state, channel):
     return channel.COMPLETE
 
 
-#This example fail for now. I will try to make it work later.
+# This example fail for now. I will try to make it work later.
 def example_numpy(state, channel):
     print "start of example_numpy"
     import numpy
@@ -79,7 +79,7 @@ def example_numpy(state, channel):
     return channel.COMPLETE
 
 
-#This example fail for now. I will try to make it work later.
+# This example fail for now. I will try to make it work later.
 def example_numpy_float32(state, channel):
     print "start of example_numpy_float32"
     import numpy
@@ -88,7 +88,7 @@ def example_numpy_float32(state, channel):
     return channel.COMPLETE
 
 
-#This example fail for now. I will try to make it work later.
+# This example fail for now. I will try to make it work later.
 def example_numpy_float64(state, channel):
     print "start of example_numpy_float64"
     import numpy

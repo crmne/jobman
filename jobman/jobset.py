@@ -3,11 +3,14 @@
 warning: EXPERIMENTAL
 """
 
+
 class JobSet(object):
+
     """Class representing an set of jobs, each represented by their DD "state" variables.
 
     This class works in-place on the state objects that have been added to it.
     """
+
     def __init__(self, path, erase_and_forget_on_delete=False):
         """If the path does not exist, a directory will be created there to store the internal
         states of this DDMap
@@ -83,13 +86,14 @@ class JobSet(object):
             raise NotImplementedError()
 
     # BOOKKEEPING
-    
+
     def erase_and_forget(self):
         """
         Delete all the files corresponding to internal state objects, and the directory
         associated to this DDMap.
         """
         raise NotImplementedError()
+
 
 def generic_dd_fn(state, channel):
     """Generic driver to run an arbitary function using a job DD"""
@@ -103,24 +107,26 @@ def jobset_map(fn, arg_seq, method=JobSet, path=None, cleanup=True):
     def to_jobstate(fn, arg):
         """Return a DD that will compute"""
         # TODO: ensure that fn can be loaded from a toplevel import
-        
-        # TODO: ensure that all elements of arg_seq can be put into DD instances
+
+        # TODO: ensure that all elements of arg_seq can be put into DD
+        # instances
 
         return dict(
-                fn=fully_qualified_name_of_fn(fn),
-                arg=arg
-                )
+            fn=fully_qualified_name_of_fn(fn),
+            arg=arg
+        )
+
     def from_jobstate(state):
         return state.rval
 
     if path is None:
         path = random_tmp_folder
 
-    #create a temporary path to sychronize jobs, which will be cleaned up automatically
-    jobset = method(path, erase_and_forget_on_delete=cleanup) 
+    # create a temporary path to sychronize jobs, which will be cleaned up
+    # automatically
+    jobset = method(path, erase_and_forget_on_delete=cleanup)
 
     states = [to_jobstate(fn, arg) for arg in arg_seq]
     jobset.update(states)
     jobset.wait()                     # computation takes place here
     return map(from_jobstate, states)
-    

@@ -11,19 +11,20 @@
 # All configuration values have a default value; values that are commented out
 # serve to show the default value.
 
-import sys, os
+import sys
+import os
 
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-#sys.path.append(os.path.abspath('some/directory'))
+# sys.path.append(os.path.abspath('some/directory'))
 
 # General configuration
 # ---------------------
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc'] #, 'ext']
+extensions = ['sphinx.ext.autodoc']  # , 'ext']
 
 try:
     from sphinx.ext import pngmath
@@ -165,8 +166,8 @@ latex_font_size = '11pt'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('index', 'jobman.tex', 'jobman Documentation',
-   'LISA lab, University of Montreal', 'manual'),
+    ('index', 'jobman.tex', 'jobman Documentation',
+     'LISA lab, University of Montreal', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

@@ -1,7 +1,11 @@
 import sys
 
 import runner
-import analyze_runner, check, findjob, raw_runner, rsync_runner
+import analyze_runner
+import check
+import findjob
+import raw_runner
+import rsync_runner
 
 # The `sql_runner` module is not currently Python 2.4 compatible.
 if not sys.version.startswith('2.4.'):

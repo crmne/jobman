@@ -12,7 +12,8 @@ if __name__ == '__main__':
     throot = "/".join(sys.path[0].split("/")[:-2])
 
     options = defaultdict(bool)
-    options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['rst', 'help', 'nopdf'])[0]))
+    options.update(dict([x, y or True] for x, y in getopt.getopt(
+        sys.argv[1:], 'o:', ['rst', 'help', 'nopdf'])[0]))
     if options['--help']:
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
@@ -49,7 +50,7 @@ if __name__ == '__main__':
             import tempfile
             workdir = tempfile.mkdtemp()
             sphinx.main(['', '-E', '-b', 'latex',
-                os.path.join(throot, 'doc'), workdir])
+                         os.path.join(throot, 'doc'), workdir])
             # Compile to PDF
             os.chdir(workdir)
             os.system('make')
@@ -61,6 +62,3 @@ if __name__ == '__main__':
                 print 'OSError:', e
             except IOError, e:
                 print 'IOError:', e
-
-
-

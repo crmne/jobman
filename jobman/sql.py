@@ -1,4 +1,7 @@
-import sys, os, copy, time
+import sys
+import os
+import copy
+import time
 
 # Python 2.4 compatibility.
 try:
@@ -16,13 +19,13 @@ try:
         from sqlalchemy.orm.exc import StaleDataError as CONCURRENT_ERROR
     except ImportError:
         from sqlalchemy.orm.exc import ConcurrentModificationError as CONCURRENT_ERROR
-            
+
 except ImportError:
     sqlalchemy_ok = False
 
 JOBID = 'jobman.id'
 EXPERIMENT = 'jobman.experiment'
-#using the dictionary to store these is too slow
+# using the dictionary to store these is too slow
 STATUS = 'jobman.status'
 HASH = 'jobman.hash'
 PRIORITY = 'jobman.sql.priority'
@@ -42,6 +45,7 @@ FUCKED_UP = 666
 
 _TEST_CONCURRENCY = False
 
+
 def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     """Find a trial in the lisa_db with status START.
 
@@ -57,7 +61,7 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
     print >> sys.stderr, """#TODO: use the priority field, not the status."""
     print >> sys.stderr, """#TODO: ignore entries with key PUSH_ERROR."""
 
-    s = db.session() #open a new session
+    s = db.session()  # open a new session
 
     # NB. we need the query and attribute update to be in the same transaction
     try:
@@ -70,57 +74,62 @@ def book_dct_postgres_serial(db, retry_max_sleep=10.0, verbose=1):
 
     dct = None
     while (dct is None) and keep_trying:
-        #build a query
+        # build a query
         q = s.query(db._Dict)
 
-        #N.B.
+        # N.B.
         # use dedicated column to retrieve jobs, not the dictionary keyval pair
         # This should be much faster.
-        q = q.filter(db._Dict.status==START)
+        q = q.filter(db._Dict.status == START)
         q = q.order_by(db._Dict.priority.desc())
 
         # this doesn't seem to work, hene the string hack below
-        q = q.options(eagerload('_attrs')) #hard-coded in api0
+        q = q.options(eagerload('_attrs'))  # hard-coded in api0
 
-        #try to reserve a dct
+        # try to reserve a dct
         try:
-            #first() may raise psycopg2.ProgrammingError
+            # first() may raise psycopg2.ProgrammingError
             dct = q.first()
 
             if dct is not None:
                 assert (dct not in dcts_seen)
-                if verbose: print 'book_unstarted_dct retrieved, ', dct
+                if verbose:
+                    print 'book_unstarted_dct retrieved, ', dct
                 dct._set_in_session(STATUS, RUNNING, s)
                 if 1:
                     if _TEST_CONCURRENCY:
                         print >> sys.stderr, 'SLEEPING BEFORE BOOKING'
                         time.sleep(10)
 
-                    #commit() may raise psycopg2.ProgrammingError
+                    # commit() may raise psycopg2.ProgrammingError
                     s.commit()
                 else:
                     print >> sys.stderr, 'DEBUG MODE: NOT RESERVING JOB!', dct
-                #if we get this far, the job is ours!
+                # if we get this far, the job is ours!
             else:
                 # no jobs are left
                 keep_trying = False
         except (sqlalchemy.exc.DBAPIError, CONCURRENT_ERROR), e:
-            #either the first() or the commit() raised
-            s.rollback() # docs say to do this (or close) after commit raises exception
-            if verbose: print 'caught exception', e
+            # either the first() or the commit() raised
+            # docs say to do this (or close) after commit raises exception
+            s.rollback()
+            if verbose:
+                print 'caught exception', e
             if dct:
                 # first() succeeded, commit() failed
                 dcts_seen.add(dct)
                 dct = None
-            wait = random.random()*retry_max_sleep
-            if verbose: print 'another process stole our dct. Waiting %f secs' % wait
+            wait = random.random() * retry_max_sleep
+            if verbose:
+                print 'another process stole our dct. Waiting %f secs' % wait
             print 'waiting for %i second' % wait
             time.sleep(wait)
 
     if dct:
-        str(dct) # for loading of attrs in UGLY WAY!!!
+        str(dct)  # for loading of attrs in UGLY WAY!!!
     s.close()
     return dct
+
 
 def book_dct_non_postgres(db):
     print >> sys.stderr, """#TODO: use the priority field, not the status."""
@@ -128,10 +137,12 @@ def book_dct_non_postgres(db):
 
     raise NotImplementedError()
 
+
 def db(dbstr):
     """ DEPRECATED: call api0.open_db(dbstr), which has the same api """
     import warnings
-    warnings.warn("sql.db is deprecated, call api0.open_db", DeprecationWarning)
+    warnings.warn(
+        "sql.db is deprecated, call api0.open_db", DeprecationWarning)
     import api0
     return api0.open_db(dbstr)
 
@@ -139,13 +150,16 @@ def db(dbstr):
 # Queue
 ###########
 
+
 def hash_state(state):
-    l = list((k,str(v)) for k,v in state.iteritems())
+    l = list((k, str(v)) for k, v in state.iteritems())
     l.sort()
     return hash(hashlib.sha224(repr(l)).hexdigest())
 
+
 def hash_state_old(state):
     return hash(`state`)
+
 
 def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashalgo=hash_state):
     """Insert a new `job` dictionary into database `db`.
@@ -164,7 +178,8 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
     else:
         s = session
 
-    do_insert = force_dup or (None is s.query(db._Dict).filter(db._Dict.hash==jobhash).filter(db._Dict.status!=FUCKED_UP).first())
+    do_insert = force_dup or (None is s.query(db._Dict).filter(
+        db._Dict.hash == jobhash).filter(db._Dict.status != FUCKED_UP).first())
 
     rval = None
     if do_insert:
@@ -175,7 +190,7 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
         if PRIORITY not in job:
             job[PRIORITY] = priority
         rval = db.insert(job, session=s)
-        #TODO:
+        # TODO:
         # rval[JOBID] = rval.id
         s.commit()
 
@@ -183,12 +198,14 @@ def insert_dict(jobdict, db, force_dup=False, session=None, priority=1.0, hashal
         s.close()
     return rval
 
+
 def insert_job(experiment_fn, state, db, force_dup=False, session=None, priority=1.0):
     state = copy.copy(state)
     experiment_name = experiment_fn.__module__ + '.' + experiment_fn.__name__
     if EXPERIMENT in state:
         if state[EXPERIMENT] != experiment_name:
-            raise Exception('Inconsistency: state element %s does not match experiment %s' %(EXPERIMENT, experiment_name))
+            raise Exception('Inconsistency: state element %s does not match experiment %s' % (
+                EXPERIMENT, experiment_name))
     else:
         state[EXPERIMENT] = experiment_name
     return insert_dict(state, db, force_dup=force_dup, session=session, priority=priority)
@@ -222,17 +239,19 @@ def add_experiments_to_db(jobs, db, verbose=0, force_dup=False, type_check=None,
         job = copy.copy(job)
         if session is None:
             s = db.session()
-            do_insert = force_dup or (None is db.query(s).filter_eq_dct(job).first())
+            do_insert = force_dup or (
+                None is db.query(s).filter_eq_dct(job).first())
             s.close()
         else:
-            do_insert = force_dup or (None is db.query(session).filter_eq_dct(job).first())
+            do_insert = force_dup or (
+                None is db.query(session).filter_eq_dct(job).first())
 
         if do_insert:
             if type_check:
-                for k,v in job.items():
+                for k, v in job.items():
                     if type(v) != getattr(type_check, k):
                         raise TypeError('Experiment contains value with wrong type',
-                                ((k,v), getattr(type_check, k)))
+                                        ((k, v), getattr(type_check, k)))
 
             job[STATUS] = START
             job[PRIORITY] = 1.0
@@ -266,7 +285,8 @@ def duplicate_job(db, job_id, priority=1.0, delete_keys=[], *args, **kwargs):
     if not jobdict:
         raise ValueError('Failed to retrieve job with ID%i' % job_id)
 
-    newjob = dict(jobdict[0]) # this detaches the job dict from the api0.Dict object
+    # this detaches the job dict from the api0.Dict object
+    newjob = dict(jobdict[0])
 
     # those should be added @ insertion time
     newjob.pop(HASH)
@@ -284,7 +304,8 @@ def duplicate_job(db, job_id, priority=1.0, delete_keys=[], *args, **kwargs):
         subd = getattr(newjob, arg[0])
         subd.update(arg[1])
 
-    rval =  insert_dict(newjob, db, force_dup=True, session=s, priority=priority)
+    rval = insert_dict(
+        newjob, db, force_dup=True, session=s, priority=priority)
 
     s.close()
     return rval

@@ -1,5 +1,6 @@
 from jobman import make
 
+
 class MakeExample():
 
     def __init__(self, param1=2, param2='message'):
@@ -10,6 +11,7 @@ class MakeExample():
     def test(self):
         print 'self.value = ', self.value
         print self.msg
+
 
 def experiment(state, channel):
 

@@ -27,11 +27,11 @@ from api0 import open_db
 
 
 ###############################################################################
-### Channels
+# Channels
 ###############################################################################
 
 ###############################################################################
-### RSync channel
+# RSync channel
 ###############################################################################
 
 
@@ -40,6 +40,7 @@ class RSyncException(Exception):
 
 
 class RSyncChannel(StandardChannel):
+
     """ WRITEME """
 
     def __init__(self, path, remote_path, experiment, state,
@@ -88,7 +89,7 @@ class RSyncChannel(StandardChannel):
 
         with cachesync_lock(None, self.path):
             # Useful for manual tests; leave this there, just commented.
-            #cachesync_runner.manualtest_will_save()
+            # cachesync_runner.manualtest_will_save()
 
             # allow n-number of retries, with random hold-off between retries
             attempt = 0
@@ -130,12 +131,13 @@ class RSyncChannel(StandardChannel):
 
     def save(self, num_retries=3):
         # Useful for manual tests; leave this there, just commented.
-        #cachesync_runner.manualtest_inc_save_count()
+        # cachesync_runner.manualtest_inc_save_count()
 
         if self.sync_in_save:
             super(RSyncChannel, self).save()
             self.push(num_retries=num_retries)
-        #TODO: else: update current.conf with only state.jobman, push current.conf
+        # TODO: else: update current.conf with only state.jobman, push
+        # current.conf
 
     def setup(self):
         self.touch()
@@ -144,10 +146,11 @@ class RSyncChannel(StandardChannel):
 
 
 ###############################################################################
-### DB + RSync channel
+# DB + RSync channel
 ###############################################################################
 
 class DBRSyncChannel(RSyncChannel):
+
     """ WRITEME """
 
     RESTART_PRIORITY = 2.0
@@ -208,12 +211,12 @@ class DBRSyncChannel(RSyncChannel):
             if self.sync_in_save:
                 # update DB
                 self.dbstate.update_in_session(flatten(self.state), session,
-                        _recommit_times=num_retries)
+                                               _recommit_times=num_retries)
             else:
                 # update only jobman.*
                 state_jobman = flatten({'jobman': self.state.jobman})
                 self.dbstate.update_in_session(state_jobman, session,
-                        _recommit_times=num_retries)
+                                               _recommit_times=num_retries)
 
         finally:
             session.close()
@@ -231,7 +234,7 @@ class DBRSyncChannel(RSyncChannel):
                 if hasattr(state, key):
                     del state[key]
 
-        #put jobs scheduler info into the state
+        # put jobs scheduler info into the state
         condor_slot = os.getenv("_CONDOR_SLOT")
         sge_task_id = os.getenv('SGE_TASK_ID')
         pbs_task_id = os.getenv('PBS_JOBID')
@@ -243,13 +246,17 @@ class DBRSyncChannel(RSyncChannel):
                 try:
                     for line in f.readlines():
                         if line.startswith('GlobalJobId = '):
-                            self.state.jobman.sql.condor_global_job_id = line.split('=')[1].strip()[1:-1]
+                            self.state.jobman.sql.condor_global_job_id = line.split(
+                                '=')[1].strip()[1:-1]
                         elif line.startswith('Out = '):
-                            self.state.jobman.sql.condor_stdout = line.split('=')[1].strip()[1:-1]
+                            self.state.jobman.sql.condor_stdout = line.split(
+                                '=')[1].strip()[1:-1]
                         elif line.startswith('Err = '):
-                            self.state.jobman.sql.condor_stderr = line.split('=')[1].strip()[1:-1]
+                            self.state.jobman.sql.condor_stderr = line.split(
+                                '=')[1].strip()[1:-1]
                         elif line.startswith('OrigIwd = '):
-                            self.state.jobman.sql.condor_origiwd = line.split('=')[1].strip()[1:-1]
+                            self.state.jobman.sql.condor_origiwd = line.split(
+                                '=')[1].strip()[1:-1]
                 finally:
                     f.close()
         elif sge_task_id:
@@ -263,9 +270,9 @@ class DBRSyncChannel(RSyncChannel):
             self.state.jobman.sql.pbs_arrayid = os.getenv('PBS_ARRAYID')
             self.state.jobman.sql.pbs_num_ppn = os.getenv('PBS_NUM_PPN')
 
-        #delete old jobs scheduler info into the state
-        #this is needed in case we move a job to a different system.
-        #to know where it is running now.
+        # delete old jobs scheduler info into the state
+        # this is needed in case we move a job to a different system.
+        # to know where it is running now.
         key_to_del = []
         if not condor_slot:
             key_to_del.extend(['jobman.sql.condor_global_job_id',
@@ -309,17 +316,17 @@ class DBRSyncChannel(RSyncChannel):
         # already set to RUNNING by book_dct in __init__
         v = super(DBRSyncChannel, self).run(force=True)
         if (v is self.INCOMPLETE and
-            self.state.jobman.sql.priority < self.RESTART_PRIORITY):
+                self.state.jobman.sql.priority < self.RESTART_PRIORITY):
             self.state.jobman.sql.priority = self.RESTART_PRIORITY
             self.save()
         return v
 
 ###############################################################################
-### Runners
+# Runners
 ###############################################################################
 
 ###############################################################################
-### sqlschedule
+# sqlschedule
 ###############################################################################
 
 parser_sqlschedule = OptionParser(
@@ -372,14 +379,15 @@ def runner_sqlschedule(options, dbdescr, experiment, *strings):
     parser = getattr(parse, options.parser, None) or resolve(options.parser)
 
     state = parser(*strings)
-    resolve(experiment)  # we try to load the function associated to the experiment
+    # we try to load the function associated to the experiment
+    resolve(experiment)
     state['jobman.experiment'] = experiment
     sql.add_experiments_to_db([state], db, verbose=1, force_dup=options.force)
 
 runner_registry['sqlschedule'] = (parser_sqlschedule, runner_sqlschedule)
 
 ###############################################################################
-### sqlschedules
+# sqlschedules
 ###############################################################################
 
 parser_sqlschedules = OptionParser(
@@ -415,7 +423,7 @@ def generate_combination(repl):
 
 
 def generate_commands(sp):
-### Find replacement lists in the arguments
+    # Find replacement lists in the arguments
     repl = []
     p = re.compile('\{\{\S*?\}\}')
     for arg in sp:
@@ -468,11 +476,12 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
 
     db = open_db(dbdescr, serial=True)
 
-    ### resolve(experiment) # we try to load the function associated to the experiment
+    # resolve(experiment) # we try to load the function associated to the
+    # experiment
 
     verbose = not options.quiet
 
-    (commands,choise_args)=generate_commands(strings)
+    (commands, choise_args) = generate_commands(strings)
     if verbose:
         print commands, choise_args
 
@@ -485,8 +494,8 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
         if options.quiet:
             print "Added %d jobs to the db" % len(commands)
     else:
-        #if the first insert fail, we won't force the other as the
-        #force option was not gived.
+        # if the first insert fail, we won't force the other as the
+        # force option was not gived.
         failed = 0
         for cmd in commands:
             state = parser(*cmd)
@@ -495,24 +504,25 @@ def runner_sqlschedules(options, dbdescr, experiment, *strings):
                                             verbose=verbose,
                                             force_dup=options.force)
             if ret[0][0]:
-                sql.add_experiments_to_db([state] * (options.repeat-1), db,
+                sql.add_experiments_to_db([state] * (options.repeat - 1), db,
                                           verbose=verbose, force_dup=True)
             else:
-                failed+=1
+                failed += 1
                 if verbose:
                     print "The last cmd failed to insert, we won't repeat it. use --force to force the duplicate of job in the db."
         print "Added", len(commands) - failed, "on", len(commands), "jobs"
 runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 
- ################################################################################
+##########################################################################
 # ### sqlschedule_filemerge
- ################################################################################
+##########################################################################
 
 # parser_sqlschedule_filemerge = OptionParser(
 #     usage = '%prog sqlschedule_filemerge [options] <tablepath> <experiment> <parameters|files>',
 #     add_help_option=False)
 # parser_sqlschedule_filemerge.add_option('-f', '--force', action = 'store_true', dest = 'force', default = False,
-#                                         help = 'force adding the experiment to the database even if it is already there')
+# help = 'force adding the experiment to the database even if it is
+# already there')
 
 # def runner_sqlschedule_filemerge(options, dbdescr, experiment, *files):
 #     """
@@ -556,9 +566,9 @@ runner_registry['sqlschedules'] = (parser_sqlschedules, runner_sqlschedules)
 # runner_registry['sqlschedule_filemerge'] = (parser_sqlschedule_filemerge, runner_sqlschedule_filemerge)
 
 
-################################################################################
-### sql
-################################################################################
+##########################################################################
+# sql
+##########################################################################
 
 parser_sql = OptionParser(usage='%prog sql [options] <tablepath> <exproot>',
                           add_help_option=False)
@@ -643,12 +653,12 @@ def runner_sql(options, dbdescr, exproot):
                                      redirect_stdout=True,
                                      redirect_stderr=True,
                                      finish_up_after=options.finish_up_after or None,
-                                     save_interval = options.save_every or None
+                                     save_interval=options.save_every or None
                                      )
             channel.run()
 
             # Useful for manual tests; leave this there, just commented.
-            #cachesync_runner.manualtest_before_delete()
+            # cachesync_runner.manualtest_before_delete()
             with cachesync_lock(None, workdir):
                 # Useful for manual tests; leave this there, just
                 #commented.  cachesync_runner.manualtest_will_delete()
@@ -733,36 +743,37 @@ def to_status_number(i):
             status = int(i)
             assert status in [0, 1, 2, 3, 4, 5, -1]
         except Exception, e:
-            raise ValueError("The status must be a str in START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or a int in 0,1,2,3,4,5,-1")
+            raise ValueError(
+                "The status must be a str in START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or a int in 0,1,2,3,4,5,-1")
     return status
 
 parser_sqlstatus = OptionParser(usage='%prog sqlstatus [--print=KEY] [--status=JOB_STATUS] [--set_status=JOB_STATUS] [--fselect=lambda blob: ...] [--resert_prio] [--select=key=value] [--quiet] [--ret_nb_jobs] <tablepath> <job id>...',
-                              add_help_option=False)
+                                add_help_option=False)
 parser_sqlstatus.add_option('--set_status', action="store",
                             dest="set_status", default='',
-                          help='If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
+                            help='If present, will change the status of jobs to START,RUNNING,DONE,ERR_START,ERR_SYNC,ERR_RUN,CANCELED. depending of the value gived to this option (default don\'t change the status)')
 parser_sqlstatus.add_option('--all', action="store_true", dest="all",
-                          help='Append all jobs in the db to the list of jobs.')
+                            help='Append all jobs in the db to the list of jobs.')
 parser_sqlstatus.add_option('--status', action="append", dest="status",
                             help='Append jobs in the db with the gived status'
                             ' to the list of jobs. You can pass multiple time'
                             ' this parameter.')
 parser_sqlstatus.add_option('--reset_prio', action="store_true", dest="reset_prio",
-                          help='Reset the priority to the default.')
+                            help='Reset the priority to the default.')
 parser_sqlstatus.add_option('--ret_nb_jobs', action="store_true", dest="ret_nb_jobs",
-                          help='Print only the number of jobs selected.')
-parser_sqlstatus.add_option('-q','--quiet', action="store_true", dest="quiet",
-                          help='Be less verbose.')
+                            help='Print only the number of jobs selected.')
+parser_sqlstatus.add_option('-q', '--quiet', action="store_true", dest="quiet",
+                            help='Be less verbose.')
 parser_sqlstatus.add_option('--select', action="append", dest="select",
-                          help='Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
+                            help='Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction')
 parser_sqlstatus.add_option('--fselect', action="append", dest="fselect",
-                          help='Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction...')
+                            help='Append jobs in the db that match that param=value values to the list of jobs. If multiple --select option, matched jobs must support all those restriction...')
 parser_sqlstatus.add_option('--print', action="append",
                             dest="prints", default=[],
-                          help='print the value of the key for the jobs. Accept multiple --print parameter')
+                            help='print the value of the key for the jobs. Accept multiple --print parameter')
 parser_sqlstatus.add_option('--print-keys', action="store_true",
                             dest="print_keys", default=[],
-                          help='print all keys in the state of the first jobs.')
+                            help='print all keys in the state of the first jobs.')
 
 
 def runner_sqlstatus(options, dbdescr, *ids):
@@ -776,9 +787,10 @@ def runner_sqlstatus(options, dbdescr, *ids):
         jobman sqlstatus postgres://user:pass@host[:port]/dbname?table=tablename 10 11
 
     """
-    #we don't want to remove all output when we change the db.
+    # we don't want to remove all output when we change the db.
     if options.set_status and options.ret_nb_jobs:
-        raise UsageError("The option --set_status and --ret_nb_jobs are mutually exclusive.")
+        raise UsageError(
+            "The option --set_status and --ret_nb_jobs are mutually exclusive.")
 
     db = open_db(dbdescr, serial=True)
 
@@ -786,7 +798,8 @@ def runner_sqlstatus(options, dbdescr, *ids):
         try:
             new_status = to_status_number(options.set_status)
         except ValueError:
-            raise UsageError("The option --set_status accept only the value START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or their equivalent int number")
+            raise UsageError(
+                "The option --set_status accept only the value START, RUNNING, DONE, ERR_START, ERR_SYNC, ERR_RUN, CANCELED or their equivalent int number")
     else:
         new_status = None
 
@@ -812,7 +825,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
         if options.status:
             q = db.query(session)
             jobs = []
-            for  stat in options.status:
+            for stat in options.status:
                 jobs += q.filter_eq('jobman.status',
                                     to_status_number(stat)).all()
 
@@ -849,7 +862,7 @@ def runner_sqlstatus(options, dbdescr, *ids):
                         if f(job[k]):
                             ids.append(job.id)
                     else:
-                        print "job", job.id, "don't have the attribute",k
+                        print "job", job.id, "don't have the attribute", k
 
             del job, jobs, q
 
@@ -923,7 +936,7 @@ runner_registry['sqlstatus'] = (parser_sqlstatus, runner_sqlstatus)
 parser_sqlreload = OptionParser(usage='%prog sqlreload <tablepath> <exproot>/dbname/tablename <id>...',
                                 add_help_option=False)
 parser_sqlreload.add_option('--all', action="store_true", dest="all",
-                          help='If true, will reload all jobs that are in the directory. (default false)')
+                            help='If true, will reload all jobs that are in the directory. (default false)')
 
 
 def runner_sqlreload(options, dbdescr, table_dir, *ids):

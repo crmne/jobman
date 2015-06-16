@@ -24,17 +24,21 @@ TODO: recommended preprocessing, lr ranges, regularization ranges (explain
 __docformat__ = 'restructedtext en'
 
 
-import numpy, cPickle, gzip
+import numpy
+import cPickle
+import gzip
 
 
 import theano
 import theano.tensor as T
 
-import time 
+import time
 
 import theano.tensor.nnet
 
+
 class MLP(object):
+
     """Multi-Layer Perceptron Class
 
     A multilayer perceptron is a feedforward artificial neural network model 
@@ -42,8 +46,6 @@ class MLP(object):
     Intermidiate layers usually have as activation function thanh or the 
     sigmoid function  while the top layer is a softamx layer. 
     """
-
-
 
     def __init__(self, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
@@ -61,56 +63,55 @@ class MLP(object):
 
         """
 
-        # initialize the parameters theta = (W1,b1,W2,b2) ; note that this 
-        # example contains only one hidden layer, but one can have as many 
-        # layers as he/she wishes, making the network deeper. The only 
-        # problem making the network deep this way is during learning, 
+        # initialize the parameters theta = (W1,b1,W2,b2) ; note that this
+        # example contains only one hidden layer, but one can have as many
+        # layers as he/she wishes, making the network deeper. The only
+        # problem making the network deep this way is during learning,
         # backpropagation being unable to move the network from the starting
-        # point towards; this is where pre-training helps, giving a good 
-        # starting point for backpropagation, but more about this in the 
+        # point towards; this is where pre-training helps, giving a good
+        # starting point for backpropagation, but more about this in the
         # other tutorials
-        
+
         # `W1` is initialized with `W1_values` which is uniformely sampled
         # from -1/sqrt(n_in) and 1/sqrt(n_in)
-        # the output of uniform if converted using asarray to dtype 
+        # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
-        W1_values = numpy.asarray( numpy.random.uniform( \
-              low = -numpy.sqrt(6./(n_in+n_hidden)), high = numpy.sqrt(6./(n_in+n_hidden)), \
-              size = (n_in, n_hidden)), dtype = theano.config.floatX)
-        # `W2` is initialized with `W2_values` which is uniformely sampled 
+        W1_values = numpy.asarray(numpy.random.uniform(
+            low=-numpy.sqrt(6. / (n_in + n_hidden)), high=numpy.sqrt(6. / (n_in + n_hidden)),
+            size=(n_in, n_hidden)), dtype=theano.config.floatX)
+        # `W2` is initialized with `W2_values` which is uniformely sampled
         # from -1/sqrt(n_hidden) and 1/sqrt(n_hidden)
-        # the output of uniform if converted using asarray to dtype 
+        # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
-        W2_values = numpy.asarray( numpy.random.uniform( 
-              low = numpy.sqrt(6./(n_hidden+n_out)), high= numpy.sqrt(6./(n_hidden+n_out)),\
-              size= (n_hidden, n_out)), dtype = theano.config.floatX)
+        W2_values = numpy.asarray(numpy.random.uniform(
+            low=numpy.sqrt(6. / (n_hidden + n_out)), high=numpy.sqrt(6. / (n_hidden + n_out)),
+            size=(n_hidden, n_out)), dtype=theano.config.floatX)
 
-        self.W1 = theano.shared( value = W1_values )
-        self.b1 = theano.shared( value = numpy.zeros((n_hidden,), 
-                                                dtype= theano.config.floatX))
-        self.W2 = theano.shared( value = W2_values )
-        self.b2 = theano.shared( value = numpy.zeros((n_out,), 
-                                                dtype= theano.config.floatX))
+        self.W1 = theano.shared(value=W1_values)
+        self.b1 = theano.shared(value=numpy.zeros((n_hidden,),
+                                                  dtype=theano.config.floatX))
+        self.W2 = theano.shared(value=W2_values)
+        self.b2 = theano.shared(value=numpy.zeros((n_out,),
+                                                  dtype=theano.config.floatX))
 
         # symbolic expression computing the values of the hidden layer
-        self.hidden = T.tanh(T.dot(input, self.W1)+ self.b1)
+        self.hidden = T.tanh(T.dot(input, self.W1) + self.b1)
 
-        # symbolic expression computing the values of the top layer 
-        self.p_y_given_x= T.nnet.softmax(T.dot(self.hidden, self.W2)+self.b2)
+        # symbolic expression computing the values of the top layer
+        self.p_y_given_x = T.nnet.softmax(
+            T.dot(self.hidden, self.W2) + self.b2)
 
-        # compute prediction as class whose probability is maximal in 
+        # compute prediction as class whose probability is maximal in
         # symbolic form
-        self.y_pred = T.argmax( self.p_y_given_x, axis =1)
-        
-        # L1 norm ; one regularization option is to enforce L1 norm to 
-        # be small 
-        self.L1     = abs(self.W1).sum() + abs(self.W2).sum()
+        self.y_pred = T.argmax(self.p_y_given_x, axis=1)
 
-        # square of L2 norm ; one regularization option is to enforce 
+        # L1 norm ; one regularization option is to enforce L1 norm to
+        # be small
+        self.L1 = abs(self.W1).sum() + abs(self.W2).sum()
+
+        # square of L2 norm ; one regularization option is to enforce
         # square of L2 norm to be small
         self.L2_sqr = (self.W1**2).sum() + (self.W2**2).sum()
-
-
 
     def negative_log_likelihood(self, y):
         """Return the mean of the negative log-likelihood of the prediction
@@ -126,21 +127,18 @@ class MLP(object):
         :param y: corresponds to a vector that gives for each example the
         :correct label
         """
-        return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]),y])
-
-
-
+        return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
 
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch 
         over the total number of examples of the minibatch 
         """
 
-        # check if y has same dimension of y_pred 
+        # check if y has same dimension of y_pred
         if y.ndim != self.y_pred.ndim:
-            raise TypeError('y should have the same shape as self.y_pred', 
-                ('y', target.type, 'y_pred', self.y_pred.type))
-        # check if y is of the correct datatype        
+            raise TypeError('y should have the same shape as self.y_pred',
+                            ('y', target.type, 'y_pred', self.y_pred.type))
+        # check if y is of the correct datatype
         if y.dtype.startswith('int'):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
@@ -149,9 +147,8 @@ class MLP(object):
             raise NotImplementedError()
 
 
-
-def sgd_optimization_mnist( learning_rate=0.01, n_hidden=500, L1_reg = 0.00, \
-                            L2_reg = 0.0001, batch_size = 20, n_iter=100):
+def sgd_optimization_mnist(learning_rate=0.01, n_hidden=500, L1_reg=0.00,
+                           L2_reg=0.0001, batch_size=20, n_iter=100):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer 
     perceptron
@@ -170,12 +167,12 @@ def sgd_optimization_mnist( learning_rate=0.01, n_hidden=500, L1_reg = 0.00, \
     regularization)
     """
 
-    # Load the dataset 
-    f = gzip.open('/u/lisa/HTML/deep/data/mnist/mnist.pkl.gz','rb')
+    # Load the dataset
+    f = gzip.open('/u/lisa/HTML/deep/data/mnist/mnist.pkl.gz', 'rb')
     train_set, valid_set, test_set = cPickle.load(f)
     f.close()
 
-    # make minibatches of size 20 
+    # make minibatches of size 20
     batch_size = batch_size    # sized of the minibatch
 
     # Dealing with the training set
@@ -184,54 +181,53 @@ def sgd_optimization_mnist( learning_rate=0.01, n_hidden=500, L1_reg = 0.00, \
     # initialize the list of training minibatches with empty list
     train_batches = []
     for i in xrange(0, len(train_set_x), batch_size):
-        # add to the list of minibatches the minibatch starting at 
+        # add to the list of minibatches the minibatch starting at
         # position i, ending at position i+batch_size
-        # a minibatch is a pair ; the first element of the pair is a list 
-        # of datapoints, the second element is the list of corresponding 
+        # a minibatch is a pair ; the first element of the pair is a list
+        # of datapoints, the second element is the list of corresponding
         # labels
         train_batches = train_batches + \
-               [(train_set_x[i:i+batch_size], train_set_y[i:i+batch_size])]
+            [(train_set_x[i:i + batch_size], train_set_y[i:i + batch_size])]
 
     # Dealing with the validation set
     (valid_set_x, valid_set_y) = valid_set
-    # initialize the list of validation minibatches 
+    # initialize the list of validation minibatches
     valid_batches = []
     for i in xrange(0, len(valid_set_x), batch_size):
         valid_batches = valid_batches + \
-               [(valid_set_x[i:i+batch_size], valid_set_y[i:i+batch_size])]
+            [(valid_set_x[i:i + batch_size], valid_set_y[i:i + batch_size])]
 
     # Dealing with the testing set
     (test_set_x, test_set_y) = test_set
-    # initialize the list of testing minibatches 
+    # initialize the list of testing minibatches
     test_batches = []
     for i in xrange(0, len(test_set_x), batch_size):
         test_batches = test_batches + \
-              [(test_set_x[i:i+batch_size], test_set_y[i:i+batch_size])]
+            [(test_set_x[i:i + batch_size], test_set_y[i:i + batch_size])]
 
-
-    ishape     = (28,28) # this is the size of MNIST images
+    ishape = (28, 28)  # this is the size of MNIST images
 
     # allocate symbolic variables for the data
     x = T.fmatrix()  # the data is presented as rasterized images
-    y = T.lvector()  # the labels are presented as 1D vector of 
-                          # [long int] labels
+    y = T.lvector()  # the labels are presented as 1D vector of
+    # [long int] labels
 
     # construct the logistic regression class
-    classifier = MLP( input=x.reshape((batch_size,28*28)),\
-                      n_in=28*28, n_hidden = n_hidden, n_out=10)
+    classifier = MLP(input=x.reshape((batch_size, 28 * 28)),
+                     n_in=28 * 28, n_hidden=n_hidden, n_out=10)
 
-    # the cost we minimize during training is the negative log likelihood of 
+    # the cost we minimize during training is the negative log likelihood of
     # the model plus the regularization terms (L1 and L2); cost is expressed
     # here symbolically
     cost = classifier.negative_log_likelihood(y) \
-         + L1_reg * classifier.L1 \
-         + L2_reg * classifier.L2_sqr 
+        + L1_reg * classifier.L1 \
+        + L2_reg * classifier.L2_sqr
 
-    # compiling a theano function that computes the mistakes that are made by 
+    # compiling a theano function that computes the mistakes that are made by
     # the model on a minibatch
-    test_model = theano.function([x,y], classifier.errors(y))
+    test_model = theano.function([x, y], classifier.errors(y))
 
-    # compute the gradient of cost with respect to theta = (W1, b1, W2, b2) 
+    # compute the gradient of cost with respect to theta = (W1, b1, W2, b2)
     g_W1 = T.grad(cost, classifier.W1)
     g_b1 = T.grad(cost, classifier.b1)
     g_W2 = T.grad(cost, classifier.W2)
@@ -239,97 +235,94 @@ def sgd_optimization_mnist( learning_rate=0.01, n_hidden=500, L1_reg = 0.00, \
 
     # specify how to update the parameters of the model as a dictionary
     updates = \
-        { classifier.W1: classifier.W1 - learning_rate*g_W1 \
-        , classifier.b1: classifier.b1 - learning_rate*g_b1 \
-        , classifier.W2: classifier.W2 - learning_rate*g_W2 \
-        , classifier.b2: classifier.b2 - learning_rate*g_b2 }
+        {classifier.W1: classifier.W1 - learning_rate * g_W1, classifier.b1: classifier.b1 - learning_rate * g_b1,
+            classifier.W2: classifier.W2 - learning_rate * g_W2, classifier.b2: classifier.b2 - learning_rate * g_b2}
 
-    # compiling a theano function `train_model` that returns the cost, but in 
-    # the same time updates the parameter of the model based on the rules 
+    # compiling a theano function `train_model` that returns the cost, but in
+    # the same time updates the parameter of the model based on the rules
     # defined in `updates`
-    train_model = theano.function([x, y], cost, updates = updates )
-    n_minibatches        = len(train_batches) 
- 
+    train_model = theano.function([x, y], cost, updates=updates)
+    n_minibatches = len(train_batches)
+
     # early-stopping parameters
-    patience              = 10000 # look as this many examples regardless
-    patience_increase     = 2     # wait this much longer when a new best is 
-                                  # found
-    improvement_threshold = 0.995 # a relative improvement of this much is 
-                                  # considered significant
-    validation_frequency  = n_minibatches  # go through this many 
-                                  # minibatche before checking the network 
-                                  # on the validation set; in this case we 
-                                  # check every epoch 
+    patience = 10000  # look as this many examples regardless
+    patience_increase = 2     # wait this much longer when a new best is
+    # found
+    improvement_threshold = 0.995  # a relative improvement of this much is
+    # considered significant
+    validation_frequency = n_minibatches  # go through this many
+    # minibatche before checking the network
+    # on the validation set; in this case we
+    # check every epoch
 
-
-    best_params          = None
+    best_params = None
     best_validation_loss = float('inf')
-    best_iter            = 0
-    test_score           = 0.
+    best_iter = 0
+    test_score = 0.
     start_time = time.clock()
     # have a maximum of `n_iter` iterations through the entire dataset
-    for iter in xrange(n_iter* n_minibatches):
+    for iter in xrange(n_iter * n_minibatches):
 
         # get epoch and minibatch index
-        epoch           = iter / n_minibatches
-        minibatch_index =  iter % n_minibatches
+        epoch = iter / n_minibatches
+        minibatch_index = iter % n_minibatches
 
         # get the minibatches corresponding to `iter` modulo
         # `len(train_batches)`
-        x,y = train_batches[ minibatch_index ]
-        cost_ij = train_model(x,y)
+        x, y = train_batches[minibatch_index]
+        cost_ij = train_model(x, y)
 
-        if (iter+1) % validation_frequency == 0: 
-            # compute zero-one loss on validation set 
+        if (iter + 1) % validation_frequency == 0:
+            # compute zero-one loss on validation set
             this_validation_loss = 0.
-            for x,y in valid_batches:
+            for x, y in valid_batches:
                 # sum up the errors for each minibatch
-                this_validation_loss += test_model(x,y)
+                this_validation_loss += test_model(x, y)
             # get the average by dividing with the number of minibatches
             this_validation_loss /= len(valid_batches)
 
-            print('epoch %i, minibatch %i/%i, validation error %f %%' % \
-                   (epoch, minibatch_index+1, n_minibatches, \
-                    this_validation_loss*100.))
-
+            print('epoch %i, minibatch %i/%i, validation error %f %%' %
+                  (epoch, minibatch_index + 1, n_minibatches,
+                   this_validation_loss * 100.))
 
             # if we got the best validation score until now
             if this_validation_loss < best_validation_loss:
 
-                #improve patience if loss improvement is good enough
+                # improve patience if loss improvement is good enough
                 if this_validation_loss < best_validation_loss *  \
-                       improvement_threshold :
+                        improvement_threshold:
                     patience = max(patience, iter * patience_increase)
 
                 best_validation_loss = this_validation_loss
                 best_iter = iter
                 # test it on the test set
-            
+
                 test_score = 0.
-                for x,y in test_batches:
-                    test_score += test_model(x,y)
+                for x, y in test_batches:
+                    test_score += test_model(x, y)
                 test_score /= len(test_batches)
                 print(('     epoch %i, minibatch %i/%i, test error of best '
-                      'model %f %%') % 
-                             (epoch, minibatch_index+1, n_minibatches,
-                              test_score*100.))
+                       'model %f %%') %
+                      (epoch, minibatch_index + 1, n_minibatches,
+                       test_score * 100.))
 
-        if patience <= iter :
-                break
+        if patience <= iter:
+            break
 
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
-           'with test performance %f %%') %  
-                 (best_validation_loss * 100., test_score*100.))
-    print ('The code ran for %f minutes' % ((end_time-start_time)/60.))
+           'with test performance %f %%') %
+          (best_validation_loss * 100., test_score * 100.))
+    print ('The code ran for %f minutes' % ((end_time - start_time) / 60.))
 
-    return (best_validation_loss, test_score, (end_time-start_time)/60, best_iter)
+    return (best_validation_loss, test_score, (end_time - start_time) / 60, best_iter)
 
-def experiment(state,channel):
+
+def experiment(state, channel):
 
     (best_validation_loss, test_score, minutes_trained, iter) = \
         sgd_optimization_mnist(state.learning_rate, state.n_hidden, state.L1_reg,
-            state.L2_reg, state.batch_size, state.n_iter)
+                               state.L2_reg, state.batch_size, state.n_iter)
 
     state.best_validation_loss = best_validation_loss
     state.test_score = test_score
@@ -340,4 +333,3 @@ def experiment(state,channel):
 
 if __name__ == '__main__':
     sgd_optimization_mnist()
-

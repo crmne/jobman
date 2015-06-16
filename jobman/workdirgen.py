@@ -4,6 +4,7 @@ import re
 import time
 import random
 
+
 def date(state):
     prefix = state.get('workdir_prefix', 'jobman')
     t = time.time()
@@ -11,7 +12,7 @@ def date(state):
     workdir = "%s_%04i%02i%02i_%02i%02i%02i_%04i%04i" % (prefix,
                                                          year, month, day,
                                                          hour, minute, second,
-                                                         (t-int(t)) * 10000, random.randint(0, 10000))
+                                                         (t - int(t)) * 10000, random.randint(0, 10000))
     return workdir
 
 
@@ -26,10 +27,5 @@ def numbered(state):
     return '%s%i' % (prefix, int(max_idx) + 1)
 
 
-
-
-#old default - it sucks
+# old default - it sucks
 #workdir = format_d(state, sep=',', space = False)
-    
-
-

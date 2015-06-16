@@ -5,8 +5,8 @@
 #   * Add back in installation requirements
 #   * Add download_url
 
-#To enable "python setup.py develop --prefix=~/.local"
-#We need to import setuptools
+# To enable "python setup.py develop --prefix=~/.local"
+# We need to import setuptools
 try:
     from setuptools import setup
 except ImportError:
@@ -24,4 +24,4 @@ setup(name='Jobman',
                 ],
       scripts=['bin/jobman', 'bin/jobdispatch']
 
-           )
+      )

@@ -12,7 +12,7 @@ except ImportError:
         newfunc.args = args
         newfunc.keywords = keywords
         return newfunc
-        
+
 import re
 import os
 
@@ -37,13 +37,16 @@ def _convert(obj):
         return obj
 
 SPLITTER = re.compile('([^:=]*)(:=|=|::)(.*)')
+
+
 def standard(*strings, **kwargs):
     converter = kwargs.get('converter', _convert)
     d = {}
     for string in strings:
         m = SPLITTER.match(string)
         if m is None:
-            raise UsageError('Expected a keyword argument in place of "%s"' % (string,))
+            raise UsageError(
+                'Expected a keyword argument in place of "%s"' % (string,))
         k = m.group(1).strip()
         if m.group(2) == '=':
             v = converter(m.group(3).strip())
@@ -53,15 +56,18 @@ def standard(*strings, **kwargs):
         elif m.group(2) == ':=':
             v = reval(m.group(3).strip())
         else:
-            assert False # Forgot to add case to match re.
+            assert False  # Forgot to add case to match re.
         d[k] = v
     return d
 
 _comment_pattern = re.compile('#.*')
+
+
 def filemerge(*strings, **kwargs):
     lineparser = kwargs.get('lineparser', standard)
     state = {}
-    def process(s, cwd = None, prefix = None):
+
+    def process(s, cwd=None, prefix=None):
         if '=' in s or '::' in s:
             d = lineparser(s)
             if prefix:
@@ -85,7 +91,6 @@ def filemerge(*strings, **kwargs):
         process(s)
     return state
 
-raw = partial(standard, converter = lambda x:x)
+raw = partial(standard, converter=lambda x: x)
 
-raw_filemerge = partial(filemerge, lineparser = raw)
-
+raw_filemerge = partial(filemerge, lineparser=raw)

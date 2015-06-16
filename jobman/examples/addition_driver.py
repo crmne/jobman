@@ -1,14 +1,15 @@
 """ Example script to demonstrate how to use the 'jobman.mydriver' sort of job management.
 """
 
-#standard imports
+# standard imports
 import sys
 from jobman.tools import DD, flatten
 from jobman import sql, mydriver
 
 
-#here, you would import the function that implements your job.
-# This should be one of the jobman-compatible functions that takes arguments (state, channel)
+# here, you would import the function that implements your job.
+# This should be one of the jobman-compatible functions that takes
+# arguments (state, channel)
 
 # One reason not to put this function into this very file is that in practice,
 # it can be handy to record a version number (such as the mercurial version
@@ -29,14 +30,14 @@ from jobman.examples.def_addition import addition_example
 # things.
 state = DD()
 jobs = []
-for first in 0,2,4,6,8,10:
+for first in 0, 2, 4, 6, 8, 10:
     state.first = first
-    for second in 1,3,5,7,9:
+    for second in 1, 3, 5, 7, 9:
         state.second = second
         jobs.append(dict(flatten(state)))
 
 
-# 
+#
 # mydriver.main defines a few commands that are generally useful (insert,
 # clear_db, summary, etc.) but if you want to analyse your results you can add
 # additional commands.
@@ -53,18 +54,18 @@ def list_all(db, **kwargs):
 
 
 # Here we identify our username, and the database to log in to...
-## CUSTOMIZE THIS
-user='bergstrj'
-server='gershwin.iro.umontreal.ca'
-database='bergstrj_db'
-table='test_add'
+# CUSTOMIZE THIS
+user = 'bergstrj'
+server = 'gershwin.iro.umontreal.ca'
+database = 'bergstrj_db'
+table = 'test_add'
 
 # Now we pass control over to mydriver.main.  To manage jobs, you typically will type something like
 # 'python addition_driver.py <cmd> [options]'
-# 
+#
 # Try typing 'python addition_driver.py help' in the shell for starters.
 mydriver.main(sys.argv,
-    'postgres://%s@%s/%s?table=%s'%(user, server, database, table),
-    '/tmp',
-    addition_example,
-    jobs)
+              'postgres://%s@%s/%s?table=%s' % (user, server, database, table),
+              '/tmp',
+              addition_example,
+              jobs)

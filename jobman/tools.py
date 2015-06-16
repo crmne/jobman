@@ -7,11 +7,13 @@ except:
     pass
 import copy
 
-################################################################################
-### misc
-################################################################################
+##########################################################################
+# misc
+##########################################################################
+
 
 class DD(dict):
+
     def __getattr__(self, attr):
         if attr == '__getstate__':
             return super(DD, self).__getstate__
@@ -42,9 +44,10 @@ class DD(dict):
 
     def __deepcopy__(self, memo):
         z = DD()
-        for k,kv in self.iteritems():
+        for k, kv in self.iteritems():
             z[k] = copy.deepcopy(kv, memo)
         return z
+
 
 def defaults_merge(d, defaults):
     for k, v in defaults.iteritems():
@@ -53,9 +56,10 @@ def defaults_merge(d, defaults):
         else:
             d.setdefault(k, v)
 
-################################################################################
-### resolve
-################################################################################
+##########################################################################
+# resolve
+##########################################################################
+
 
 def resolve(name, try_import=True):
     """
@@ -67,7 +71,7 @@ def resolve(name, try_import=True):
     try:
         builder = __import__(symbols[0])
     except ImportError, e:
-        e.args+=("Error while resolving %s from %s"%(symbols, name),)
+        e.args += ("Error while resolving %s from %s" % (symbols, name),)
         raise
     try:
         for sym in symbols[1:]:
@@ -85,11 +89,12 @@ def resolve(name, try_import=True):
         raise type(e)('Failed to resolve compound symbol %s' % name, e)
     return builder
 
-################################################################################
-### reval
-################################################################################
+##########################################################################
+# reval
+##########################################################################
 
-def eval_in_parent(expr, depth = 2):
+
+def eval_in_parent(expr, depth=2):
     caller = sys._getframe(depth)
     return eval(expr, caller.f_globals, caller.f_locals)
 
@@ -97,6 +102,8 @@ _reval_resolve_pattern = re.compile('@([a-zA-Z0-9_\\.]+)')
 _reval_varfetch_pattern = re.compile('(?:^|[^%])%([a-zA-Z0-9_]+)')
 _reval_vareval_pattern1 = re.compile('!!([a-zA-Z0-9_]+)')
 _reval_vareval_pattern2 = re.compile('!([a-zA-Z0-9_]+)')
+
+
 def _reval(s, depth, d):
     orig_s = s
     s = _reval_resolve_pattern.sub('resolve("\\1")', s)
@@ -106,27 +113,32 @@ def _reval(s, depth, d):
     s = s.replace('%%', 'state.')
     s = s.replace('%', '__auto_')
 
-    newvars = dict(resolve = resolve)
+    newvars = dict(resolve=resolve)
     for k, v in d.iteritems():
         newvars['__auto_%s' % k] = v
         if k not in required:
-            raise Exception('There is no %s variable to substitute in %s' % (k, orig_s))
+            raise Exception(
+                'There is no %s variable to substitute in %s' % (k, orig_s))
         required.remove(k)
     if required:
-        raise Exception('The variables %s are missing in the pattern %s' % (list(sorted(required)), orig_s))
+        raise Exception('The variables %s are missing in the pattern %s' % (
+            list(sorted(required)), orig_s))
     caller = sys._getframe(depth + 1)
     return eval(s, caller.f_globals, dict(caller.f_locals, **newvars))
+
 
 def reval(s, **d):
     return _reval(s, 1, d)
 
-################################################################################
-### dictionary
-################################################################################
+##########################################################################
+# dictionary
+##########################################################################
+
 
 def flatten(obj):
     """nested dictionary -> flat dictionary with '.' notation """
     d = {}
+
     def helper(d, prefix, obj):
         # Dictionaries that are not instances of `DD` and have keys which are
         # not strings are not flattened: otherwise we would lose the unique
@@ -139,19 +151,21 @@ def flatten(obj):
                     break
         # TODO: add numpy.floating, numpy.integer?
         if (prevent_flatten or
-            # add numpy.ndarray
-            isinstance(obj, (str, unicode, int, float, list, tuple, set)) or
-            obj in (True, False, None)):
+                # add numpy.ndarray
+                isinstance(obj, (str, unicode, int, float, list, tuple, set)) or
+                obj in (True, False, None)):
             # We do not flatten these objects.
-            d[prefix] = obj #convert(obj)
+            d[prefix] = obj  # convert(obj)
         else:
             if isinstance(obj, dict):
                 subd = obj
             elif hasattr(obj, 'state'):
                 subd = obj.state()
-                subd['__builder__'] = '%s.%s' % (obj.__module__, obj.__class__.__name__)
+                subd['__builder__'] = '%s.%s' % (
+                    obj.__module__, obj.__class__.__name__)
             else:
-                raise TypeError('Cannot flatten object %s, of type %s, for prefix %s' % (str(obj), str(type(obj)), prefix))
+                raise TypeError('Cannot flatten object %s, of type %s, for prefix %s' % (
+                    str(obj), str(type(obj)), prefix))
             for k, v in subd.iteritems():
                 if prefix:
                     pfx = '.'.join([prefix, k])
@@ -176,6 +190,7 @@ def expand(d, dict_type=DD):
         current[keys[-1]] = v  # convert(v)
     return struct
 
+
 def realize(d):
     if not isinstance(d, dict):
         return d
@@ -185,45 +200,51 @@ def realize(d):
         return builder(**d)
     return d
 
+
 def make(d):
     return realize(expand(d))
 
 
-
 def realize2(d, depth):
-    depth += 1 # this accounts for this frame
+    depth += 1  # this accounts for this frame
     if not isinstance(d, dict):
         return d
-    # note: we need to add 1 to depth because the call is in a generator expression
+    # note: we need to add 1 to depth because the call is in a generator
+    # expression
     d = dict((k, realize2(v, depth + 1)) for k, v in d.iteritems())
     if '__builder__' in d:
         return _reval(d.pop('__builder__'), depth, d)
     return d
 
+
 def _make2(d, depth):
     return realize2(expand(d), depth + 1)
+
 
 def make2(d, **keys):
     return _make2(dict(d, **keys), 1)
 
-################################################################################
-### errors
-################################################################################
+##########################################################################
+# errors
+##########################################################################
+
 
 class UsageError(Exception):
     pass
 
-################################################################################
-### formatting
-################################################################################
+##########################################################################
+# formatting
+##########################################################################
 
-def format_d(d, sep = '\n', space = True):
+
+def format_d(d, sep='\n', space=True):
     d = flatten(d)
     if space:
         pattern = "%s = %r"
     else:
         pattern = "%s=%r"
     return sep.join(pattern % (k, v) for k, v in d.iteritems())
+
 
 def format_help(topic):
     if topic is None:
@@ -243,17 +264,19 @@ def format_help(topic):
     except:
         return 'No help.'
     s = '\n'.join([line[baseline:] for line in ss])
-    s = re.sub(string = s, pattern = '\n{2,}', repl = '\n\n')
-    s = re.sub(string = s, pattern = '(^\n*)|(\n*$)', repl = '')
+    s = re.sub(string=s, pattern='\n{2,}', repl='\n\n')
+    s = re.sub(string=s, pattern='(^\n*)|(\n*$)', repl='')
 
     return s
 
 
-################################################################################
-### Helper functions operating on experiment directories
-################################################################################
+##########################################################################
+# Helper functions operating on experiment directories
+##########################################################################
 
 from jobman import parse
+
+
 def find_conf_files(cwd, fname='current.conf', recurse=True):
     """
     This generator will iterator from the given directory, and find all job
@@ -298,8 +321,9 @@ def rebuild_DB_from_FS(db, cwd='./', keep_id=True, verbose=False):
     for (jobid, jobdd) in find_conf_files(cwd):
         if keep_id and jobid:
             jobdd[sql.JOBID] = jobid
-        status = sql.insert_dict(jobdd, db) 
-        if status: tot += 1
+        status = sql.insert_dict(jobdd, db)
+        if status:
+            tot += 1
 
         if verbose:
             print '** inserted job %i **' % jobdd[sql.JOBID]
