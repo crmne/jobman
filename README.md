@@ -1,0 +1,13 @@
+# Jobman
+
+The goal of Jobman is to facilitate the process of launching many concurrent jobs, by automatically handling how parameters are passed to your programs and how results are stored for further analysis. While Jobman is application-agnostic, it is particularly well suited for machine learning when performing model selection (handling of hyperparameters, storing and analyzing results).
+
+Jobman has two basic modes. It can be used directly from the command line (which will rely mostly on flat-files for data storage) or it can be combined with a PostgreSQL database for more intensive applications.
+
+## Installing Jobman
+
+    pip install git+git://github.com/crmne/jobman.git
+
+## Documentation
+
+Jobman's official documentation can be found at http://deeplearning.net/software/jobman/
